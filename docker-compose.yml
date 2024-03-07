@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16.2-alpine
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: storke_central
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+
+  sentinel:
+    container_name: montecito
+    depends_on:
+      - db
+    build: /
+    image: gauchoracing/sentinel
+    environment:
+      POSTGRES_HOST: $POSTGRES_HOST
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_PORT: $POSTGRES_PORT
+      DISCORD_TOKEN: $DISCORD_TOKEN
+      DISCORD_GUILD: $DISCORD_GUILD
+
+volumes:
+  pgdata:
