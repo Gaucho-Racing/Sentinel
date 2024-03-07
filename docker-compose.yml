@@ -18,14 +18,19 @@ services:
       - db
     build: /
     image: gauchoracing/sentinel
+    ports:
+      - "${PORT}:${PORT}"
     environment:
       ENV: $ENV
+      PORT: $PORT
+      PREFIX: $PREFIX
       POSTGRES_HOST: $POSTGRES_HOST
       POSTGRES_USER: $POSTGRES_USER
       POSTGRES_PASSWORD: $POSTGRES_PASSWORD
       POSTGRES_PORT: $POSTGRES_PORT
       DISCORD_TOKEN: $DISCORD_TOKEN
       DISCORD_GUILD: $DISCORD_GUILD
+      DISCORD_LOG_CHANNEL: $DISCORD_LOG_CHANNEL
 
 volumes:
   pgdata:
