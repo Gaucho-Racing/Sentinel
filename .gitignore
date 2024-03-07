@@ -1,6 +1,9 @@
 .idea/
 .vscode/
+*.iws
+out/
 .DS_Store
+Sentinel.iml
 
 .env
 !example.env
