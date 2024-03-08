@@ -25,7 +25,7 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, config.Prefix) {
 		return
 	}
-	command := strings.Split(m.Content, " ")[0][1:]
+	command := strings.Split(m.Content, " ")[0][len(config.Prefix):]
 	args := strings.Split(m.Content, " ")[1:]
 	switch command {
 	case "say":

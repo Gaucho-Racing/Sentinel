@@ -17,7 +17,7 @@ func ConnectDiscord() {
 		return
 	}
 	Discord = dg
-	_, err = Discord.ChannelMessageSend(config.DiscordLogChannel, ":white_check_mark: Sentinel v"+config.Version+" online! `[ENV = "+config.Env+"]`")
+	_, err = Discord.ChannelMessageSend(config.DiscordLogChannel, ":white_check_mark: Sentinel v"+config.Version+" online! `[ENV = "+config.Env+"]` `[PREFIX = "+config.Prefix+"]`")
 	if err != nil {
 		utils.SugarLogger.Errorln("Error sending Discord message, ", err)
 		return

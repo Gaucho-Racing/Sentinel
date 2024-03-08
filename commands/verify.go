@@ -29,7 +29,7 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	if user.ID == "" {
 		// User not found
 		if len(args) < 3 {
-			go service.SendDisappearingMessage(m.ChannelID, "Must be in the format: `!verify <first name> <last name> <email>`", 5*time.Second)
+			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!verify <first name> <last name> <email>`", 5*time.Second)
 			return
 		}
 		emailIndex := -1
