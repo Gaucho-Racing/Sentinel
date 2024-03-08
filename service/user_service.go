@@ -18,7 +18,7 @@ func GetAllUsers() []model.User {
 
 func GetUserByID(userID string) model.User {
 	var user model.User
-	result := DB.Where("id = ? OR user_name = ?", userID, userID).Find(&user)
+	result := DB.Where("id = ?", userID).Find(&user)
 	if result.Error != nil {
 	}
 	user.Subteams = GetSubteamsForUser(user.ID)
@@ -34,6 +34,13 @@ func CreateUser(user model.User) error {
 		go DiscordLogNewUser(user)
 	} else {
 		utils.SugarLogger.Infoln("User with id: " + user.ID + " has been updated!")
+	}
+	return nil
+}
+
+func DeleteUser(userID string) error {
+	if result := DB.Where("id = ?", userID).Delete(&model.User{}); result.Error != nil {
+		return result.Error
 	}
 	return nil
 }

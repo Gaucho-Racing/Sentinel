@@ -28,6 +28,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	command := strings.Split(m.Content, " ")[0][1:]
 	args := strings.Split(m.Content, " ")[1:]
 	switch command {
+	case "say":
+		Say(args, s, m)
 	case "verify":
 		Verify(args, s, m)
 	default:

@@ -5,6 +5,7 @@ import (
 	"sentinel/config"
 	"sentinel/model"
 	"sentinel/utils"
+	"time"
 )
 
 var Discord *discordgo.Session
@@ -21,6 +22,19 @@ func ConnectDiscord() {
 		utils.SugarLogger.Errorln("Error sending Discord message, ", err)
 		return
 	}
+}
+
+func SendDisappearingMessage(channelID string, message string, delay time.Duration) {
+	msg, err := Discord.ChannelMessageSend(channelID, message)
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+	}
+	go DelayedMessageDelete(channelID, msg.ID, delay)
+}
+
+func DelayedMessageDelete(channelID string, messageID string, delay time.Duration) {
+	time.Sleep(delay)
+	_ = Discord.ChannelMessageDelete(channelID, messageID)
 }
 
 func DiscordLogNewUser(user model.User) {
@@ -42,7 +56,7 @@ func DiscordLogNewUser(user model.User) {
 		Inline: false,
 	})
 	embeds = append(embeds, &discordgo.MessageEmbed{
-		Title: "New Account Created!",
+		Title: "New Member Verified!",
 		Color: 6609663,
 		Author: &discordgo.MessageEmbedAuthor{
 			IconURL: user.AvatarURL,
