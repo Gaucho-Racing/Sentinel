@@ -3,6 +3,7 @@ package service
 import (
 	"sentinel/model"
 	"sentinel/utils"
+	"time"
 )
 
 func GetSubteamsForUser(userID string) []model.Subteam {
@@ -43,6 +44,14 @@ func GetSubteamByID(subteamID string) model.Subteam {
 	return subteam
 }
 
+func GetSubteamByName(subteamName string) model.Subteam {
+	var subteam model.Subteam
+	result := DB.Where("name = ?", subteamName).Find(&subteam)
+	if result.Error != nil {
+	}
+	return subteam
+}
+
 func CreateSubteam(subteam model.Subteam) error {
 	if DB.Where("id = ?", subteam.ID).Updates(&subteam).RowsAffected == 0 {
 		utils.SugarLogger.Infoln("New subteam created with id: " + subteam.ID)
@@ -53,4 +62,37 @@ func CreateSubteam(subteam model.Subteam) error {
 		utils.SugarLogger.Infoln("Subteam with id: " + subteam.ID + " has been updated!")
 	}
 	return nil
+}
+
+func InitializeSubteams() {
+	CreateSubteam(model.Subteam{
+		ID:        "761114473565519882",
+		Name:      "Aero",
+		CreatedAt: time.Time{},
+	})
+	CreateSubteam(model.Subteam{
+		ID:        "761114557531553824",
+		Name:      "Chassis",
+		CreatedAt: time.Time{},
+	})
+	CreateSubteam(model.Subteam{
+		ID:        "761114667048763423",
+		Name:      "Suspension",
+		CreatedAt: time.Time{},
+	})
+	CreateSubteam(model.Subteam{
+		ID:        "761114716985753621",
+		Name:      "Powertrain",
+		CreatedAt: time.Time{},
+	})
+	CreateSubteam(model.Subteam{
+		ID:        "761116347865890816",
+		Name:      "Controls",
+		CreatedAt: time.Time{},
+	})
+	CreateSubteam(model.Subteam{
+		ID:        "761331962563919874",
+		Name:      "Business",
+		CreatedAt: time.Time{},
+	})
 }

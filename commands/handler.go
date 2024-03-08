@@ -32,6 +32,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Say(args, s, m)
 	case "verify":
 		Verify(args, s, m)
+	case "subteam":
+		Subteam(args, s, m)
 	default:
 		utils.SugarLogger.Infoln("Command not found: %s", command)
 	}

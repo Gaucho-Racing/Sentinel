@@ -24,6 +24,7 @@ func main() {
 
 	router = setupRouter()
 	service.InitializeDB()
+	service.InitializeSubteams()
 	service.ConnectDiscord()
 	commands.InitializeDiscordBot()
 
