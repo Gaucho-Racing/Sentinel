@@ -6,7 +6,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT}:${POSTGRES_PORT}"
+      - "${EXTERNAL_POSTGRES_PORT}:${POSTGRES_PORT}"
     environment:
       POSTGRES_DB: main
       POSTGRES_USER: $POSTGRES_USER
