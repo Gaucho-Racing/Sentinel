@@ -8,6 +8,7 @@ type User struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
 	Email     string    `gorm:"unique" json:"email"`
+	AvatarURL string    `json:"avatar_url"`
 	Verified  bool      `json:"verified"`
 	Subteams  []Subteam `gorm:"-" json:"subteams"`
 	UpdatedAt time.Time `gorm:"autoUpdateTime" json:"updated_at"`

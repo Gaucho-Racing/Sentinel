@@ -1,8 +1,8 @@
 package model
 
 type UserSubteam struct {
-	UserID string `json:"user_id"`
-	RoleID string `json:"role_id"`
+	UserID string `gorm:"primaryKey" json:"user_id"`
+	RoleID string `gorm:"primaryKey" json:"role_id"`
 }
 
 func (UserSubteam) TableName() string {

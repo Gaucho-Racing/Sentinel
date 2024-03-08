@@ -25,5 +25,12 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, config.Prefix) {
 		return
 	}
-	println("Message received: " + m.Content)
+	command := strings.Split(m.Content, " ")[0][1:]
+	args := strings.Split(m.Content, " ")[1:]
+	switch command {
+	case "verify":
+		Verify(args, s, m)
+	default:
+		utils.SugarLogger.Infoln("Command not found: %s", command)
+	}
 }
