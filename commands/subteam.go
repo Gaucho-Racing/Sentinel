@@ -10,11 +10,12 @@ import (
 )
 
 func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
-	//defer s.ChannelMessageDelete(m.ChannelID, m.ID)
+	defer s.ChannelMessageDelete(m.ChannelID, m.ID)
 	// Get user info
 	guildMember, err := s.GuildMember(m.GuildID, m.Author.ID)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
+		go service.SendDisappearingMessage(m.ChannelID, "Unexpected error occurred, please try again later!", 5*time.Second)
 		return
 	}
 	isOfficer := false
@@ -43,6 +44,7 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			if role.ID != "" {
 				err = s.GuildMemberRoleAdd(m.GuildID, user.ID, role.ID)
 				if err != nil {
+					go service.SendDisappearingMessage(m.ChannelID, "Unexpected error occurred, please try again later!", 5*time.Second)
 					utils.SugarLogger.Errorln(err)
 				} else {
 					counter++
