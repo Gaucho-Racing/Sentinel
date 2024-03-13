@@ -44,7 +44,7 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	id := m.Author.ID
 	firstName := args[0]
-	lastName := strings.Join(args[1:emailIndex-1], " ")
+	lastName := strings.Join(args[1:emailIndex], " ")
 	email := args[emailIndex]
 	// check if id flag is present
 	if len(args) > emailIndex+1 {

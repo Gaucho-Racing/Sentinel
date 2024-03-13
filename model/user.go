@@ -4,10 +4,10 @@ import "time"
 
 type User struct {
 	ID        string    `gorm:"primaryKey" json:"id"`
-	Username  string    `gorm:"unique" json:"username"`
+	Username  string    `json:"username"`
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
-	Email     string    `gorm:"unique" json:"email"`
+	Email     string    `json:"email"`
 	AvatarURL string    `json:"avatar_url"`
 	Verified  bool      `json:"verified"`
 	Subteams  []Subteam `gorm:"-" json:"subteams"`
