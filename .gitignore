@@ -7,6 +7,7 @@ Sentinel.iml
 
 .env
 !example.env
+drive-service-account.json
 # Binaries for programs and plugins
 *.exe
 *.exe~

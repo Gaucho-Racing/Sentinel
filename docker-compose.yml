@@ -13,7 +13,7 @@ services:
       POSTGRES_PASSWORD: $POSTGRES_PASSWORD
 
   sentinel:
-    container_name: montecito
+    container_name: sentinel
     depends_on:
       - db
     build: /
