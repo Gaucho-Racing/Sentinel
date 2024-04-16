@@ -19,13 +19,13 @@ func Say(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	isOfficer := false
 	for _, role := range guildMember.Roles {
-		if role == "812948550819905546" {
+		if role == "812948550819905546" || role == "970423652791246888" {
 			isOfficer = true
 			break
 		}
 	}
 	if !isOfficer {
-		go service.SendDisappearingMessage(m.ChannelID, "You must be an officer to use this command!", 5*time.Second)
+		go service.SendDisappearingMessage(m.ChannelID, "You must be an officer or team lead to use this command!", 5*time.Second)
 		return
 	}
 	if len(args) < 1 {
