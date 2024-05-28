@@ -1,11 +1,12 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
 	"sentinel/commands"
 	"sentinel/config"
 	"sentinel/service"
 	"sentinel/utils"
+
+	"github.com/gin-gonic/gin"
 )
 
 var router *gin.Engine

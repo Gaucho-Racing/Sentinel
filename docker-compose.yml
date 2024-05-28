@@ -17,7 +17,7 @@ services:
     depends_on:
       - db
     build: /
-    image: gauchoracing/sentinel
+    image: gauchoracing/sentinel:latest
     ports:
       - "${PORT}:${PORT}"
     environment:

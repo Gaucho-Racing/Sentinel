@@ -1,11 +1,12 @@
 package service
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"sentinel/config"
 	"sentinel/model"
 	"sentinel/utils"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 var Discord *discordgo.Session

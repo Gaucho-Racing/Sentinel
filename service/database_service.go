@@ -2,12 +2,13 @@ package service
 
 import (
 	"fmt"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 	"sentinel/config"
 	"sentinel/model"
 	"sentinel/utils"
 	"time"
+
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 var DB *gorm.DB

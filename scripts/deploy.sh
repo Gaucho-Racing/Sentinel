@@ -13,6 +13,6 @@ if ! [ -x "$(command -v docker)" ]; then
   exit 1
 fi
 
-echo "Building container for GR Sentinel v$1"
+echo "Building container for Sentinel v$1"
 # Build the docker container
-docker build -t gauchoracing/sentinel:"$1" -t gauchoracing/sentinel:latest --platform linux/amd64,linux/arm64 --push --progress=plain .
+docker build -t gauchoracing/sentinel:"$1" -t gauchoracing/sentinel:latest --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --progress=plain .
