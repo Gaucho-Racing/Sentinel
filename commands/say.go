@@ -1,12 +1,13 @@
 package commands
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"sentinel/config"
 	"sentinel/service"
 	"sentinel/utils"
 	"strings"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 func Say(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {

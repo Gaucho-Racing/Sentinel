@@ -1,11 +1,12 @@
 package commands
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"sentinel/config"
 	"sentinel/service"
 	"sentinel/utils"
 	"strings"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 func InitializeDiscordBot() {
@@ -28,6 +29,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	command := strings.Split(m.Content, " ")[0][len(config.Prefix):]
 	args := strings.Split(m.Content, " ")[1:]
 	switch command {
+	case "ping":
+		Ping(args, s, m)
 	case "say":
 		Say(args, s, m)
 	case "verify":

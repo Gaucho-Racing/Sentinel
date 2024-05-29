@@ -1,12 +1,13 @@
 package commands
 
 import (
-	"github.com/bwmarrin/discordgo"
 	"sentinel/service"
 	"sentinel/utils"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/bwmarrin/discordgo"
 )
 
 func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
