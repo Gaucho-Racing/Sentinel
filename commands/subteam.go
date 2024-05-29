@@ -26,9 +26,7 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			break
 		}
 	}
-	if isOfficer {
-		// STUB
-	}
+	utils.SugarLogger.Infof("User %s is officer: %t", m.Author.ID, isOfficer)
 
 	user := service.GetUserByID(m.Author.ID)
 	if user.ID == "" {
