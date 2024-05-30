@@ -138,6 +138,14 @@ func DiscordUserEmbed(user model.User, channelID string) {
 		Value:  strings.Join(roleStrings, ", "),
 		Inline: false,
 	})
+	lastActivity := GetLastActivityForUser(user.ID)
+	if lastActivity.ID != "" {
+		fields = append(fields, &discordgo.MessageEmbedField{
+			Name:   "Last Activity",
+			Value:  lastActivity.Action + " on " + lastActivity.CreatedAt.Format("Jan 2, 2006 3:04 PM"),
+			Inline: false,
+		})
+	}
 	embeds = append(embeds, &discordgo.MessageEmbed{
 		Title: fmt.Sprintf("%s %s", user.FirstName, user.LastName),
 		Color: color,

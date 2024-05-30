@@ -2,11 +2,13 @@ package commands
 
 import (
 	"sentinel/config"
+	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/google/uuid"
 )
 
 func InitializeDiscordBot() {
@@ -21,6 +23,7 @@ func InitializeDiscordBot() {
 }
 
 func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
+	LogUserMessage(s, m)
 	// Ignore all messages created by the bot itself
 	// or messages that don't start with the prefix
 	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, config.Prefix) {
@@ -44,4 +47,19 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
+}
+
+func LogUserMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
+	utils.SugarLogger.Infof("Message from %s: %s", m.Author.ID, m.Content)
+	// Get user info
+	user := service.GetUserByID(m.Author.ID)
+	if user.ID == "" {
+		return
+	}
+	// Log message
+	service.CreateActivity(model.UserActivity{
+		ID:     uuid.New().String(),
+		UserID: user.ID,
+		Action: "message",
+	})
 }
