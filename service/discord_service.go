@@ -72,6 +72,9 @@ func DiscordLogNewUser(user model.User) {
 			IconURL: user.AvatarURL,
 		},
 		Fields: fields,
+		Thumbnail: &discordgo.MessageEmbedThumbnail{
+			URL: user.AvatarURL,
+		},
 	})
 	_, err := Discord.ChannelMessageSendEmbeds(config.DiscordLogChannel, embeds)
 	if err != nil {
