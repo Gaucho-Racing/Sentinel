@@ -17,8 +17,8 @@ services:
     container_name: sentinel
     depends_on:
       - db
-    build: /
     image: gauchoracing/sentinel:latest
+    restart: unless-stopped
     ports:
       - "${PORT}:${PORT}"
     environment:

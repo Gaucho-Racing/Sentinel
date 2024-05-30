@@ -19,13 +19,6 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		go service.SendDisappearingMessage(m.ChannelID, "Unexpected error occurred, please try again later!", 5*time.Second)
 		return
 	}
-	isOfficer := false
-	for _, role := range guildMember.Roles {
-		if role == "812948550819905546" {
-			isOfficer = true
-			break
-		}
-	}
 
 	if len(args) < 3 {
 		go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!verify <first name> <last name> <email>`", 5*time.Second)
@@ -34,7 +27,7 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	emailIndex := -1
 	// find email, extract first name and last name from that
 	for i, arg := range args {
-		if strings.Contains(arg, "@ucsb.edu") || isOfficer && strings.Contains(arg, "@") {
+		if strings.Contains(arg, "@ucsb.edu") || utils.IsInnerCircle(guildMember.Roles) && strings.Contains(arg, "@") {
 			emailIndex = i
 		}
 	}
@@ -50,8 +43,8 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	if len(args) > emailIndex+1 {
 		// last arg is id
 		id = args[emailIndex+1]
-		if !isOfficer {
-			go service.SendDisappearingMessage(m.ChannelID, "You must be an officer to verify someone else!", 5*time.Second)
+		if !utils.IsInnerCircle(guildMember.Roles) {
+			go service.SendDisappearingMessage(m.ChannelID, "You do not have permission to verify someone else!", 5*time.Second)
 			return
 		}
 	}

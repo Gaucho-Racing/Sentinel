@@ -44,6 +44,7 @@ func Whois(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 						return
 					} else {
 						for _, u := range searchedUsers {
+							utils.SugarLogger.Infof("User found: %s", u.Username)
 							service.DiscordUserEmbed(u, m.ChannelID)
 						}
 						return

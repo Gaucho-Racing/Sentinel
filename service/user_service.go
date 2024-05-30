@@ -67,9 +67,6 @@ func SearchUsers(search string) []model.User {
 	for _, user := range allUsers {
 		userStrings = append(userStrings, fmt.Sprintf("%s %s %s %s %s", user.ID, user.Username, user.FirstName, user.LastName, user.Email))
 	}
-	for _, user := range userStrings {
-		utils.SugarLogger.Infof("User: %s", user)
-	}
 	matches := fuzzy.RankFindNormalizedFold(search, userStrings)
 	sort.Sort(matches)
 	utils.SugarLogger.Infof("Found %d matches", len(matches))
