@@ -47,6 +47,17 @@ func DelayedMessageDelete(channelID string, messageID string, delay time.Duratio
 	_ = Discord.ChannelMessageDelete(channelID, messageID)
 }
 
+func SendDirectMessage(userID string, message string) {
+	channel, err := Discord.UserChannelCreate(userID)
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+	}
+	_, err = Discord.ChannelMessageSend(channel.ID, message)
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+	}
+}
+
 func DiscordLogNewUser(user model.User) {
 	var embeds []*discordgo.MessageEmbed
 	var fields []*discordgo.MessageEmbedField
@@ -142,4 +153,33 @@ func DiscordUserEmbed(user model.User, channelID string) {
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())
 	}
+}
+
+func FindAllNonVerifiedUsers() {
+	members, err := Discord.GuildMembers(config.DiscordGuild, "", 1000)
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+	}
+	guildMembers := 0
+	memberMembers := 0
+	verifiedMembers := 0
+	for _, member := range members {
+		user := GetUserByID(member.User.ID)
+		if user.ID != "" {
+			utils.SugarLogger.Infof("User found: %s", user.ID)
+			verifiedMembers++
+		} else {
+			utils.SugarLogger.Infof("User not found: %s", member.User.ID)
+		}
+		for _, role := range member.Roles {
+			if role == config.MemberRoleID {
+				memberMembers++
+			}
+		}
+		guildMembers++
+	}
+	utils.SugarLogger.Infof("Total Members: %d", guildMembers)
+	utils.SugarLogger.Infof("Members Role: %d", memberMembers)
+	utils.SugarLogger.Infof("Verified Members: %d", verifiedMembers)
+	SendDirectMessage("348220961155448833", "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before June 8th to avoid any disruption to your server access. You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
 }

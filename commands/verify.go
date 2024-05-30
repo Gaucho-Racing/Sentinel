@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
@@ -74,7 +75,7 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	// TODO: google drive access
 
 	// assign member role
-	err = s.GuildMemberRoleAdd(m.GuildID, id, "820467859477889034")
+	err = s.GuildMemberRoleAdd(m.GuildID, id, config.MemberRoleID)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
 	}

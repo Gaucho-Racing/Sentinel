@@ -21,3 +21,4 @@ var GithubToken = os.Getenv("GITHUB_PAT")
 var AdminRoleID = "1030681203864522823"
 var OfficerRoleID = "812948550819905546"
 var LeadRoleID = "970423652791246888"
+var MemberRoleID = "820467859477889034"
