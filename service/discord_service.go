@@ -86,6 +86,7 @@ func DiscordUserEmbed(user model.User, channelID string) {
 	guildMember, err := Discord.GuildMember(config.DiscordGuild, user.ID)
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())
+		return
 	}
 	var topRole *discordgo.Role
 	var roleStrings []string
