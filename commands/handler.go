@@ -39,7 +39,9 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Subteam(args, s, m)
 	case "github":
 		Github(args, s, m)
+	case "whois":
+		Whois(args, s, m)
 	default:
-		utils.SugarLogger.Infoln("Command not found: %s", command)
+		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
 }

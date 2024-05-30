@@ -31,7 +31,7 @@ func Github(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		reqBody := `{"role": "member"}`
-		if utils.IsAdmin(guildMember.Roles) || utils.IsOfficer(guildMember.Roles) || utils.IsLead(guildMember.Roles) {
+		if utils.IsInnerCircle(guildMember.Roles) {
 			reqBody = `{"role": "admin"}`
 		}
 		req, err := http.NewRequest("PUT", "https://api.github.com/orgs/gaucho-racing/memberships/"+args[0], strings.NewReader(reqBody))

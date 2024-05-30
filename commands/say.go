@@ -18,21 +18,26 @@ func Say(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		utils.SugarLogger.Errorln(err)
 		return
 	}
-	isOfficer := false
-	for _, role := range guildMember.Roles {
-		if role == "812948550819905546" || role == "970423652791246888" {
-			isOfficer = true
-			break
-		}
-	}
-	if !isOfficer {
-		go service.SendDisappearingMessage(m.ChannelID, "You must be an officer or team lead to use this command!", 5*time.Second)
+	if !utils.IsInnerCircle(guildMember.Roles) {
+		go service.SendDisappearingMessage(m.ChannelID, "You do not have access to this command!", 5*time.Second)
 		return
 	}
 	if len(args) < 1 {
+		if len(m.Attachments) > 0 {
+			SendAttachments(m.Attachments, s, m)
+			return
+		}
 		go service.SendDisappearingMessage(m.ChannelID, "Must be in the format: `!say <message>`", 5*time.Second)
 		return
 	}
 	message, _ := strings.CutPrefix(m.Content, config.Prefix+"say ")
 	s.ChannelMessageSend(m.ChannelID, message)
+	SendAttachments(m.Attachments, s, m)
+}
+
+func SendAttachments(attachments []*discordgo.MessageAttachment, s *discordgo.Session, m *discordgo.MessageCreate) {
+	for _, attachment := range attachments {
+		println(attachment.URL)
+		s.ChannelMessageSend(m.ChannelID, attachment.URL)
+	}
 }

@@ -5,6 +5,7 @@ go 1.22.0
 require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/gin-gonic/gin v1.9.1
+	github.com/lithammer/fuzzysearch v1.1.8
 	go.uber.org/zap v1.27.0
 	gorm.io/driver/postgres v1.5.6
 	gorm.io/gorm v1.25.7
