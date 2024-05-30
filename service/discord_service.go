@@ -85,7 +85,8 @@ func DiscordLogNewUser(user model.User) {
 func DiscordUserEmbed(user model.User, channelID string) {
 	guildMember, err := Discord.GuildMember(config.DiscordGuild, user.ID)
 	if err != nil {
-		utils.SugarLogger.Errorln(err.Error())
+		utils.SugarLogger.Errorln("User no longer in the server: " + err.Error())
+		DeleteUser(user.ID)
 		return
 	}
 	var topRole *discordgo.Role
