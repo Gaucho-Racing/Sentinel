@@ -29,7 +29,7 @@ func main() {
 	service.ConnectDiscord()
 	commands.InitializeDiscordBot()
 
-	service.FindAllNonVerifiedUsers()
+	// service.FindAllNonVerifiedUsers()
 
 	router.Run(":" + config.Port)
 }

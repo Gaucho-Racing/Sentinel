@@ -13,6 +13,8 @@ import (
 
 func InitializeDiscordBot() {
 	service.Discord.AddHandler(OnDiscordMessage)
+	service.Discord.AddHandler(LogUserMessage)
+	service.Discord.AddHandler(LogUserReaction)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAllWithoutPrivileged)
 	err := service.Discord.Open()
 	if err != nil {
@@ -23,7 +25,6 @@ func InitializeDiscordBot() {
 }
 
 func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	LogUserMessage(s, m)
 	// Ignore all messages created by the bot itself
 	// or messages that don't start with the prefix
 	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, config.Prefix) {
@@ -44,13 +45,15 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Github(args, s, m)
 	case "whois":
 		Whois(args, s, m)
+	case "users":
+		Users(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
 }
 
 func LogUserMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	utils.SugarLogger.Infof("Message from %s: %s", m.Author.ID, m.Content)
+	utils.SugarLogger.Infof("Message from %s in %s: %s", m.Author.ID, m.ChannelID, m.Content)
 	// Get user info
 	user := service.GetUserByID(m.Author.ID)
 	if user.ID == "" {
@@ -61,5 +64,20 @@ func LogUserMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		ID:     uuid.New().String(),
 		UserID: user.ID,
 		Action: "message",
+	})
+}
+
+func LogUserReaction(s *discordgo.Session, m *discordgo.MessageReactionAdd) {
+	utils.SugarLogger.Infof("Reaction from %s in %s: %s", m.UserID, m.ChannelID, m.Emoji.Name)
+	// Get user info
+	user := service.GetUserByID(m.UserID)
+	if user.ID == "" {
+		return
+	}
+	// Log reaction
+	service.CreateActivity(model.UserActivity{
+		ID:     uuid.New().String(),
+		UserID: user.ID,
+		Action: "reaction",
 	})
 }
