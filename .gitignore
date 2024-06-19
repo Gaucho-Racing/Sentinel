@@ -26,3 +26,5 @@ drive-service-account.json
 
 # Go workspace file
 go.work
+
+coverage.html
