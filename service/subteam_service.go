@@ -9,9 +9,7 @@ import (
 
 func GetSubteamsForUser(userID string) []model.Subteam {
 	var userSubteams []model.UserSubteam
-	result := database.DB.Where("user_id = ?", userID).Find(&userSubteams)
-	if result.Error != nil {
-	}
+	database.DB.Where("user_id = ?", userID).Find(&userSubteams)
 	var subteams []model.Subteam
 	for i := range userSubteams {
 		subteams = append(subteams, GetSubteamByID(userSubteams[i].RoleID))
@@ -31,25 +29,19 @@ func SetSubteamsForUser(userID string, subteams []model.UserSubteam) error {
 
 func GetAllSubteams() []model.Subteam {
 	var subteams []model.Subteam
-	result := database.DB.Find(&subteams)
-	if result.Error != nil {
-	}
+	database.DB.Find(&subteams)
 	return subteams
 }
 
 func GetSubteamByID(subteamID string) model.Subteam {
 	var subteam model.Subteam
-	result := database.DB.Where("id = ?", subteamID).Find(&subteam)
-	if result.Error != nil {
-	}
+	database.DB.Where("id = ?", subteamID).Find(&subteam)
 	return subteam
 }
 
 func GetSubteamByName(subteamName string) model.Subteam {
 	var subteam model.Subteam
-	result := database.DB.Where("name = ?", subteamName).Find(&subteam)
-	if result.Error != nil {
-	}
+	database.DB.Where("name = ?", subteamName).Find(&subteam)
 	return subteam
 }
 
