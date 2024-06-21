@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
 	"sort"
@@ -11,51 +12,58 @@ import (
 
 func GetAllUsers() []model.User {
 	var users []model.User
-	DB.Find(&users)
+	database.DB.Find(&users)
 	for i := range users {
 		users[i].Subteams = GetSubteamsForUser(users[i].ID)
+		users[i].Roles = GetRolesForUser(users[i].ID)
 	}
 	return users
 }
 
 func GetUserByID(userID string) model.User {
 	var user model.User
-	DB.Where("id = ?", userID).Find(&user)
+	database.DB.Where("id = ?", userID).Find(&user)
 	user.Subteams = GetSubteamsForUser(user.ID)
+	user.Roles = GetRolesForUser(user.ID)
 	return user
 }
 
 func GetUserByUsername(username string) model.User {
 	var user model.User
-	DB.Where("username = ?", username).Find(&user)
+	database.DB.Where("username = ?", username).Find(&user)
 	user.Subteams = GetSubteamsForUser(user.ID)
+	user.Roles = GetRolesForUser(user.ID)
 	return user
 }
 
 func GetUserByEmail(email string) model.User {
 	var user model.User
-	DB.Where("email = ?", email).Find(&user)
+	database.DB.Where("email = ?", email).Find(&user)
 	user.Subteams = GetSubteamsForUser(user.ID)
+	user.Roles = GetRolesForUser(user.ID)
 	return user
 }
 
 func CreateUser(user model.User) error {
-	if DB.Where("id = ?", user.ID).Updates(&user).RowsAffected == 0 {
+	if database.DB.Where("id = ?", user.ID).Updates(&user).RowsAffected == 0 {
 		utils.SugarLogger.Infoln("New user created with id: " + user.ID)
-		if result := DB.Create(&user); result.Error != nil {
+		if result := database.DB.Create(&user); result.Error != nil {
 			return result.Error
 		}
 		go DiscordLogNewUser(user)
 	} else {
 		utils.SugarLogger.Infoln("User with id: " + user.ID + " has been updated!")
 	}
+	SetRolesForUser(user.ID, user.Roles)
 	return nil
 }
 
 func DeleteUser(userID string) error {
-	if result := DB.Where("id = ?", userID).Delete(&model.User{}); result.Error != nil {
+	if result := database.DB.Where("id = ?", userID).Delete(&model.User{}); result.Error != nil {
 		return result.Error
 	}
+	SetSubteamsForUser(userID, []model.UserSubteam{})
+	SetRolesForUser(userID, []string{})
 	return nil
 }
 

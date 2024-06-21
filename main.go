@@ -3,6 +3,7 @@ package main
 import (
 	"sentinel/commands"
 	"sentinel/config"
+	"sentinel/database"
 	"sentinel/service"
 	"sentinel/utils"
 
@@ -24,7 +25,7 @@ func main() {
 	defer utils.Logger.Sync()
 
 	router = setupRouter()
-	service.InitializeDB()
+	database.InitializeDB()
 	service.InitializeSubteams()
 	service.ConnectDiscord()
 	commands.InitializeDiscordBot()

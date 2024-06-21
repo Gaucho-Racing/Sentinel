@@ -1,6 +1,7 @@
 package service
 
 import (
+	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
 	"time"
@@ -8,7 +9,7 @@ import (
 
 func GetSubteamsForUser(userID string) []model.Subteam {
 	var userSubteams []model.UserSubteam
-	result := DB.Where("user_id = ?", userID).Find(&userSubteams)
+	result := database.DB.Where("user_id = ?", userID).Find(&userSubteams)
 	if result.Error != nil {
 	}
 	var subteams []model.Subteam
@@ -19,9 +20,9 @@ func GetSubteamsForUser(userID string) []model.Subteam {
 }
 
 func SetSubteamsForUser(userID string, subteams []model.UserSubteam) error {
-	DB.Where("user_id = ?", userID).Delete(&model.UserSubteam{})
+	database.DB.Where("user_id = ?", userID).Delete(&model.UserSubteam{})
 	for _, r := range subteams {
-		if result := DB.Create(&r); result.Error != nil {
+		if result := database.DB.Create(&r); result.Error != nil {
 			return result.Error
 		}
 	}
@@ -30,7 +31,7 @@ func SetSubteamsForUser(userID string, subteams []model.UserSubteam) error {
 
 func GetAllSubteams() []model.Subteam {
 	var subteams []model.Subteam
-	result := DB.Find(&subteams)
+	result := database.DB.Find(&subteams)
 	if result.Error != nil {
 	}
 	return subteams
@@ -38,7 +39,7 @@ func GetAllSubteams() []model.Subteam {
 
 func GetSubteamByID(subteamID string) model.Subteam {
 	var subteam model.Subteam
-	result := DB.Where("id = ?", subteamID).Find(&subteam)
+	result := database.DB.Where("id = ?", subteamID).Find(&subteam)
 	if result.Error != nil {
 	}
 	return subteam
@@ -46,16 +47,16 @@ func GetSubteamByID(subteamID string) model.Subteam {
 
 func GetSubteamByName(subteamName string) model.Subteam {
 	var subteam model.Subteam
-	result := DB.Where("name = ?", subteamName).Find(&subteam)
+	result := database.DB.Where("name = ?", subteamName).Find(&subteam)
 	if result.Error != nil {
 	}
 	return subteam
 }
 
 func CreateSubteam(subteam model.Subteam) error {
-	if DB.Where("id = ?", subteam.ID).Updates(&subteam).RowsAffected == 0 {
+	if database.DB.Where("id = ?", subteam.ID).Updates(&subteam).RowsAffected == 0 {
 		utils.SugarLogger.Infoln("New subteam created with id: " + subteam.ID)
-		if result := DB.Create(&subteam); result.Error != nil {
+		if result := database.DB.Create(&subteam); result.Error != nil {
 			return result.Error
 		}
 	} else {
