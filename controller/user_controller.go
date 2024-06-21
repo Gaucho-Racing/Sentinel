@@ -31,7 +31,7 @@ func CreateUser(c *gin.Context) {
 	}
 	err := service.CreateUser(user)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	c.JSON(http.StatusCreated, user)
@@ -41,7 +41,7 @@ func DeleteUser(c *gin.Context) {
 	id := c.Param("id")
 	err := service.DeleteUser(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User with id: " + id + " has been deleted"})
