@@ -31,6 +31,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
+	router.GET("/users/:userID/roles", GetAllRolesForUser)
+	router.POST("/users/:userID/roles", SetRolesForUser)
 }
 
 func AuthChecker() gin.HandlerFunc {
