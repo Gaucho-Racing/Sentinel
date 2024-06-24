@@ -14,8 +14,9 @@ func main() {
 	defer utils.Logger.Sync()
 
 	database.InitializeDB()
-	service.InitializeSubteams()
 	service.ConnectDiscord()
+	service.InitializeRoles()
+	service.InitializeSubteams()
 	commands.InitializeDiscordBot()
 	// service.FindAllNonVerifiedUsers()
 

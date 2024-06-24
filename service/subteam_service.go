@@ -1,10 +1,11 @@
 package service
 
 import (
+	"sentinel/config"
 	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
-	"time"
+	"strings"
 )
 
 func GetSubteamsForUser(userID string) []model.Subteam {
@@ -57,35 +58,29 @@ func CreateSubteam(subteam model.Subteam) error {
 	return nil
 }
 
+func DeleteAllSubteams() error {
+	if result := database.DB.Where("1 = 1").Delete(&model.Subteam{}); result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
 func InitializeSubteams() {
-	CreateSubteam(model.Subteam{
-		ID:        "761114473565519882",
-		Name:      "Aero",
-		CreatedAt: time.Time{},
-	})
-	CreateSubteam(model.Subteam{
-		ID:        "761114557531553824",
-		Name:      "Chassis",
-		CreatedAt: time.Time{},
-	})
-	CreateSubteam(model.Subteam{
-		ID:        "761114667048763423",
-		Name:      "Suspension",
-		CreatedAt: time.Time{},
-	})
-	CreateSubteam(model.Subteam{
-		ID:        "761114716985753621",
-		Name:      "Powertrain",
-		CreatedAt: time.Time{},
-	})
-	CreateSubteam(model.Subteam{
-		ID:        "761116347865890816",
-		Name:      "Controls",
-		CreatedAt: time.Time{},
-	})
-	CreateSubteam(model.Subteam{
-		ID:        "761331962563919874",
-		Name:      "Business",
-		CreatedAt: time.Time{},
-	})
+	g, err := Discord.Guild(config.DiscordGuild)
+	if err != nil {
+		utils.SugarLogger.Errorln("Error getting guild,", err)
+		return
+	}
+	DeleteAllSubteams()
+	for _, r := range g.Roles {
+		for _, name := range config.SubteamRoleNames {
+			if strings.Contains(strings.ToLower(r.Name), strings.ToLower(name)) {
+				utils.SugarLogger.Infof("Found subteam role: %s for %s", r.ID, name)
+				CreateSubteam(model.Subteam{
+					ID:   r.ID,
+					Name: name,
+				})
+			}
+		}
+	}
 }

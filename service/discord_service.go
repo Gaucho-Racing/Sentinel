@@ -27,6 +27,29 @@ func ConnectDiscord() {
 	}
 }
 
+func InitializeRoles() {
+	g, err := Discord.Guild(config.DiscordGuild)
+	if err != nil {
+		utils.SugarLogger.Errorln("Error getting guild,", err)
+		return
+	}
+	for _, r := range g.Roles {
+		if strings.Contains(strings.ToLower(r.Name), "member") {
+			utils.SugarLogger.Infof("Found Member Role: %s", r.ID)
+			config.MemberRoleID = r.ID
+		} else if strings.Contains(strings.ToLower(r.Name), "admin") {
+			utils.SugarLogger.Infof("Found Admin Role: %s", r.ID)
+			config.AdminRoleID = r.ID
+		} else if strings.Contains(strings.ToLower(r.Name), "officer") {
+			utils.SugarLogger.Infof("Found Officer Role: %s", r.ID)
+			config.OfficerRoleID = r.ID
+		} else if strings.Contains(strings.ToLower(r.Name), "lead") {
+			utils.SugarLogger.Infof("Found Lead Role: %s", r.ID)
+			config.LeadRoleID = r.ID
+		}
+	}
+}
+
 func SendMessage(channelID string, message string) {
 	_, err := Discord.ChannelMessageSend(channelID, message)
 	if err != nil {

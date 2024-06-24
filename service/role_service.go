@@ -20,6 +20,19 @@ func GetRolesForUser(userID string) []string {
 	return roleNames
 }
 
+func GetDiscordRolesForUser(userID string) []string {
+	var roles []model.UserRole
+	var roleNames = make([]string, 0)
+	result := database.DB.Where("user_id = ? AND role LIKE ?", userID, "d_%").Find(&roles)
+	if result.Error != nil {
+		return roleNames
+	}
+	for _, r := range roles {
+		roleNames = append(roleNames, r.Role)
+	}
+	return roleNames
+}
+
 func SetRolesForUser(userID string, roles []string) []string {
 	existingRoles := GetRolesForUser(userID)
 	for _, nr := range roles {

@@ -3,7 +3,7 @@ package model
 import "time"
 
 type Subteam struct {
-	ID        string    `gorm:"primaryKey" json:"role_id"`
+	ID        string    `gorm:"primaryKey" json:"id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
