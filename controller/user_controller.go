@@ -14,8 +14,7 @@ func GetAllUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-	id := c.Param("id")
-	result := service.GetUserByID(id)
+	result := service.GetUserByID(c.Param("userID"))
 	if result.ID == "" {
 		c.JSON(http.StatusNotFound, gin.H{"message": "No user found with given id: " + c.Param("userID")})
 		return
