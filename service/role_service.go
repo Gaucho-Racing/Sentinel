@@ -1,9 +1,11 @@
 package service
 
 import (
+	"sentinel/config"
 	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
+	"strings"
 	"time"
 )
 
@@ -55,6 +57,35 @@ func SetRolesForUser(userID string, roles []string) []string {
 	return GetRolesForUser(userID)
 }
 
+func SyncDiscordRolesForUser(userID string, roleIds []string) {
+	subteamRoles := make([]model.UserSubteam, 0)
+	roles := GetRolesForUser(userID)
+	for _, role := range roles {
+		if strings.HasPrefix(role, "d_") {
+			roles = removeValue(roles, role)
+		}
+	}
+	for _, id := range roleIds {
+		subteam := GetSubteamByID(id)
+		if subteam.ID != "" {
+			subteamRoles = append(subteamRoles, model.UserSubteam{
+				UserID: userID,
+				RoleID: subteam.ID,
+			})
+		} else if id == config.AdminRoleID {
+			roles = append(roles, "d_admin")
+		} else if id == config.OfficerRoleID {
+			roles = append(roles, "d_officer")
+		} else if id == config.LeadRoleID {
+			roles = append(roles, "d_lead")
+		} else if id == config.MemberRoleID {
+			roles = append(roles, "d_member")
+		}
+	}
+	SetSubteamsForUser(userID, subteamRoles)
+	SetRolesForUser(userID, roles)
+}
+
 func contains(s []string, e string) bool {
 	for _, a := range s {
 		if a == e {
@@ -62,4 +93,14 @@ func contains(s []string, e string) bool {
 		}
 	}
 	return false
+}
+
+func removeValue(s []string, value string) []string {
+	result := []string{}
+	for _, v := range s {
+		if v != value {
+			result = append(result, v)
+		}
+	}
+	return result
 }

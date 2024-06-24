@@ -60,32 +60,7 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	if user.ID == "" {
 		return
 	}
-	subteamRoles := make([]model.UserSubteam, 0)
-	roles := service.GetRolesForUser(m.User.ID)
-	for i, role := range roles {
-		if strings.HasPrefix(role, "d_") {
-			roles = append(roles[:i], roles[i+1:]...)
-		}
-	}
-	for _, id := range newRoles {
-		subteam := service.GetSubteamByID(id)
-		if subteam.ID != "" {
-			subteamRoles = append(subteamRoles, model.UserSubteam{
-				UserID: user.ID,
-				RoleID: subteam.ID,
-			})
-		} else if id == config.AdminRoleID {
-			roles = append(roles, "d_admin")
-		} else if id == config.OfficerRoleID {
-			roles = append(roles, "d_officer")
-		} else if id == config.LeadRoleID {
-			roles = append(roles, "d_lead")
-		} else if id == config.MemberRoleID {
-			roles = append(roles, "d_member")
-		}
-	}
-	service.SetSubteamsForUser(user.ID, subteamRoles)
-	service.SetRolesForUser(user.ID, roles)
+	service.SyncDiscordRolesForUser(user.ID, newRoles)
 }
 
 func LogUserMessage(s *discordgo.Session, m *discordgo.MessageCreate) {

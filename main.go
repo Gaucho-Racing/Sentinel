@@ -17,6 +17,7 @@ func main() {
 	service.ConnectDiscord()
 	service.InitializeRoles()
 	service.InitializeSubteams()
+	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
 	// service.FindAllNonVerifiedUsers()
 

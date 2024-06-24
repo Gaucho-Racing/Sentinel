@@ -50,6 +50,22 @@ func InitializeRoles() {
 	}
 }
 
+func SyncRolesForAllUsers() {
+	members, err := Discord.GuildMembers(config.DiscordGuild, "", 1000)
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+	}
+	count := 0
+	for _, member := range members {
+		user := GetUserByID(member.User.ID)
+		if user.ID != "" {
+			SyncDiscordRolesForUser(user.ID, member.Roles)
+			count++
+		}
+	}
+	utils.SugarLogger.Infof("Synced roles for %d users", count)
+}
+
 func SendMessage(channelID string, message string) {
 	_, err := Discord.ChannelMessageSend(channelID, message)
 	if err != nil {
