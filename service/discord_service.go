@@ -37,6 +37,9 @@ func InitializeRoles() {
 		if strings.Contains(strings.ToLower(r.Name), "member") {
 			utils.SugarLogger.Infof("Found Member Role: %s", r.ID)
 			config.MemberRoleID = r.ID
+		} else if strings.Contains(strings.ToLower(r.Name), "alumnus") {
+			utils.SugarLogger.Infof("Found Alumni Role: %s", r.ID)
+			config.AlumniRoleID = r.ID
 		} else if strings.Contains(strings.ToLower(r.Name), "admin") {
 			utils.SugarLogger.Infof("Found Admin Role: %s", r.ID)
 			config.AdminRoleID = r.ID

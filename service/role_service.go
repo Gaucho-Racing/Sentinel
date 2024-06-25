@@ -80,6 +80,8 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 			roles = append(roles, "d_lead")
 		} else if id == config.MemberRoleID {
 			roles = append(roles, "d_member")
+		} else if id == config.AlumniRoleID {
+			roles = append(roles, "d_alumni")
 		}
 	}
 	SetSubteamsForUser(userID, subteamRoles)
