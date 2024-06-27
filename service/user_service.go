@@ -45,6 +45,11 @@ func GetUserByEmail(email string) model.User {
 }
 
 func CreateUser(user model.User) error {
+	if user.ID == "" {
+		return fmt.Errorf("user id cannot be empty")
+	} else if user.Email == "" {
+		return fmt.Errorf("user email cannot be empty")
+	}
 	if database.DB.Where("id = ?", user.ID).Updates(&user).RowsAffected == 0 {
 		utils.SugarLogger.Infoln("New user created with id: " + user.ID)
 		if result := database.DB.Create(&user); result.Error != nil {

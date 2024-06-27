@@ -45,3 +45,19 @@ func LoginAccount(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
 }
+
+func GetAuthForUser(c *gin.Context) {
+	userID := c.Param("userID")
+	user := service.GetUserByID(userID)
+	if user.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No user found with id: " + userID})
+		return
+	}
+	auth := service.GetUserAuthByID(userID)
+	if auth.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No authentication found for user with id: " + userID})
+		return
+	}
+	auth.Password = "************"
+	c.JSON(http.StatusOK, auth)
+}

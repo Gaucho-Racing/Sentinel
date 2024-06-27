@@ -40,6 +40,10 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	firstName := args[0]
 	lastName := strings.Join(args[1:emailIndex], " ")
 	email := args[emailIndex]
+	if service.GetUserByEmail(email).ID != "" {
+		go service.SendDisappearingMessage(m.ChannelID, "This email is already registered!", 5*time.Second)
+		return
+	}
 	// check if id flag is present
 	if len(args) > emailIndex+1 {
 		// last arg is id
@@ -64,8 +68,6 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		Email:     email,
 		AvatarURL: member.User.AvatarURL("256"),
 		Verified:  false,
-		UpdatedAt: time.Time{},
-		CreatedAt: time.Time{},
 	})
 	// rename user
 	err = s.GuildMemberNickname(m.GuildID, id, firstName)

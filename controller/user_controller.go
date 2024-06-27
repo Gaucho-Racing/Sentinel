@@ -28,13 +28,13 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	user.ID = c.Param("id")
+	user.ID = c.Param("userID")
 	err := service.CreateUser(user)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, user)
+	c.JSON(http.StatusCreated, service.GetUserByID(user.ID))
 }
 
 func DeleteUser(c *gin.Context) {
