@@ -25,3 +25,5 @@ var MemberRoleID = "820467859477889034"
 var AlumniRoleID = "817577502968512552"
 
 var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Powertrain", "Suspension"}
+
+var AuthSigningKey = os.Getenv("AUTH_SIGNING_KEY")

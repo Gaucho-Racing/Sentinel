@@ -35,4 +35,7 @@ func VerifyConfig() {
 	if config.GithubToken == "" {
 		SugarLogger.Errorf("GITHUB_PAT is not set")
 	}
+	if config.AuthSigningKey == "" {
+		SugarLogger.Errorf("AUTH_SIGNING_KEY is not set")
+	}
 }

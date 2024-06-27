@@ -30,3 +30,12 @@ func (User) TableName() string {
 func (user User) String() string {
 	return "(" + user.ID + ")" + " " + user.FirstName + " " + user.LastName + " [" + user.Email + "]"
 }
+
+func (user User) HasRole(role string) bool {
+	for _, r := range user.Roles {
+		if r == role {
+			return true
+		}
+	}
+	return false
+}

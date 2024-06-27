@@ -1,11 +1,16 @@
 package controller
 
 import (
+	"errors"
 	"sentinel/config"
+	"sentinel/service"
+	"sentinel/utils"
+	"strings"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 )
 
 func SetupRouter() *gin.Engine {
@@ -26,8 +31,8 @@ func SetupRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
-	// router.POST("/auth/register", RegisterAccount)
-	// router.POST("/auth/login", LoginAccount)
+	router.POST("/auth/register", RegisterAccount)
+	router.POST("/auth/login", LoginAccount)
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
@@ -37,18 +42,18 @@ func InitializeRoutes(router *gin.Engine) {
 
 func AuthChecker() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// if c.GetHeader("Authorization") != "" {
-		// 	claims, err := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
-		// 	if err != nil {
-		// 		utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
-		// 		if errors.Is(err, jwt.ErrTokenExpired) {
-		// 			c.AbortWithStatusJSON(401, gin.H{"message": "Token expired"})
-		// 		}
-		// 	} else {
-		// 		utils.SugarLogger.Infoln("Decoded token: " + claims.ID + " " + claims.Email)
-		// 		c.Set("Request-UserID", claims.ID)
-		// 	}
-		// }
+		if c.GetHeader("Authorization") != "" {
+			claims, err := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
+			if err != nil {
+				utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
+				if errors.Is(err, jwt.ErrTokenExpired) {
+					c.AbortWithStatusJSON(401, gin.H{"message": "Token expired"})
+				}
+			} else {
+				utils.SugarLogger.Infoln("Decoded token: " + claims.ID + " " + claims.Email)
+				c.Set("Request-UserID", claims.ID)
+			}
+		}
 		c.Next()
 	}
 }
