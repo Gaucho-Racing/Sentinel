@@ -54,6 +54,13 @@ func Github(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			go service.SendDisappearingMessage(m.ChannelID, "Failed to add user to GitHub organization", 5*time.Second)
 			return
 		}
+		AddGithubUsernameToRoles(args[0], m.Author.ID)
 		go service.SendDisappearingMessage(m.ChannelID, "Successfully invited user to GitHub organization!", 5*time.Second)
 	}
+}
+
+func AddGithubUsernameToRoles(ghUsername string, userID string) {
+	roles := service.GetRolesForUser(userID)
+	roles = append(roles, "github_"+ghUsername)
+	service.SetRolesForUser(userID, roles)
 }
