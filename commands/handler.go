@@ -44,6 +44,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Subteam(args, s, m)
 	case "github":
 		Github(args, s, m)
+	case "drive":
+		Drive(args, s, m)
 	case "whois":
 		Whois(args, s, m)
 	case "users":

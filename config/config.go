@@ -16,7 +16,11 @@ var DiscordToken = os.Getenv("DISCORD_TOKEN")
 var DiscordGuild = os.Getenv("DISCORD_GUILD")
 var DiscordLogChannel = os.Getenv("DISCORD_LOG_CHANNEL")
 
+var DriveServiceAccount = os.Getenv("DRIVE_SERVICE_ACCOUNT")
 var GithubToken = os.Getenv("GITHUB_PAT")
+
+var SharedDriveID = "0ADMP93ZBlor_Uk9PVA"
+var LeadsDriveID = "0AF4DbFL3cclkUk9PVA"
 
 var AdminRoleID = "1030681203864522823"
 var OfficerRoleID = "812948550819905546"

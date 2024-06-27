@@ -14,6 +14,7 @@ func main() {
 	defer utils.Logger.Sync()
 
 	database.InitializeDB()
+	service.InitializeDrive()
 	service.ConnectDiscord()
 	service.InitializeRoles()
 	service.InitializeSubteams()
