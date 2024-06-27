@@ -36,14 +36,20 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		go service.SendDisappearingMessage(m.ChannelID, "Email must be a valid UCSB email", 5*time.Second)
 		return
 	}
+
 	id := m.Author.ID
 	firstName := args[0]
 	lastName := strings.Join(args[1:emailIndex], " ")
 	email := args[emailIndex]
-	if service.GetUserByEmail(email).ID != "" {
+
+	if service.GetUserByID(id).ID != "" {
+		go service.SendDisappearingMessage(m.ChannelID, "You are already verified!", 5*time.Second)
+		return
+	} else if service.GetUserByEmail(email).ID != "" {
 		go service.SendDisappearingMessage(m.ChannelID, "This email is already registered!", 5*time.Second)
 		return
 	}
+
 	// check if id flag is present
 	if len(args) > emailIndex+1 {
 		// last arg is id
@@ -74,6 +80,8 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
 	}
+	// sync roles
+	service.SyncDiscordRolesForUser(id, member.Roles)
 	// TODO: google drive access
 
 	// assign member role
