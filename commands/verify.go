@@ -82,8 +82,13 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 	// sync roles
 	service.SyncDiscordRolesForUser(id, member.Roles)
-	// TODO: google drive access
-
+	// google drive access
+	role := "writer"
+	if utils.IsInnerCircle(member.Roles) {
+		role = "organizer"
+	}
+	_ = service.RemoveMemberFromDrive(config.SharedDriveID, email)
+	_ = service.AddMemberToDrive(config.SharedDriveID, email, role)
 	// assign member role
 	err = s.GuildMemberRoleAdd(m.GuildID, id, config.MemberRoleID)
 	if err != nil {

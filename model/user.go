@@ -39,3 +39,19 @@ func (user User) HasRole(role string) bool {
 	}
 	return false
 }
+
+func (user User) IsAdmin() bool {
+	return user.HasRole("d_admin")
+}
+
+func (user User) IsOfficer() bool {
+	return user.HasRole("d_officer")
+}
+
+func (user User) IsLead() bool {
+	return user.HasRole("d_lead")
+}
+
+func (user User) IsInnerCircle() bool {
+	return user.IsAdmin() || user.IsOfficer() || user.IsLead()
+}

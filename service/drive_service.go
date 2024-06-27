@@ -35,8 +35,8 @@ func InitializeDrive() {
 
 // GetDriveMemberPermission returns the permissions of the user in the shared drive.
 // The included fields are nextPageToken, permissions(id, type, emailAddress, role).
-func GetDriveMemberPermission(email string) (*drive.Permission, error) {
-	resp, err := DriveClient.Permissions.List(config.SharedDriveID).
+func GetDriveMemberPermission(driveID string, email string) (*drive.Permission, error) {
+	resp, err := DriveClient.Permissions.List(driveID).
 		SupportsAllDrives(true).
 		Fields("nextPageToken,permissions(id, type, emailAddress, role)").
 		Do()
@@ -51,7 +51,7 @@ func GetDriveMemberPermission(email string) (*drive.Permission, error) {
 	}
 	nextPageToken := resp.NextPageToken
 	for nextPageToken != "" {
-		resp, err = DriveClient.Permissions.List(config.SharedDriveID).
+		resp, err = DriveClient.Permissions.List(driveID).
 			SupportsAllDrives(true).
 			Fields("nextPageToken,permissions(id, type, emailAddress, role)").
 			PageToken(nextPageToken).
@@ -70,15 +70,16 @@ func GetDriveMemberPermission(email string) (*drive.Permission, error) {
 	return nil, nil
 }
 
-func RemoveMemberFromDrive(email string) error {
-	perm, err := GetDriveMemberPermission(email)
+// RemoveMemberFromDrive removes a user from the shared drive.
+func RemoveMemberFromDrive(driveID string, email string) error {
+	perm, err := GetDriveMemberPermission(driveID, email)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
 		return err
 	} else if perm == nil {
 		return fmt.Errorf("user not found in drive")
 	}
-	err = DriveClient.Permissions.Delete(config.SharedDriveID, perm.Id).SupportsAllDrives(true).Do()
+	err = DriveClient.Permissions.Delete(driveID, perm.Id).SupportsAllDrives(true).Do()
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
 		return err
@@ -86,15 +87,26 @@ func RemoveMemberFromDrive(email string) error {
 	return nil
 }
 
-func TestDrive() {
-	perm, err := GetDriveMemberPermission("bkathi@ucsb.edu")
+// AddMemberToDrive adds a user to the shared drive with the specified role.
+// The role can be "organizer", "fileOrganizer", "writer", "commenter", or "reader".
+func AddMemberToDrive(driveID string, email string, role string) error {
+	perm, err := GetDriveMemberPermission(driveID, email)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
+		return err
+	} else if perm != nil {
+		return fmt.Errorf("user already in drive")
 	}
-	println(perm.Role)
-
-	err = RemoveMemberFromDrive("bkathi@ucsb.edu")
+	perm = &drive.Permission{
+		EmailAddress: email,
+		Role:         role,
+		Type:         "user",
+	}
+	resp, err := DriveClient.Permissions.Create(driveID, perm).SupportsAllDrives(true).Do()
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
+		return err
 	}
+	utils.SugarLogger.Infof("Permission ID: %s", resp.Id)
+	return nil
 }
