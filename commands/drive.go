@@ -26,7 +26,6 @@ func Drive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		go service.SendDisappearingMessage(m.ChannelID, "You must verify your account first! (`!verify <first name> <last name> <email>`)", 5*time.Second)
 	} else {
 		loadingMessage, _ := s.ChannelMessageSend(m.ChannelID, "checking drive access...")
-
 		role := "writer"
 		if user.IsInnerCircle() {
 			role = "organizer"
