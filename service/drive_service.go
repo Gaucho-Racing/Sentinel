@@ -31,51 +31,70 @@ func InitializeDrive() {
 		log.Fatalf("Unable to create Drive service: %v", err)
 	}
 	DriveClient = srv
-
-	resp, err := srv.Drives.List().Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve shared drives: %v", err)
-	}
-	if len(resp.Drives) == 0 {
-		fmt.Println("No drives found.")
-	} else {
-		for _, d := range resp.Drives {
-			fmt.Printf("%s (%s)\n", d.Name, d.Id)
-		}
-	}
-
-	// List files in the shared drive
-	fresp, err := srv.Files.List().Do()
-	if err != nil {
-		log.Fatalf("Unable to retrieve files: %v", err)
-	}
-	if len(fresp.Files) == 0 {
-		fmt.Println("No files found.")
-	} else {
-		fmt.Println("Files:")
-		for _, f := range fresp.Files {
-			fmt.Printf("%s (%s)\n", f.Name, f.Id)
-		}
-	}
 }
 
-func GetDriveMemberStatus(email string) (bool, error) {
-	// List permissions for the shared drive
-	resp, err := DriveClient.Permissions.List("1ao1ErhgJ3-2YcdCheBdOqaltO9X-7QFSnKOiImYC6Hg").
-		Fields("permissions(id, type, emailAddress, role)").
+// GetDriveMemberPermission returns the permissions of the user in the shared drive.
+// The included fields are nextPageToken, permissions(id, type, emailAddress, role).
+func GetDriveMemberPermission(email string) (*drive.Permission, error) {
+	resp, err := DriveClient.Permissions.List(config.SharedDriveID).
+		SupportsAllDrives(true).
+		Fields("nextPageToken,permissions(id, type, emailAddress, role)").
 		Do()
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
-		return false, err
+		return nil, err
 	}
-	println("checking for email: ", email)
-	// Check if the email exists in the list of permissions
 	for _, perm := range resp.Permissions {
 		if perm.EmailAddress == email {
-			fmt.Printf("%v", perm)
-			return true, nil
+			return perm, nil
 		}
 	}
-	// If email not found in permissions list
-	return false, nil
+	nextPageToken := resp.NextPageToken
+	for nextPageToken != "" {
+		resp, err = DriveClient.Permissions.List(config.SharedDriveID).
+			SupportsAllDrives(true).
+			Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+			PageToken(nextPageToken).
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorln(err)
+			return nil, err
+		}
+		for _, perm := range resp.Permissions {
+			if perm.EmailAddress == email {
+				return perm, nil
+			}
+		}
+		nextPageToken = resp.NextPageToken
+	}
+	return nil, nil
+}
+
+func RemoveMemberFromDrive(email string) error {
+	perm, err := GetDriveMemberPermission(email)
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return err
+	} else if perm == nil {
+		return fmt.Errorf("user not found in drive")
+	}
+	err = DriveClient.Permissions.Delete(config.SharedDriveID, perm.Id).SupportsAllDrives(true).Do()
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return err
+	}
+	return nil
+}
+
+func TestDrive() {
+	perm, err := GetDriveMemberPermission("bkathi@ucsb.edu")
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+	}
+	println(perm.Role)
+
+	err = RemoveMemberFromDrive("bkathi@ucsb.edu")
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+	}
 }
