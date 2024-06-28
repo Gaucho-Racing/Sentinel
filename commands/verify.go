@@ -50,6 +50,9 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	msg, _ := service.Discord.ChannelMessageSend(m.ChannelID, "we are checking...")
+	defer service.Discord.ChannelMessageDelete(m.ChannelID, msg.ID)
+
 	// check if id flag is present
 	if len(args) > emailIndex+1 {
 		// last arg is id
