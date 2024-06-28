@@ -7,11 +7,16 @@ import "/node_modules/react-resizable/css/styles.css";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { Toaster } from "./components/ui/sonner.tsx";
 import App from "./App.tsx";
+import LoginDiscordPage from "@/pages/auth/LoginDiscordPage.tsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+  },
+  {
+    path: "/auth/login/discord",
+    element: <LoginDiscordPage />,
   },
 ]);
 

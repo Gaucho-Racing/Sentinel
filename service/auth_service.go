@@ -59,6 +59,18 @@ func LoginEmailPassword(email string, password string) (string, error) {
 	return token, nil
 }
 
+func GetUserIDFromDiscordCode(code string) (string, error) {
+	accessToken, err := ExchangeCodeForToken(code)
+	if err != nil {
+		return "", err
+	}
+	user, err := GetDiscordUserFromToken(accessToken.AccessToken)
+	if err != nil {
+		return "", err
+	}
+	return user.ID, nil
+}
+
 func HashPassword(password string) (string, error) {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {

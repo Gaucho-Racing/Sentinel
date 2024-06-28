@@ -1,7 +1,11 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
 	"sentinel/config"
 	"sentinel/model"
 	"sentinel/utils"
@@ -203,6 +207,76 @@ func DiscordUserEmbed(user model.User, channelID string) {
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())
 	}
+}
+
+func ExchangeCodeForToken(code string) (*model.AccessTokenResponse, error) {
+	tokenURL := "https://discord.com/api/oauth2/token"
+
+	data := url.Values{}
+	data.Set("client_id", config.DiscordClientID)
+	data.Set("client_secret", config.DiscordClientSecret)
+	data.Set("grant_type", "authorization_code")
+	data.Set("code", code)
+	data.Set("redirect_uri", config.DiscordRedirectURI)
+
+	resp, err := http.PostForm(tokenURL, data)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		utils.SugarLogger.Errorln("error exchanging code for token: ", string(body))
+		return nil, fmt.Errorf("error exchanging code for token")
+	}
+
+	var accessToken model.AccessTokenResponse
+	err = json.Unmarshal(body, &accessToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &accessToken, nil
+}
+
+func GetDiscordUserFromToken(accessToken string) (*model.DiscordUser, error) {
+	userURL := "https://discord.com/api/users/@me"
+
+	req, err := http.NewRequest("GET", userURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Authorization", "Bearer "+accessToken)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		utils.SugarLogger.Errorln("error getting user from token: ", string(body))
+		return nil, fmt.Errorf("error getting user from token: %s", string(body))
+	}
+
+	var user model.DiscordUser
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func FindAllNonVerifiedUsers() {

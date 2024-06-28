@@ -16,6 +16,10 @@ var DiscordToken = os.Getenv("DISCORD_TOKEN")
 var DiscordGuild = os.Getenv("DISCORD_GUILD")
 var DiscordLogChannel = os.Getenv("DISCORD_LOG_CHANNEL")
 
+var DiscordClientID = os.Getenv("DISCORD_CLIENT_ID")
+var DiscordClientSecret = os.Getenv("DISCORD_CLIENT_SECRET")
+var DiscordRedirectURI = os.Getenv("DISCORD_REDIRECT_URI")
+
 var DriveServiceAccount = os.Getenv("DRIVE_SERVICE_ACCOUNT")
 var GithubToken = os.Getenv("GITHUB_PAT")
 

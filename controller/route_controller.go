@@ -33,6 +33,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
 	router.POST("/auth/register", RegisterAccount)
 	router.POST("/auth/login", LoginAccount)
+	router.POST("/auth/login/discord", LoginDiscord)
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
@@ -41,7 +42,6 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/users/:userID/auth", GetAuthForUser)
 	router.GET("/users/:userID/drive", GetDriveStatusForUser)
 	router.POST("/users/:userID/drive", AddUserToDrive)
-	router.DELETE("/users/:userID/drive", RemoveUserFromDrive)
 }
 
 func AuthChecker() gin.HandlerFunc {

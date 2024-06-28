@@ -46,6 +46,31 @@ func LoginAccount(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
 }
 
+func LoginDiscord(c *gin.Context) {
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "No code provided"})
+		return
+	}
+	println(code)
+	id, err := service.GetUserIDFromDiscordCode(code)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	user := service.GetUserByID(id)
+	if user.ID == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "No account with this email exists. Make sure to verify your account on the discord server first!"})
+		return
+	}
+	token, err := service.GenerateJWT(user.ID, user.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
+}
+
 func GetAuthForUser(c *gin.Context) {
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
