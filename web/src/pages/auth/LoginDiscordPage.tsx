@@ -10,12 +10,14 @@ import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
+import { checkCredentials } from "@/lib/auth";
 
 function LoginDiscordPage() {
   const navigate = useNavigate();
+  const [queryParameters] = useSearchParams();
 
   const [sentinelMsg, setSentinelMsg] = React.useState("");
   const [loginLoading, setLoginLoading] = React.useState(true);
@@ -36,9 +38,15 @@ function LoginDiscordPage() {
     }
   };
 
+  const checkAuth = async () => {
+    const status = await checkCredentials();
+    if (status == 0) {
+      handleRedirect();
+    }
+  };
+
   const login = async () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get("code");
+    const code = queryParameters.get("code");
     if (!code) {
       navigate("/");
       return;
@@ -50,7 +58,7 @@ function LoginDiscordPage() {
       if (response.status == 200) {
         localStorage.setItem("id", response.data.id);
         localStorage.setItem("token", response.data.token);
-        navigate("/");
+        checkAuth();
       }
     } catch (error: any) {
       toast(getAxiosErrorMessage(error));
@@ -58,6 +66,15 @@ function LoginDiscordPage() {
       if (getAxiosErrorMessage(error).includes("No account with this")) {
         setAccountExists(false);
       }
+    }
+  };
+
+  const handleRedirect = () => {
+    const route = queryParameters.get("state");
+    if (route) {
+      navigate(route);
+    } else {
+      navigate("/");
     }
   };
 
@@ -95,6 +112,10 @@ function LoginDiscordPage() {
               let redirect_url = window.location.origin + "/auth/login/discord";
               let scope = "identify+email";
               let oauthUrl = `${DISCORD_OAUTH_BASE_URL}?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${scope}`;
+              const route = queryParameters.get("route");
+              if (route) {
+                oauthUrl += `&state=${encodeURIComponent(route)}`;
+              }
               window.location.href = oauthUrl;
             }}
           >
@@ -149,10 +170,7 @@ function LoginDiscordPage() {
 
   return (
     <>
-      <div
-        className="flex flex-col items-center justify-between"
-        style={{ height: "100vh" }}
-      >
+      <div className="flex h-screen flex-col items-center justify-between">
         <div className="w-full"></div>
         <div className="p-32">
           {loginLoading ? (

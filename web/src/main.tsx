@@ -8,11 +8,20 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { Toaster } from "./components/ui/sonner.tsx";
 import App from "./App.tsx";
 import LoginDiscordPage from "@/pages/auth/LoginDiscordPage.tsx";
+import LoginPage from "@/pages/auth/LoginPage.tsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <App />,
+  },
+  {
+    path: "/test",
+    element: <App />,
+  },
+  {
+    path: "/auth/login",
+    element: <LoginPage />,
   },
   {
     path: "/auth/login/discord",

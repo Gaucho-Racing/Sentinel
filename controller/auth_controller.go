@@ -52,7 +52,6 @@ func LoginDiscord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "No code provided"})
 		return
 	}
-	println(code)
 	id, err := service.GetUserIDFromDiscordCode(code)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})

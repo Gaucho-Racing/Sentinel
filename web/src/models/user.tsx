@@ -24,7 +24,7 @@ export interface Subteam {
   created_at: string;
 }
 
-export const initUser = {
+export const initUser: User = {
   id: "",
   first_name: "",
   last_name: "",
@@ -42,6 +42,26 @@ export const initUser = {
   roles: [],
   updated_at: "",
   created_at: "",
+};
+
+export const setUser = (user: User, data: User) => {
+  user.id = data.id;
+  user.first_name = data.first_name;
+  user.last_name = data.last_name;
+  user.email = data.email;
+  user.phone_number = data.phone_number;
+  user.graduate_level = data.graduate_level;
+  user.graduation_year = data.graduation_year;
+  user.major = data.major;
+  user.shirt_size = data.shirt_size;
+  user.jacket_size = data.jacket_size;
+  user.sae_registration_number = data.sae_registration_number;
+  user.avatar_url = data.avatar_url;
+  user.verified = data.verified;
+  user.subteams = data.subteams;
+  user.roles = data.roles;
+  user.updated_at = data.updated_at;
+  user.created_at = data.created_at;
 };
 
 /*
