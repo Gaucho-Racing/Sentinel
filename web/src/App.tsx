@@ -1,8 +1,6 @@
 import React from "react";
 import axios from "axios";
 import {
-  DISCORD_CLIENT_ID,
-  DISCORD_OAUTH_BASE_URL,
   GITHUB_ORG_URL,
   SENTINEL_API_URL,
   SHARED_DRIVE_URL,
@@ -20,19 +18,12 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheckCircle,
   faLock,
-  faPerson,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
-import Header from "@/components/Header";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import {
-  faGithub,
-  faGithubAlt,
-  faGoogleDrive,
-} from "@fortawesome/free-brands-svg-icons";
-import { OutlineButton } from "./components/ui/outline-button";
+import { faGithub, faGoogleDrive } from "@fortawesome/free-brands-svg-icons";
 
 function App() {
   const navigate = useNavigate();

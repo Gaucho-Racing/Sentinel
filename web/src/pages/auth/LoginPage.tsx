@@ -134,11 +134,11 @@ function LoginPage() {
                 <Separator className="m-4 w-32" />
               </div>
               <button
-                className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
+                className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
                 onClick={() => {
-                  let redirect_url =
+                  const redirect_url =
                     window.location.origin + "/auth/login/discord";
-                  let scope = "identify+email";
+                  const scope = "identify+email";
                   let oauthUrl = `${DISCORD_OAUTH_BASE_URL}?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${scope}`;
                   const route = queryParameters.get("route");
                   if (route) {

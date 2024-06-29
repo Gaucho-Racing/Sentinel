@@ -1,5 +1,5 @@
 import { SENTINEL_API_URL, currentUser } from "@/consts/config";
-import { User, initUser, setUser } from "@/models/user";
+import { initUser, setUser } from "@/models/user";
 import axios from "axios";
 
 export const checkCredentials = async () => {

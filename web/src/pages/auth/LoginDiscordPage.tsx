@@ -107,10 +107,11 @@ function LoginDiscordPage() {
           </h1>
           <p className="mt-4">Invalid or expired code. Please try again.</p>
           <button
-            className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
+            className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
             onClick={() => {
-              let redirect_url = window.location.origin + "/auth/login/discord";
-              let scope = "identify+email";
+              const redirect_url =
+                window.location.origin + "/auth/login/discord";
+              const scope = "identify+email";
               let oauthUrl = `${DISCORD_OAUTH_BASE_URL}?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${scope}`;
               const route = queryParameters.get("route");
               if (route) {
@@ -153,7 +154,7 @@ function LoginDiscordPage() {
             Example: <code>{`!verify <first name> <last name> <email>`}</code>
           </p>
           <button
-            className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
+            className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
             onClick={() => {
               window.location.href = DISCORD_SERVER_INVITE_URL;
             }}

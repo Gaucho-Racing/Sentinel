@@ -1,6 +1,6 @@
 import { User, initUser } from "@/models/user";
 
-export let currentUser: User = Object.assign({}, initUser);
+export const currentUser: User = Object.assign({}, initUser);
 
 export const SENTINEL_API_URL =
   import.meta.env.VITE_SENTINEL_API_URL ??
