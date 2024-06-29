@@ -43,6 +43,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/users/:userID/drive", GetDriveStatusForUser)
 	router.POST("/users/:userID/drive", AddUserToDrive)
 	router.DELETE("/users/:userID/drive", RemoveUserFromDrive)
+	router.GET("/users/:userID/github", GetGithubStatusForUser)
+	router.POST("/users/:userID/github", AddUserToGithub)
 }
 
 func AuthChecker() gin.HandlerFunc {
