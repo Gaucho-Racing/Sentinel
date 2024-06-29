@@ -32,6 +32,7 @@ import {
   faGithubAlt,
   faGoogleDrive,
 } from "@fortawesome/free-brands-svg-icons";
+import { OutlineButton } from "./components/ui/outline-button";
 
 function App() {
   const navigate = useNavigate();
@@ -241,9 +242,17 @@ function App() {
   const ProfileCard = () => {
     return (
       <Card className="mr-4 mt-4 w-[500px] p-4">
-        <div className="flex items-center justify-start">
-          <FontAwesomeIcon icon={faUser} className="h-5 w-5" />
-          <h3 className="ml-4">Profile</h3>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <FontAwesomeIcon icon={faUser} className="h-5 w-5" />
+            <h3 className="ml-4">Profile</h3>
+          </div>
+          <Button
+            variant={"outline"}
+            onClick={() => navigate(`/users/${currentUser.id}/edit`)}
+          >
+            Edit
+          </Button>
         </div>
         <Separator className="my-2" />
         <div className="flex items-center justify-start">

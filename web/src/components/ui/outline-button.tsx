@@ -13,7 +13,7 @@ const OutlineButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
           ref={ref}
           className={cn(
             className,
-            "group relative mb-2 me-2 mt-8 inline-flex items-center justify-center overflow-hidden  rounded-md bg-gradient-to-br  from-gr-pink to-gr-purple p-0.5 text-sm font-medium text-white",
+            "group relative inline-flex items-center justify-center overflow-hidden  rounded-md bg-gradient-to-br  from-gr-pink to-gr-purple p-0.5 text-sm font-medium text-white",
           )}
         >
           <span className="relative h-10 rounded-sm bg-black px-4 py-2.5 transition-all duration-75 ease-in group-hover:bg-opacity-0">

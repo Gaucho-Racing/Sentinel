@@ -9,14 +9,11 @@ import { Toaster } from "./components/ui/sonner.tsx";
 import App from "./App.tsx";
 import LoginDiscordPage from "@/pages/auth/LoginDiscordPage.tsx";
 import LoginPage from "@/pages/auth/LoginPage.tsx";
+import EditUserPage from "./pages/users/EditUserPage.tsx";
 
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
-  },
-  {
-    path: "/test",
     element: <App />,
   },
   {
@@ -26,6 +23,10 @@ const router = createBrowserRouter([
   {
     path: "/auth/login/discord",
     element: <LoginDiscordPage />,
+  },
+  {
+    path: "/users/:id/edit",
+    element: <EditUserPage />,
   },
 ]);
 
