@@ -17,7 +17,7 @@ services:
     container_name: web
     depends_on:
       - sentinel
-    image: gauchoracing/sentinel-web:latest
+    image: gauchoracing/sentinel_web:latest
     restart: unless-stopped
     ports:
       - "8881:80"

@@ -31,13 +31,13 @@ function App() {
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
 
   const [loginLoading, setLoginLoading] = React.useState(false);
-  const [loginAccess, setLoginAccess] = React.useState({});
+  const [loginAccess, setLoginAccess] = React.useState<any>({});
 
   const [driveLoading, setDriveLoading] = React.useState(false);
-  const [driveAccess, setDriveAccess] = React.useState({});
+  const [driveAccess, setDriveAccess] = React.useState<any>({});
 
   const [githubLoading, setGithubLoading] = React.useState(false);
-  const [githubAccess, setGithubAccess] = React.useState({});
+  const [githubAccess, setGithubAccess] = React.useState<any>({});
 
   React.useEffect(() => {
     checkAuth().then(() => {
