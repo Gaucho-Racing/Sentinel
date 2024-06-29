@@ -3,7 +3,9 @@ import axios from "axios";
 import {
   DISCORD_CLIENT_ID,
   DISCORD_OAUTH_BASE_URL,
+  GITHUB_ORG_URL,
   SENTINEL_API_URL,
+  SHARED_DRIVE_URL,
   currentUser,
 } from "@/consts/config";
 import { Button } from "@/components/ui/button";
@@ -11,16 +13,24 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAxiosErrorMessage } from "./lib/axios-error-handler";
+import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPerson, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheckCircle,
+  faPerson,
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { faGoogleDrive } from "@fortawesome/free-brands-svg-icons";
+import {
+  faGithub,
+  faGithubAlt,
+  faGoogleDrive,
+} from "@fortawesome/free-brands-svg-icons";
 
 function App() {
   const navigate = useNavigate();
@@ -30,9 +40,13 @@ function App() {
   const [driveLoading, setDriveLoading] = React.useState(false);
   const [driveAccess, setDriveAccess] = React.useState({});
 
+  const [githubLoading, setGithubLoading] = React.useState(false);
+  const [githubAccess, setGithubAccess] = React.useState({});
+
   React.useEffect(() => {
     checkAuth().then(() => {
       checkDriveAccess();
+      checkGithubAccess();
     });
   }, []);
 
@@ -82,6 +96,63 @@ function App() {
       toast(getAxiosErrorMessage(error));
     }
     checkDriveAccess();
+  };
+
+  const removeUserFromDrive = async () => {
+    setDriveLoading(true);
+    try {
+      const response = await axios.delete(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/drive`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setDriveAccess(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    checkDriveAccess();
+  };
+
+  const checkGithubAccess = async () => {
+    setGithubLoading(true);
+    try {
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/github`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setGithubAccess(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    setGithubLoading(false);
+  };
+
+  const addUserToGithub = async (username: string) => {
+    setGithubLoading(true);
+    try {
+      const response = await axios.post(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/github`,
+        {
+          username: username,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setGithubAccess(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    checkGithubAccess();
   };
 
   const AuthLoading = () => {
@@ -191,7 +262,14 @@ function App() {
               <span className="font-semibold">Team Drive:</span> Gaucho Racing
             </p>
             <p className="text-gray-400">
-              Access the team drive for all Gaucho Racing documents.
+              Access all Gaucho Racing documents through the team's{" "}
+              <span
+                className="cursor-pointer text-gr-pink hover:text-gr-pink/80"
+                onClick={() => window.open(SHARED_DRIVE_URL, "_blank")}
+              >
+                shared drive
+              </span>
+              .
             </p>
           </div>
           {driveLoading ? (
@@ -201,7 +279,17 @@ function App() {
           ) : (
             <div>
               {driveAccess.role != null ? (
-                <Button className="ml-auto" variant={"secondary"}>
+                <Button
+                  className="ml-auto"
+                  variant={"secondary"}
+                  onClick={async () => {
+                    await removeUserFromDrive();
+                    await addUserToDrive();
+                  }}
+                >
+                  <span>
+                    <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                  </span>
                   Access Granted
                 </Button>
               ) : (
@@ -210,6 +298,79 @@ function App() {
             </div>
           )}
         </div>
+      </Card>
+    );
+  };
+
+  const GithubCard = () => {
+    const [githubUsername, setGithubUsername] = React.useState("");
+
+    return (
+      <Card className="mr-4 mt-4 w-[500px] p-4">
+        <div className="flex items-center justify-start">
+          <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
+          <h3 className="ml-4">GitHub</h3>
+        </div>
+        <Separator className="my-2" />
+        <div className="flex items-center justify-start">
+          <div className="flex flex-col">
+            <p>
+              <span className="font-semibold">GitHub Org:</span> Gaucho Racing
+            </p>
+            <p className="text-gray-400">
+              Access all Gaucho Racing software through the team's{" "}
+              <span
+                className="cursor-pointer text-gr-pink hover:text-gr-pink/80"
+                onClick={() => window.open(GITHUB_ORG_URL, "_blank")}
+              >
+                GitHub organization
+              </span>
+              .
+            </p>
+          </div>
+          {driveLoading ? (
+            <Button className="ml-auto" variant={"outline"}>
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </Button>
+          ) : (
+            <div>
+              {githubAccess.role != null ? (
+                <Button className="ml-auto" variant={"secondary"}>
+                  <span>
+                    <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                  </span>
+                  Access Granted
+                </Button>
+              ) : (
+                <></>
+              )}
+            </div>
+          )}
+        </div>
+        {!driveLoading && githubAccess.role == null ? (
+          <div className="mt-2 flex items-center">
+            <Input
+              id="gh-username"
+              className="mr-2"
+              placeholder="GitHub Username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              disabled={githubLoading}
+              onChange={(e) => {
+                setGithubUsername(e.target.value);
+              }}
+            />
+            <Button
+              onClick={() => {
+                addUserToGithub(githubUsername);
+              }}
+            >
+              Request Access
+            </Button>
+          </div>
+        ) : (
+          <></>
+        )}
       </Card>
     );
   };
@@ -240,7 +401,10 @@ function App() {
             </p>
             <div className="flex flex-wrap">
               <ProfileCard />
-              <DriveCard />
+              <div>
+                <DriveCard />
+                <GithubCard />
+              </div>
             </div>
           </div>
           <Footer />
