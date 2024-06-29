@@ -7,6 +7,7 @@ import (
 	"sentinel/model"
 	"sentinel/utils"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
@@ -22,7 +23,11 @@ func RegisterEmailPassword(email string, password string) (string, error) {
 	if hash != "" {
 		return "", fmt.Errorf("email/password already registered")
 	}
-	hash, err := HashPassword(password)
+	err := ValidatePassword(password)
+	if err != nil {
+		return "", err
+	}
+	hash, err = HashPassword(password)
 	if err != nil {
 		return "", err
 	}
@@ -110,6 +115,32 @@ func ValidateJWT(token string) (*model.AuthClaims, error) {
 		return nil, err
 	}
 	return claims, nil
+}
+
+func ValidatePassword(password string) error {
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters")
+	}
+	if len(password) > 64 {
+		return fmt.Errorf("password must be at most 64 characters")
+	}
+	hasNumber := false
+	hasCapital := false
+	for _, char := range password {
+		if unicode.IsNumber(char) {
+			hasNumber = true
+		}
+		if unicode.IsUpper(char) {
+			hasCapital = true
+		}
+	}
+	if !hasNumber {
+		return fmt.Errorf("password must contain at least one number")
+	}
+	if !hasCapital {
+		return fmt.Errorf("password must contain at least one capital letter")
+	}
+	return nil
 }
 
 func GetPasswordForEmail(email string) string {

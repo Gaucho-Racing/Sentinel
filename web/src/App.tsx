@@ -79,7 +79,9 @@ function App() {
       );
       setLoginAccess(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      if (!getAxiosErrorMessage(error).includes("No authentication found")) {
+        toast(getAxiosErrorMessage(error));
+      }
     }
     setLoginLoading(false);
   };
@@ -123,7 +125,9 @@ function App() {
       );
       setDriveAccess(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      if (!getAxiosErrorMessage(error).includes("No permissions found")) {
+        toast(getAxiosErrorMessage(error));
+      }
     }
     setDriveLoading(false);
   };
@@ -178,7 +182,9 @@ function App() {
       );
       setGithubAccess(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      if (!getAxiosErrorMessage(error).includes("user does not have")) {
+        toast(getAxiosErrorMessage(error));
+      }
     }
     setGithubLoading(false);
   };
