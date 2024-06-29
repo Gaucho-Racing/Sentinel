@@ -13,6 +13,17 @@ services:
       POSTGRES_USER: $POSTGRES_USER
       POSTGRES_PASSWORD: $POSTGRES_PASSWORD
 
+  web:
+    container_name: web
+    depends_on:
+      - sentinel
+    image: gauchoracing/sentinel-web:latest
+    restart: unless-stopped
+    ports:
+      - "8881:80"
+    environment:
+      VITE_SENTINEL_API_URL: $VITE_SENTINEL_API_URL
+
   sentinel:
     container_name: sentinel
     depends_on:
