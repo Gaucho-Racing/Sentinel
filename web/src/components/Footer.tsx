@@ -28,7 +28,7 @@ export default function Footer() {
     }
   };
   return (
-    <footer className="w-full bg-gr-purple bg-opacity-0 p-8 text-white lg:pl-32 lg:pr-32">
+    <footer className="w-full bg-gr-purple bg-opacity-0 p-8 text-white transition-all duration-200 lg:pl-32 lg:pr-32">
       <div className="flex items-end justify-between">
         <div className="">
           <div className="ml-2 flex items-center justify-start">
