@@ -20,14 +20,20 @@ import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { faGoogleDrive } from "@fortawesome/free-brands-svg-icons";
 
 function App() {
   const navigate = useNavigate();
 
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
 
+  const [driveLoading, setDriveLoading] = React.useState(false);
+  const [driveAccess, setDriveAccess] = React.useState({});
+
   React.useEffect(() => {
-    checkAuth();
+    checkAuth().then(() => {
+      checkDriveAccess();
+    });
   }, []);
 
   const checkAuth = async () => {
@@ -39,6 +45,43 @@ function App() {
     } else {
       setAuthCheckLoading(false);
     }
+  };
+
+  const checkDriveAccess = async () => {
+    setDriveLoading(true);
+    try {
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/drive`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setDriveAccess(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    setDriveLoading(false);
+  };
+
+  const addUserToDrive = async () => {
+    setDriveLoading(true);
+    try {
+      const response = await axios.post(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/drive`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setDriveAccess(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    checkDriveAccess();
   };
 
   const AuthLoading = () => {
@@ -90,14 +133,13 @@ function App() {
           </div>
         </div>
         <ProfileField label="ID" value={currentUser.id} />
-        <ProfileField label="Email" value={currentUser.email} />
         <ProfileField label="Phone Number" value={currentUser.phone_number} />
         <ProfileField
           label="Graduate Level"
           value={currentUser.graduate_level}
         />
         <ProfileField
-          label="Graduate Year"
+          label="Graduation Year"
           value={currentUser.graduation_year.toString()}
         />
         <ProfileField label="Major" value={currentUser.major} />
@@ -135,6 +177,43 @@ function App() {
     );
   };
 
+  const DriveCard = () => {
+    return (
+      <Card className="mr-4 mt-4 w-[500px] p-4">
+        <div className="flex items-center justify-start">
+          <FontAwesomeIcon icon={faGoogleDrive} className="h-5 w-5" />
+          <h3 className="ml-4">Team Drive</h3>
+        </div>
+        <Separator className="my-2" />
+        <div className="flex items-center justify-start">
+          <div className="flex flex-col">
+            <p>
+              <span className="font-semibold">Team Drive:</span> Gaucho Racing
+            </p>
+            <p className="text-gray-400">
+              Access the team drive for all Gaucho Racing documents.
+            </p>
+          </div>
+          {driveLoading ? (
+            <Button className="ml-auto" variant={"outline"}>
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </Button>
+          ) : (
+            <div>
+              {driveAccess.role != null ? (
+                <Button className="ml-auto" variant={"secondary"}>
+                  Access Granted
+                </Button>
+              ) : (
+                <Button onClick={addUserToDrive}>Request Access</Button>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
   return (
     <>
       {authCheckLoading ? (
@@ -143,9 +222,25 @@ function App() {
         <div className="flex h-screen flex-col justify-between">
           <div className="p-4 lg:p-32 lg:pt-16">
             <h1>Hello {currentUser.first_name}</h1>
+            <p className="mt-4 text-gray-400">
+              Welcome to Sentinel, Gaucho Racing's central authentication
+              service and member directory. Sentinel also provides Single Sign
+              On (SSO) access to all our internal services. If you would like to
+              build an application using Sentinel, check out our API
+              documentation{" "}
+              <span
+                className="cursor-pointer text-gr-pink hover:text-gr-pink/80"
+                onClick={() =>
+                  window.open("https://wiki.gauchoracing.com", "_blank")
+                }
+              >
+                here
+              </span>
+              .
+            </p>
             <div className="flex flex-wrap">
               <ProfileCard />
-              <ProfileCard />
+              <DriveCard />
             </div>
           </div>
           <Footer />
