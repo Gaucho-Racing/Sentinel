@@ -328,7 +328,7 @@ function App() {
               .
             </p>
           </div>
-          {driveLoading ? (
+          {githubLoading ? (
             <Button className="ml-auto" variant={"outline"}>
               <Loader2 className="h-6 w-6 animate-spin" />
             </Button>
@@ -347,7 +347,7 @@ function App() {
             </div>
           )}
         </div>
-        {!driveLoading && githubAccess.role == null ? (
+        {!githubLoading && githubAccess.role == null ? (
           <div className="mt-2 flex items-center">
             <Input
               id="gh-username"
