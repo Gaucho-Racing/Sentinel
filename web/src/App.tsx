@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCheckCircle,
+  faLock,
   faPerson,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
@@ -37,6 +38,9 @@ function App() {
 
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
 
+  const [loginLoading, setLoginLoading] = React.useState(false);
+  const [loginAccess, setLoginAccess] = React.useState({});
+
   const [driveLoading, setDriveLoading] = React.useState(false);
   const [driveAccess, setDriveAccess] = React.useState({});
 
@@ -45,6 +49,7 @@ function App() {
 
   React.useEffect(() => {
     checkAuth().then(() => {
+      checkLoginAccess();
       checkDriveAccess();
       checkGithubAccess();
     });
@@ -59,6 +64,50 @@ function App() {
     } else {
       setAuthCheckLoading(false);
     }
+  };
+
+  const checkLoginAccess = async () => {
+    setLoginLoading(true);
+    try {
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/auth`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setLoginAccess(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    setLoginLoading(false);
+  };
+
+  const registerPassword = async (password: string) => {
+    setLoginLoading(true);
+    try {
+      const response = await axios.post(
+        `${SENTINEL_API_URL}/auth/register`,
+        {
+          email: currentUser.email,
+          password: password,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      if (response.status == 200) {
+        localStorage.setItem("id", response.data.id);
+        localStorage.setItem("token", response.data.token);
+        checkCredentials();
+      }
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    checkLoginAccess();
   };
 
   const checkDriveAccess = async () => {
@@ -248,6 +297,98 @@ function App() {
     );
   };
 
+  const LoginCard = () => {
+    const [password, setPassword] = React.useState("");
+    return (
+      <Card className="mr-4 mt-4 w-[500px] p-4">
+        <div className="flex items-center justify-start">
+          <FontAwesomeIcon icon={faLock} className="h-5 w-5" />
+          <h3 className="ml-4">Authentication</h3>
+        </div>
+        <Separator className="my-2" />
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col">
+            <p>
+              <span className="font-semibold">Email / Password</span>
+            </p>
+            <p className="text-gray-400">
+              {loginAccess.password != null
+                ? "Log into Sentinel using your email and password."
+                : "Create a password to log into Sentinel."}
+            </p>
+          </div>
+          {loginLoading ? (
+            <Button className="ml-auto" variant={"outline"}>
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </Button>
+          ) : (
+            <div>
+              {loginAccess.password != null ? (
+                <Button className="ml-auto" variant={"secondary"}>
+                  <span>
+                    <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                  </span>
+                  Enabled
+                </Button>
+              ) : (
+                <></>
+              )}
+            </div>
+          )}
+        </div>
+        {!loginLoading && loginAccess.password == null ? (
+          <div className="my-2 flex items-center">
+            <Input
+              id="gh-username"
+              className="mr-2"
+              placeholder="Password"
+              autoCapitalize="none"
+              autoCorrect="off"
+              type="password"
+              disabled={githubLoading}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
+            />
+            <Button
+              onClick={() => {
+                registerPassword(password);
+              }}
+            >
+              Set Password
+            </Button>
+          </div>
+        ) : (
+          <></>
+        )}
+        <div className="mt-2 flex items-center justify-between">
+          <div className="flex flex-col">
+            <p>
+              <span className="font-semibold">OAuth:</span> Discord
+            </p>
+            <p className="text-gray-400">
+              Log into Sentinel using your Discord account.
+            </p>
+          </div>
+          {loginLoading ? (
+            <Button className="ml-auto" variant={"outline"}>
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </Button>
+          ) : (
+            <div>
+              <Button className="ml-auto" variant={"secondary"}>
+                <span>
+                  <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                </span>
+                Enabled
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
   const DriveCard = () => {
     return (
       <Card className="mr-4 mt-4 w-[500px] p-4">
@@ -304,7 +445,6 @@ function App() {
 
   const GithubCard = () => {
     const [githubUsername, setGithubUsername] = React.useState("");
-
     return (
       <Card className="mr-4 mt-4 w-[500px] p-4">
         <div className="flex items-center justify-start">
@@ -402,6 +542,7 @@ function App() {
             <div className="flex flex-wrap">
               <ProfileCard />
               <div>
+                <LoginCard />
                 <DriveCard />
                 <GithubCard />
               </div>
