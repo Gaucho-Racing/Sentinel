@@ -15,4 +15,4 @@ fi
 
 echo "Building container for Sentinel Web v$1"
 # Build the docker container
-docker build -t gauchoracing/sentinel_web:"$1" -t gauchoracing/sentinel_web:latest --platform linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v6 --push --progress=plain .
+docker build -t gauchoracing/sentinel_web:"$1" -t gauchoracing/sentinel_web:latest --platform linux/amd64,linux/arm64 --push --progress=plain .

@@ -3,8 +3,7 @@ import { User, initUser } from "@/models/user";
 export const currentUser: User = Object.assign({}, initUser);
 
 export const SENTINEL_API_URL =
-  import.meta.env.VITE_SENTINEL_API_URL ??
-  "https://sentinel.gauchoracing.com/api";
+  import.meta.env.VITE_SENTINEL_API_URL ?? "https://sso.gauchoracing.com/api";
 
 export const DISCORD_CLIENT_ID = "1204930904913481840";
 export const DISCORD_OAUTH_BASE_URL =
