@@ -80,12 +80,12 @@ function LoginDiscordPage() {
 
   const LoadingCard = () => {
     return (
-      <Card className="border-none p-8" style={{ width: 500 }}>
+      <Card className="border-none p-4 md:w-[500px] md:p-8">
         <div className="flex flex-col items-center justify-center">
           <img
             src="/logo/mechanic-logo.png"
             alt="Gaucho Racing"
-            className="mx-auto h-24"
+            className="mx-auto h-20 md:h-24"
           />
           <Loader2 className="mt-8 h-16 w-16 animate-spin" />
         </div>
@@ -95,19 +95,19 @@ function LoginDiscordPage() {
 
   const InvalidCodeCard = () => {
     return (
-      <Card className="p-8" style={{ width: 500 }}>
+      <Card className="p-4 md:w-[500px] md:p-8">
         <div className="items-center">
           <img
             src="/logo/mechanic-logo.png"
             alt="Gaucho Racing"
-            className="mx-auto h-24"
+            className="mx-auto h-20 md:h-24"
           />
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">
             Discord OAuth Error
           </h1>
           <p className="mt-4">Invalid or expired code. Please try again.</p>
           <button
-            className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
+            className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
             onClick={() => {
               const redirect_url =
                 window.location.origin + "/auth/login/discord";
@@ -132,12 +132,12 @@ function LoginDiscordPage() {
 
   const NoAccountCard = () => {
     return (
-      <Card className="p-8" style={{ width: 500 }}>
+      <Card className="p-4 md:w-[500px] md:p-8">
         <div className="items-center">
           <img
             src="/logo/mechanic-logo.png"
             alt="Gaucho Racing"
-            className="mx-auto h-24"
+            className="mx-auto h-20 md:h-24"
           />
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">
             No Account Found
@@ -154,7 +154,7 @@ function LoginDiscordPage() {
             Example: <code>{`!verify <first name> <last name> <email>`}</code>
           </p>
           <button
-            className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
+            className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
             onClick={() => {
               window.location.href = DISCORD_SERVER_INVITE_URL;
             }}
@@ -173,7 +173,7 @@ function LoginDiscordPage() {
     <>
       <div className="flex h-screen flex-col items-center justify-between">
         <div className="w-full"></div>
-        <div className="p-32">
+        <div className="w-full items-center justify-center p-4 md:flex md:p-32">
           {loginLoading ? (
             <LoadingCard />
           ) : accountExists ? (
