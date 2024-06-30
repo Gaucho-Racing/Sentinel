@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
 import { checkCredentials } from "@/lib/auth";
+import { OutlineButton } from "@/components/ui/outline-button";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -81,13 +82,13 @@ function LoginPage() {
     <>
       <div className="flex h-screen flex-col items-center justify-between">
         <div className="w-full"></div>
-        <div className="p-32">
-          <Card className="p-8" style={{ width: 500 }}>
+        <div className="w-full items-center justify-center p-4 md:flex md:p-32">
+          <Card className="p-4 md:w-[500px] md:p-8">
             <div className="items-center">
               <img
                 src="/logo/mechanic-logo.png"
                 alt="Gaucho Racing"
-                className="mx-auto h-24"
+                className="mx-auto h-20 md:h-24"
               />
               <h1 className="mt-6 text-2xl font-semibold tracking-tight">
                 Sentinel Sign On
@@ -118,23 +119,21 @@ function LoginPage() {
                   setLoginPassword(e.target.value);
                 }}
               />
-              <Button
+              <OutlineButton
                 disabled={loginLoading}
                 className="mt-4 w-full"
                 onClick={login}
               >
-                {loginLoading && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
+                {loginLoading && <Loader2 className="mr-2 animate-spin" />}
                 Sign In with Email
-              </Button>
+              </OutlineButton>
               <div className="flex items-center justify-center pt-4 text-xl font-semibold text-gray-500">
-                <Separator className="m-4 w-32" />
+                <Separator className="m-4 w-8 md:w-32" />
                 <p>OR</p>
-                <Separator className="m-4 w-32" />
+                <Separator className="m-4 w-8 md:w-32" />
               </div>
               <button
-                className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
+                className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
                 onClick={() => {
                   const redirect_url =
                     window.location.origin + "/auth/login/discord";

@@ -22,6 +22,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { OutlineButton } from "@/components/ui/outline-button";
 
 function EditUserPage() {
   const navigate = useNavigate();
@@ -158,18 +159,17 @@ function EditUserPage() {
                       <FontAwesomeIcon icon={faUser} className="h-5 w-5" />
                       <h3 className="ml-4">Profile</h3>
                     </div>
-                    <Button
+                    <OutlineButton
+                      disabled={userLoading}
                       onClick={async () => {
                         await saveUser();
                         setUser(currentUser, editUser);
                         navigate(`/`);
                       }}
                     >
-                      {userLoading && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      )}
+                      {userLoading && <Loader2 className="mr-2 animate-spin" />}
                       Save Changes
-                    </Button>
+                    </OutlineButton>
                   </div>
                   <Separator className="my-2" />
                   <div className="flex items-center justify-start">

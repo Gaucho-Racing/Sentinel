@@ -28,7 +28,6 @@ import { faGithub, faGoogleDrive } from "@fortawesome/free-brands-svg-icons";
 function App() {
   const navigate = useNavigate();
 
-  const [windowWidth, setWindowWidth] = React.useState(window.innerWidth);
   const [cardWidth, setCardWidth] = React.useState(500);
 
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
@@ -44,7 +43,6 @@ function App() {
 
   const handleResize = () => {
     const width = window.innerWidth;
-    setWindowWidth(width);
     if (width < 600) {
       setCardWidth(width - 32);
     } else {
