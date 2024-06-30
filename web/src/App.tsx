@@ -20,13 +20,16 @@ import {
   faLock,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import { checkCredentials } from "@/lib/auth";
+import { checkCredentials, logout } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { faGithub, faGoogleDrive } from "@fortawesome/free-brands-svg-icons";
 
 function App() {
   const navigate = useNavigate();
+
+  const [windowWidth, setWindowWidth] = React.useState(window.innerWidth);
+  const [cardWidth, setCardWidth] = React.useState(500);
 
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
 
@@ -38,6 +41,23 @@ function App() {
 
   const [githubLoading, setGithubLoading] = React.useState(false);
   const [githubAccess, setGithubAccess] = React.useState<any>({});
+
+  const handleResize = () => {
+    const width = window.innerWidth;
+    setWindowWidth(width);
+    if (width < 600) {
+      setCardWidth(width - 32);
+    } else {
+      setCardWidth(500);
+    }
+  };
+
+  React.useEffect(() => {
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   React.useEffect(() => {
     checkAuth().then(() => {
@@ -232,7 +252,7 @@ function App() {
 
   const ProfileCard = () => {
     return (
-      <Card className="mr-4 mt-4 w-[500px] p-4">
+      <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center">
             <FontAwesomeIcon icon={faUser} className="h-5 w-5" />
@@ -306,7 +326,7 @@ function App() {
   const LoginCard = () => {
     const [password, setPassword] = React.useState("");
     return (
-      <Card className="mr-4 mt-4 w-[500px] p-4">
+      <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
         <div className="flex items-center justify-start">
           <FontAwesomeIcon icon={faLock} className="h-5 w-5" />
           <h3 className="ml-4">Authentication</h3>
@@ -397,7 +417,7 @@ function App() {
 
   const DriveCard = () => {
     return (
-      <Card className="mr-4 mt-4 w-[500px] p-4">
+      <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
         <div className="flex items-center justify-start">
           <FontAwesomeIcon icon={faGoogleDrive} className="h-5 w-5" />
           <h3 className="ml-4">Team Drive</h3>
@@ -452,7 +472,7 @@ function App() {
   const GithubCard = () => {
     const [githubUsername, setGithubUsername] = React.useState("");
     return (
-      <Card className="mr-4 mt-4 w-[500px] p-4">
+      <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
         <div className="flex items-center justify-start">
           <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
           <h3 className="ml-4">GitHub</h3>
@@ -546,12 +566,26 @@ function App() {
               .
             </p>
             <div className="flex flex-wrap">
-              <ProfileCard />
+              <div>
+                <ProfileCard />
+              </div>
               <div>
                 <LoginCard />
                 <DriveCard />
                 <GithubCard />
               </div>
+            </div>
+            <div className={`mr-4 mt-4 w-[${cardWidth}px]`}>
+              <Button
+                className="w-full"
+                variant={"destructive"}
+                onClick={() => {
+                  logout();
+                  navigate("/auth/login");
+                }}
+              >
+                Sign Out
+              </Button>
             </div>
           </div>
           <Footer />
