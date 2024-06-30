@@ -13,6 +13,9 @@ import (
 
 func Github(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	defer s.ChannelMessageDelete(m.ChannelID, m.ID)
+	if m.GuildID != config.DiscordGuild {
+		m.GuildID = config.DiscordGuild
+	}
 	// Get user info
 	guildMember, err := s.GuildMember(m.GuildID, m.Author.ID)
 	if err != nil {

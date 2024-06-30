@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"sentinel/config"
 	"sentinel/service"
 	"sentinel/utils"
 	"time"
@@ -9,6 +10,9 @@ import (
 )
 
 func Whois(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
+	if m.GuildID != config.DiscordGuild {
+		m.GuildID = config.DiscordGuild
+	}
 	// Get user info
 	guildMember, err := s.GuildMember(m.GuildID, m.Author.ID)
 	if err != nil {
