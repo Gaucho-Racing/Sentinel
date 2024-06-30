@@ -279,6 +279,16 @@ func GetDiscordUserFromToken(accessToken string) (*model.DiscordUser, error) {
 	return &user, nil
 }
 
+func SendUserWelcomeMessage(userID string) {
+	user := GetUserByID(userID)
+	if user.ID == "" {
+		utils.SugarLogger.Errorln("User not found")
+		return
+	}
+	message := fmt.Sprintf("Welcome to Gaucho Racing, %s! We're super excited to have you on board.\n\nPlease take a moment to complete your Sentinel profile at https://sso.gauchoracing.com. This is where you will be able to access all our internal tools and resources.\n\nHere are some important links:\n**Website:** <https://gauchoracing.com>\n**GitHub:** <https://github.com/gaucho-racing>\n**Google Drive:** <https://drive.gauchoracing.com>\n**Wiki:** <https://wiki.gauchoracing.com>\n\nIf you have any questions, feel free to ask in <#756738476887638111> or DM an officer or lead.", user.FirstName)
+	SendDirectMessage(userID, message)
+}
+
 func FindAllNonVerifiedUsers() {
 	members, err := Discord.GuildMembers(config.DiscordGuild, "", 1000)
 	if err != nil {

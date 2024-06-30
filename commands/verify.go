@@ -101,4 +101,5 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		utils.SugarLogger.Errorln(err)
 	}
 	go service.SendDisappearingMessage(m.ChannelID, "You have been verified! Welcome to the server <@"+id+">!", 5*time.Second)
+	go service.SendUserWelcomeMessage(id)
 }
