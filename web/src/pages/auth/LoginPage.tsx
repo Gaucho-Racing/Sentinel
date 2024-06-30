@@ -5,7 +5,6 @@ import {
   DISCORD_OAUTH_BASE_URL,
   SENTINEL_API_URL,
 } from "@/consts/config";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
