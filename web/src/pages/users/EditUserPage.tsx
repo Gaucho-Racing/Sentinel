@@ -10,7 +10,7 @@ import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faLock, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faLock, faUser } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -134,6 +134,19 @@ function EditUserPage() {
       ) : (
         <div className="flex h-screen flex-col justify-between">
           <div className="p-4 lg:p-32 lg:pt-16">
+            <div className="mb-4">
+              <Button
+                variant={"ghost"}
+                onClick={() => navigate("/")}
+                className="flex items-center"
+              >
+                <FontAwesomeIcon
+                  icon={faArrowLeft}
+                  className="mr-2 h-4 w-4 text-gray-400"
+                />
+                Back to home
+              </Button>
+            </div>
             <h1>Editing {editUser.first_name}</h1>
             <div className="flex flex-wrap">
               {canEdit ? (

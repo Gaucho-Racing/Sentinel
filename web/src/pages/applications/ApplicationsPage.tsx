@@ -16,7 +16,13 @@ import { AuthLoading } from "@/components/AuthLoading";
 import { User, initUser } from "@/models/user";
 import { Input } from "@/components/ui/input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowLeft,
+  faBackspace,
+  faBackward,
+  faBackwardStep,
+  faTrash,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -271,6 +277,19 @@ function ApplicationsPage() {
       ) : (
         <div className="flex h-screen flex-col justify-between">
           <div className="flex-grow p-4 lg:p-32 lg:pt-16">
+            <div className="mb-4">
+              <Button
+                variant={"ghost"}
+                onClick={() => navigate("/")}
+                className="flex items-center"
+              >
+                <FontAwesomeIcon
+                  icon={faArrowLeft}
+                  className="mr-2 h-4 w-4 text-gray-400"
+                />
+                Back to home
+              </Button>
+            </div>
             <h1>Applications</h1>
             <p className="mt-4 text-gray-400">
               Want to create a new team application? Use the Sentinel API to
