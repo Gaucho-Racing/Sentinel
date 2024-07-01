@@ -209,7 +209,7 @@ func DiscordUserEmbed(user model.User, channelID string) {
 	}
 }
 
-func ExchangeCodeForToken(code string) (*model.AccessTokenResponse, error) {
+func ExchangeCodeForToken(code string) (*model.DiscordAccessTokenResponse, error) {
 	tokenURL := "https://discord.com/api/oauth2/token"
 
 	data := url.Values{}
@@ -235,7 +235,7 @@ func ExchangeCodeForToken(code string) (*model.AccessTokenResponse, error) {
 		return nil, fmt.Errorf("error exchanging code for token")
 	}
 
-	var accessToken model.AccessTokenResponse
+	var accessToken model.DiscordAccessTokenResponse
 	err = json.Unmarshal(body, &accessToken)
 	if err != nil {
 		return nil, err

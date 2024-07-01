@@ -88,8 +88,7 @@ func HashPassword(password string) (string, error) {
 func GenerateJWT(id string, email string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &model.AuthClaims{
-		UserID: id,
-		Email:  email,
+		Email: email,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        id,
 			ExpiresAt: jwt.NewNumericDate(expirationTime),

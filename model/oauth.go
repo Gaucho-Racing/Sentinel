@@ -3,7 +3,8 @@ package model
 import "time"
 
 type ClientApplication struct {
-	ID           string    `json:"id"`
+	ID           string    `gorm:"primaryKey" json:"id"`
+	UserID       string    `json:"user_id"`
 	Secret       string    `json:"secret"`
 	Name         string    `json:"name"`
 	RedirectURIs []string  `json:"redirect_uris"`
@@ -16,8 +17,8 @@ func (ClientApplication) TableName() string {
 }
 
 type ClientApplicationRedirectURI struct {
-	ClientApplicationID string `json:"client_application_id"`
-	RedirectURI         string `json:"redirect_uri"`
+	ClientApplicationID string `gorm:"primaryKey" json:"client_application_id"`
+	RedirectURI         string `gorm:"primaryKey" json:"redirect_uri"`
 }
 
 func (ClientApplicationRedirectURI) TableName() string {
