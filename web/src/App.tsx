@@ -29,7 +29,8 @@ import {
   faGoogleDrive,
 } from "@fortawesome/free-brands-svg-icons";
 import { ClientApplication } from "@/models/application";
-import { OutlineButton } from "./components/ui/outline-button";
+import { OutlineButton } from "@/components/ui/outline-button";
+import { AuthLoading } from "@/components/AuthLoading";
 
 function App() {
   const navigate = useNavigate();
@@ -248,23 +249,6 @@ function App() {
       toast(getAxiosErrorMessage(error));
     }
     setApplicationsLoading(false);
-  };
-
-  const AuthLoading = () => {
-    return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <Card className="border-none p-8" style={{ width: 500 }}>
-          <div className="flex flex-col items-center justify-center">
-            <img
-              src="/logo/mechanic-logo.png"
-              alt="Gaucho Racing"
-              className="mx-auto h-24"
-            />
-            <Loader2 className="mt-8 h-16 w-16 animate-spin" />
-          </div>
-        </Card>
-      </div>
-    );
   };
 
   const ProfileField = (props: { label: string; value: string }) => {
@@ -656,7 +640,10 @@ function App() {
               <span
                 className="cursor-pointer text-gr-pink hover:text-gr-pink/80"
                 onClick={() =>
-                  window.open("https://wiki.gauchoracing.com", "_blank")
+                  window.open(
+                    "https://wiki.gauchoracing.com/books/sentinel/page/api-documentation",
+                    "_blank",
+                  )
                 }
               >
                 here

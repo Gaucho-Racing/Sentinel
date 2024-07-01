@@ -9,7 +9,8 @@ import { Toaster } from "./components/ui/sonner.tsx";
 import App from "./App.tsx";
 import LoginDiscordPage from "@/pages/auth/LoginDiscordPage.tsx";
 import LoginPage from "@/pages/auth/LoginPage.tsx";
-import EditUserPage from "./pages/users/EditUserPage.tsx";
+import EditUserPage from "@/pages/users/EditUserPage.tsx";
+import ApplicationsPage from "@/pages/applications/ApplicationsPage.tsx";
 
 const router = createBrowserRouter([
   {
@@ -27,6 +28,14 @@ const router = createBrowserRouter([
   {
     path: "/users/:id/edit",
     element: <EditUserPage />,
+  },
+  {
+    path: "/applications",
+    element: <ApplicationsPage />,
+  },
+  {
+    path: "/applications/:id",
+    element: <ApplicationsPage />,
   },
 ]);
 
