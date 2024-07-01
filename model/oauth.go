@@ -37,3 +37,14 @@ type AuthorizationCode struct {
 func (AuthorizationCode) TableName() string {
 	return "authorization_code"
 }
+
+var ValidOauthScopes = []string{
+	"read:identity",
+	"write:identity",
+	"read:drive",
+	"write:drive",
+	"read:github",
+	"write:github",
+	"read:applications",
+	"sentinel:all",
+}

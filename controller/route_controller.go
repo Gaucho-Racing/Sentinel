@@ -34,6 +34,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/auth/register", RegisterAccount)
 	router.POST("/auth/login", LoginAccount)
 	router.POST("/auth/login/discord", LoginDiscord)
+	router.GET("/oauth/authorize", OauthAuthorize)
+	router.POST("/oauth/authorize", OauthAuthorize)
 	router.GET("/applications", GetAllClientApplications)
 	router.GET("/applications/:appID", GetClientApplicationByID)
 	router.POST("/applications", CreateClientApplication)

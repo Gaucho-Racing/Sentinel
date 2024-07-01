@@ -1,11 +1,12 @@
 package service
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
+	"time"
 )
 
 func GetAllClientApplications() []model.ClientApplication {
@@ -35,8 +36,8 @@ func GetClientApplicationByID(clientID string) model.ClientApplication {
 
 func CreateClientApplication(clientApplication model.ClientApplication) (model.ClientApplication, error) {
 	if clientApplication.ID == "" {
-		clientApplication.ID = generateClientID()
-		clientApplication.Secret = generateClientSecret()
+		clientApplication.ID = generateCryptoString(12)
+		clientApplication.Secret = generateCryptoString(32)
 	} else {
 		existing := GetClientApplicationByID(clientApplication.ID)
 		if existing.ID != "" {
@@ -100,24 +101,48 @@ func SetRedirectURIsForClientApplication(clientID string, redirectURIs []string)
 	return GetRedirectURIsForClientApplication(clientID)
 }
 
-func generateClientID() string {
+func generateCryptoString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 12
-
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
+	b := make([]byte, length)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic(err)
 	}
-	return string(result)
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b)
 }
 
-func generateClientSecret() string {
-	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-	const length = 32
+func ValidateRedirectURI(uri string, clientID string) bool {
+	validUris := GetRedirectURIsForClientApplication(clientID)
+	return contains(validUris, uri)
+}
 
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
+func GenerateAuthorizationCode(clientID, userID, scope string) (string, error) {
+	code := generateCryptoString(8)
+	expiresAt := time.Now().Add(5 * time.Minute)
+	authCode := model.AuthorizationCode{
+		Code:      code,
+		ClientID:  clientID,
+		UserID:    userID,
+		Scope:     scope,
+		ExpiresAt: expiresAt,
 	}
-	return string(result)
+	if result := database.DB.Create(&authCode); result.Error != nil {
+		return "", result.Error
+	}
+	return code, nil
+}
+
+func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {
+	var authCode model.AuthorizationCode
+	database.DB.Where("code = ?", code).First(&authCode)
+	if authCode.Code == "" {
+		return model.AuthorizationCode{}, fmt.Errorf("authorization code not found")
+	}
+	if time.Now().After(authCode.ExpiresAt) {
+		return model.AuthorizationCode{}, fmt.Errorf("authorization code has expired")
+	}
+	return authCode, nil
 }
