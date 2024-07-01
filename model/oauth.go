@@ -24,3 +24,16 @@ type ClientApplicationRedirectURI struct {
 func (ClientApplicationRedirectURI) TableName() string {
 	return "client_application_redirect_uri"
 }
+
+type AuthorizationCode struct {
+	Code      string    `gorm:"primaryKey" json:"code"`
+	ClientID  string    `json:"client_id"`
+	UserID    string    `json:"user_id"`
+	Scope     string    `json:"scope"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
+func (AuthorizationCode) TableName() string {
+	return "authorization_code"
+}
