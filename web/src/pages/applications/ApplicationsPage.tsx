@@ -525,9 +525,17 @@ function ApplicationsPage() {
                                   <Button
                                     variant={"outline"}
                                     onClick={() => {
-                                      getSelectedApplication(
-                                        selectedApplication.id,
-                                      );
+                                      if (creatingApplication) {
+                                        navigate("/applications");
+                                        setCreatingApplication(false);
+                                        setSelectedApplication(
+                                          initClientApplication,
+                                        );
+                                      } else {
+                                        getSelectedApplication(
+                                          selectedApplication.id,
+                                        );
+                                      }
                                     }}
                                     className="mr-2 py-5"
                                   >
