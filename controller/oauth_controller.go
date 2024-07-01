@@ -42,3 +42,13 @@ func CreateClientApplication(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, created)
 }
+
+func DeleteClientApplication(c *gin.Context) {
+	appID := c.Param("appID")
+	err := service.DeleteClientApplication(appID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "client application deleted"})
+}

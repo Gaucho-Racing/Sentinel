@@ -23,7 +23,13 @@ import {
 import { checkCredentials, logout } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { faGithub, faGoogleDrive } from "@fortawesome/free-brands-svg-icons";
+import {
+  faAppStore,
+  faGithub,
+  faGoogleDrive,
+} from "@fortawesome/free-brands-svg-icons";
+import { ClientApplication } from "@/models/application";
+import { OutlineButton } from "./components/ui/outline-button";
 
 function App() {
   const navigate = useNavigate();
@@ -40,6 +46,11 @@ function App() {
 
   const [githubLoading, setGithubLoading] = React.useState(false);
   const [githubAccess, setGithubAccess] = React.useState<any>({});
+
+  const [applicationsLoading, setApplicationsLoading] = React.useState(false);
+  const [applications, setApplications] = React.useState<ClientApplication[]>(
+    [],
+  );
 
   const handleResize = () => {
     const width = window.innerWidth;
@@ -62,6 +73,7 @@ function App() {
       checkLoginAccess();
       checkDriveAccess();
       checkGithubAccess();
+      getApplications();
     });
   }, []);
 
@@ -218,6 +230,24 @@ function App() {
       toast(getAxiosErrorMessage(error));
     }
     checkGithubAccess();
+  };
+
+  const getApplications = async () => {
+    setApplicationsLoading(true);
+    try {
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/applications`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setApplications(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+    setApplicationsLoading(false);
   };
 
   const AuthLoading = () => {
@@ -458,7 +488,9 @@ function App() {
                   Access Granted
                 </Button>
               ) : (
-                <Button onClick={addUserToDrive}>Request Access</Button>
+                <OutlineButton onClick={addUserToDrive}>
+                  Request Access
+                </OutlineButton>
               )}
             </div>
           )}
@@ -524,18 +556,86 @@ function App() {
                 setGithubUsername(e.target.value);
               }}
             />
-            <Button
+            <OutlineButton
               onClick={() => {
                 addUserToGithub(githubUsername);
               }}
             >
               Request Access
-            </Button>
+            </OutlineButton>
           </div>
         ) : (
           <></>
         )}
       </Card>
+    );
+  };
+
+  const ApplicationsCard = () => {
+    return (
+      <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
+        <div className="flex items-center justify-start">
+          <FontAwesomeIcon icon={faAppStore} className="h-5 w-5" />
+          <h3 className="ml-4">My Applications</h3>
+        </div>
+        <Separator className="my-2" />
+        <div className="items-center justify-start">
+          {applicationsLoading ? (
+            <div className="flex w-full justify-center p-4">
+              <Loader2 className="animate-spin" />
+            </div>
+          ) : (
+            <div>
+              {applications.length > 0 ? (
+                applications.map((application) => (
+                  <div key={application.id} className="mt-2">
+                    <ApplicationListItem application={application} />
+                  </div>
+                ))
+              ) : (
+                <NoApplicationsCard />
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
+  const ApplicationListItem = (props: { application: ClientApplication }) => {
+    return (
+      <Card className="border-none">
+        <div className="flex items-center justify-between">
+          <div className="items-center">
+            <div className="mr-2 font-semibold">{props.application.name}</div>
+            <div className="text-gray-400">
+              Client ID: {props.application.id}
+            </div>
+          </div>
+          <Button
+            variant={"outline"}
+            onClick={() => navigate(`/applications/${props.application.id}`)}
+          >
+            View
+          </Button>
+        </div>
+      </Card>
+    );
+  };
+
+  const NoApplicationsCard = () => {
+    return (
+      <div className="flex w-full flex-col items-center justify-center">
+        <p className="mt-2 text-gray-400">
+          You have not created any applications yet.
+        </p>
+        <OutlineButton
+          onClick={() => navigate("/applications/new")}
+          className="mt-4"
+        >
+          Create Application
+        </OutlineButton>
+      </div>
     );
   };
 
@@ -566,24 +666,27 @@ function App() {
             <div className="flex flex-wrap">
               <div>
                 <ProfileCard />
+                <div className={`mr-4 mt-4 w-[${cardWidth}px]`}>
+                  <Button
+                    className="w-full"
+                    variant={"destructive"}
+                    onClick={() => {
+                      logout();
+                      navigate("/auth/login");
+                    }}
+                  >
+                    Sign Out
+                  </Button>
+                </div>
               </div>
               <div>
                 <LoginCard />
                 <DriveCard />
                 <GithubCard />
               </div>
-            </div>
-            <div className={`mr-4 mt-4 w-[${cardWidth}px]`}>
-              <Button
-                className="w-full"
-                variant={"destructive"}
-                onClick={() => {
-                  logout();
-                  navigate("/auth/login");
-                }}
-              >
-                Sign Out
-              </Button>
+              <div>
+                <ApplicationsCard />
+              </div>
             </div>
           </div>
           <Footer />

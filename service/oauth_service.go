@@ -64,6 +64,14 @@ func CreateClientApplication(clientApplication model.ClientApplication) (model.C
 	return GetClientApplicationByID(clientApplication.ID), nil
 }
 
+func DeleteClientApplication(clientID string) error {
+	if result := database.DB.Where("id = ?", clientID).Delete(&model.ClientApplication{}); result.Error != nil {
+		return result.Error
+	}
+	SetRedirectURIsForClientApplication(clientID, []string{})
+	return nil
+}
+
 func GetRedirectURIsForClientApplication(clientID string) []string {
 	var redirectURIs []model.ClientApplicationRedirectURI
 	database.DB.Where("client_application_id = ?", clientID).Find(&redirectURIs)

@@ -37,6 +37,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications", GetAllClientApplications)
 	router.GET("/applications/:appID", GetClientApplicationByID)
 	router.POST("/applications", CreateClientApplication)
+	router.DELETE("/applications/:appID", DeleteClientApplication)
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
