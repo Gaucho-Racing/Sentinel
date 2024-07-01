@@ -34,6 +34,9 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/auth/register", RegisterAccount)
 	router.POST("/auth/login", LoginAccount)
 	router.POST("/auth/login/discord", LoginDiscord)
+	router.GET("/applications", GetAllClientApplications)
+	router.GET("/applications/:appID", GetClientApplicationByID)
+	router.POST("/applications", CreateClientApplication)
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
@@ -45,6 +48,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.DELETE("/users/:userID/drive", RemoveUserFromDrive)
 	router.GET("/users/:userID/github", GetGithubStatusForUser)
 	router.POST("/users/:userID/github", AddUserToGithub)
+	router.GET("/users/:userID/applications", GetClientApplicationsForUser)
 }
 
 func AuthChecker() gin.HandlerFunc {

@@ -7,7 +7,7 @@ type ClientApplication struct {
 	UserID       string    `json:"user_id"`
 	Secret       string    `json:"secret"`
 	Name         string    `json:"name"`
-	RedirectURIs []string  `json:"redirect_uris"`
+	RedirectURIs []string  `json:"redirect_uris" gorm:"-"`
 	UpdatedAt    time.Time `gorm:"autoUpdateTime" json:"updated_at"`
 	CreatedAt    time.Time `gorm:"autoCreateTime" json:"created_at"`
 }

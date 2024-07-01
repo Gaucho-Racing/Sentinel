@@ -33,26 +33,35 @@ func GetClientApplicationByID(clientID string) model.ClientApplication {
 	return clientApplication
 }
 
-func CreateClientApplication(clientApplication model.ClientApplication) error {
+func CreateClientApplication(clientApplication model.ClientApplication) (model.ClientApplication, error) {
 	if clientApplication.ID == "" {
 		clientApplication.ID = generateClientID()
-	}
-	if clientApplication.Secret == "" {
 		clientApplication.Secret = generateClientSecret()
+	} else {
+		existing := GetClientApplicationByID(clientApplication.ID)
+		if existing.ID != "" {
+			clientApplication.Secret = existing.Secret
+		} else {
+			return model.ClientApplication{}, fmt.Errorf("client application with id: %s does not exist", clientApplication.ID)
+		}
 	}
 	if clientApplication.Name == "" {
-		return fmt.Errorf("client application name cannot be empty")
+		return model.ClientApplication{}, fmt.Errorf("client application name cannot be empty")
+	}
+	user := GetUserByID(clientApplication.UserID)
+	if user.ID == "" {
+		return model.ClientApplication{}, fmt.Errorf("user with id: %s does not exist", clientApplication.UserID)
 	}
 	if database.DB.Where("id = ?", clientApplication.ID).Updates(&clientApplication).RowsAffected == 0 {
 		utils.SugarLogger.Infof("New client application created with id: %s", clientApplication.ID)
 		if result := database.DB.Create(&clientApplication); result.Error != nil {
-			return result.Error
+			return model.ClientApplication{}, result.Error
 		}
 	} else {
 		utils.SugarLogger.Infof("Client application with id: %s has been updated!", clientApplication.ID)
 	}
 	SetRedirectURIsForClientApplication(clientApplication.ID, clientApplication.RedirectURIs)
-	return nil
+	return GetClientApplicationByID(clientApplication.ID), nil
 }
 
 func GetRedirectURIsForClientApplication(clientID string) []string {
