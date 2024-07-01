@@ -3,7 +3,7 @@ import axios from "axios";
 import { SENTINEL_API_URL, currentUser } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Loader2, User } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useParams } from "react-router-dom";
@@ -16,13 +16,7 @@ import { AuthLoading } from "@/components/AuthLoading";
 import { User, initUser } from "@/models/user";
 import { Input } from "@/components/ui/input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faArrowLeft,
-  faBackspace,
-  faBackward,
-  faBackwardStep,
-  faTrash,
-} from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faTrash } from "@fortawesome/free-solid-svg-icons";
 import {
   AlertDialog,
   AlertDialogAction,
