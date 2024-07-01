@@ -4,8 +4,8 @@ export interface ClientApplication {
   secret: string;
   name: string;
   redirect_uris: string[];
-  updated_at: string;
-  created_at: string;
+  updated_at: Date;
+  created_at: Date;
 }
 
 export const initClientApplication: ClientApplication = {
@@ -14,8 +14,8 @@ export const initClientApplication: ClientApplication = {
   secret: "",
   name: "",
   redirect_uris: [],
-  updated_at: "",
-  created_at: "",
+  updated_at: new Date(),
+  created_at: new Date(),
 };
 
 /*
