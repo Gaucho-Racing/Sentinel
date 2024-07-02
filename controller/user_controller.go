@@ -37,7 +37,7 @@ func CreateUser(c *gin.Context) {
 		return
 	}
 	user.ID = c.Param("userID")
-	err := service.CreateUser(user)
+	err := service.CreateUser(user, RequestTokenHasScope(c, "sentinel:all"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return

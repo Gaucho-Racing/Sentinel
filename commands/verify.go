@@ -80,7 +80,7 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		Email:     email,
 		AvatarURL: member.User.AvatarURL("256"),
 		Verified:  false,
-	})
+	}, false)
 	// rename user
 	err = s.GuildMemberNickname(m.GuildID, id, firstName)
 	if err != nil {

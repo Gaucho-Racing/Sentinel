@@ -44,7 +44,7 @@ func GetUserByEmail(email string) model.User {
 	return user
 }
 
-func CreateUser(user model.User) error {
+func CreateUser(user model.User, setRoles bool) error {
 	if user.ID == "" {
 		return fmt.Errorf("user id cannot be empty")
 	} else if user.Email == "" {
@@ -59,7 +59,9 @@ func CreateUser(user model.User) error {
 	} else {
 		utils.SugarLogger.Infoln("User with id: " + user.ID + " has been updated!")
 	}
-	SetRolesForUser(user.ID, user.Roles)
+	if setRoles {
+		SetRolesForUser(user.ID, user.Roles)
+	}
 	return nil
 }
 
