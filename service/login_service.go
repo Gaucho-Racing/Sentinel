@@ -44,9 +44,9 @@ func GetLastLoginForUserToDestinationWithScopes(userID string, destination strin
 	return login
 }
 
-func GetLoginByID() model.UserLogin {
+func GetLoginByID(loginID string) model.UserLogin {
 	var login model.UserLogin
-	database.DB.Where("id = ?", login.ID).First(&login)
+	database.DB.Where("id = ?", loginID).First(&login)
 	return login
 }
 
