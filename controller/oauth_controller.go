@@ -87,7 +87,6 @@ func OauthAuthorize(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	clientID := c.Query("client_id")
-	println(clientID)
 	if clientID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "client_id is required"})
 		return
@@ -98,13 +97,11 @@ func OauthAuthorize(c *gin.Context) {
 		return
 	}
 	redirectUri := c.Query("redirect_uri")
-	println(redirectUri)
 	if !service.ValidateRedirectURI(redirectUri, clientID) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "redirect_uri is invalid"})
 		return
 	}
 	scopes := c.Query("scopes")
-	println(scopes)
 	if scopes == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are required"})
 		return

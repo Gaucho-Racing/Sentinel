@@ -62,7 +62,11 @@ func AuthChecker() gin.HandlerFunc {
 				utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
 				c.AbortWithStatusJSON(401, gin.H{"message": err.Error()})
 			} else {
-				utils.SugarLogger.Infoln("Decoded token: " + claims.ID + " " + claims.Email)
+				utils.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Email)
+				utils.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
+				utils.SugarLogger.Infof("↳ Scopes: %s", claims.Scopes)
+				utils.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
+				utils.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
 				c.Set("Auth-UserID", claims.ID)
 				c.Set("Auth-Email", claims.Email)
 				c.Set("Auth-Audience", claims.Audience[0])
