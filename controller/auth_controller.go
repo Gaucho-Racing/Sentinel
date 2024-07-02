@@ -9,6 +9,9 @@ import (
 )
 
 func RegisterAccount(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "write:user"))
+	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+
 	var input model.UserAuth
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
@@ -71,6 +74,9 @@ func LoginDiscord(c *gin.Context) {
 }
 
 func GetAuthForUser(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
 	if user.ID == "" {

@@ -10,7 +10,6 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -124,8 +123,10 @@ func ValidateJWT(token string) (*model.AuthClaims, error) {
 	if len(claims.Audience) == 0 {
 		return nil, fmt.Errorf("token has invalid audience")
 	}
-	if GetClientApplicationByID(claims.Audience[0]).ID == "" && claims.Audience[0] != "sentinel" {
-		return nil, fmt.Errorf("token has invalid audience")
+	if claims.Audience[0] != "sentinel" {
+		if GetClientApplicationByID(claims.Audience[0]).ID == "" {
+			return nil, fmt.Errorf("token has invalid audience")
+		}
 	}
 	if claims.Audience[0] != "sentinel" && strings.Contains(claims.Scopes, "sentinel:all") {
 		return nil, fmt.Errorf("token has unauthorized scope")
@@ -183,51 +184,4 @@ func CreateUserAuth(userAuth model.UserAuth) {
 	} else {
 		utils.SugarLogger.Infof("UserAuth with id: %s has been updated!", userAuth.ID)
 	}
-}
-
-func GetRequestUserID(c *gin.Context) string {
-	id, exists := c.Get("Auth-UserID")
-	if !exists {
-		return ""
-	}
-	return id.(string)
-}
-
-func GetRequestUserEmail(c *gin.Context) string {
-	email, exists := c.Get("Auth-Email")
-	if !exists {
-		return ""
-	}
-	return email.(string)
-}
-
-func GetRequestTokenScopes(c *gin.Context) string {
-	scopes, exists := c.Get("Auth-Scopes")
-	if !exists {
-		return ""
-	}
-	return scopes.(string)
-}
-
-func RequestTokenHasScope(c *gin.Context, scope string) bool {
-	scopes := GetRequestTokenScopes(c)
-	for _, s := range strings.Split(scopes, "+") {
-		if s == scope {
-			return true
-		}
-	}
-	return false
-}
-
-func GetRequestTokenAudience(c *gin.Context) string {
-	audience, exists := c.Get("Auth-Audience")
-	if !exists {
-		return ""
-	}
-	return audience.(string)
-}
-
-func RequestUserHasRole(c *gin.Context, role string) bool {
-	user := GetUserByID(GetRequestUserID(c))
-	return user.HasRole(role)
 }

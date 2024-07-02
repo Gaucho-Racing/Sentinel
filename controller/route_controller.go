@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"net/http"
 	"sentinel/config"
 	"sentinel/service"
 	"sentinel/utils"
@@ -69,4 +70,81 @@ func AuthChecker() gin.HandlerFunc {
 		}
 		c.Next()
 	}
+}
+
+func RequireAll(c *gin.Context, conditions ...bool) {
+	for _, condition := range conditions {
+		if !condition {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
+			return
+		}
+	}
+}
+
+func RequireAny(c *gin.Context, conditions ...bool) {
+	for _, condition := range conditions {
+		if condition {
+			return
+		}
+	}
+	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
+}
+
+func RequestUserHasID(c *gin.Context, id string) bool {
+	return GetRequestUserID(c) == id
+}
+
+func RequestUserHasEmail(c *gin.Context, email string) bool {
+	return GetRequestUserEmail(c) == email
+}
+
+func RequestUserHasRole(c *gin.Context, role string) bool {
+	user := service.GetUserByID(GetRequestUserID(c))
+	return user.HasRole(role)
+}
+
+func RequestTokenHasScope(c *gin.Context, scope string) bool {
+	scopes := GetRequestTokenScopes(c)
+	for _, s := range strings.Split(scopes, "+") {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func RequestTokenHasAudience(c *gin.Context, audience string) bool {
+	return GetRequestTokenAudience(c) == audience
+}
+
+func GetRequestUserID(c *gin.Context) string {
+	id, exists := c.Get("Auth-UserID")
+	if !exists {
+		return ""
+	}
+	return id.(string)
+}
+
+func GetRequestUserEmail(c *gin.Context) string {
+	email, exists := c.Get("Auth-Email")
+	if !exists {
+		return ""
+	}
+	return email.(string)
+}
+
+func GetRequestTokenScopes(c *gin.Context) string {
+	scopes, exists := c.Get("Auth-Scopes")
+	if !exists {
+		return ""
+	}
+	return scopes.(string)
+}
+
+func GetRequestTokenAudience(c *gin.Context) string {
+	audience, exists := c.Get("Auth-Audience")
+	if !exists {
+		return ""
+	}
+	return audience.(string)
 }

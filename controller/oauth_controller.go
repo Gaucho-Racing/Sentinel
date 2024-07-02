@@ -9,11 +9,16 @@ import (
 )
 
 func GetAllClientApplications(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	apps := service.GetAllClientApplications()
 	c.JSON(http.StatusOK, apps)
 }
 
 func GetClientApplicationsForUser(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "read:applications"))
+	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+
 	userID := c.Param("userID")
 	apps := service.GetClientApplicationsForUser(userID)
 	c.JSON(http.StatusOK, apps)
@@ -26,15 +31,28 @@ func GetClientApplicationByID(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "no client application found with id: " + appID})
 		return
 	}
+
+	if !RequestTokenHasScope(c, "sentinel:all") {
+		RequireAny(c, RequestTokenHasScope(c, "read:applications"))
+		RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, app.UserID))
+	}
+
 	c.JSON(http.StatusOK, app)
 }
 
 func CreateClientApplication(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	var app model.ClientApplication
 	if err := c.ShouldBindJSON(&app); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
+	if app.ID != "" {
+		existing := service.GetClientApplicationByID(app.ID)
+		RequireAny(c, RequestUserHasID(c, existing.UserID), RequestUserHasRole(c, "d_admin"))
+	}
+
 	created, err := service.CreateClientApplication(app)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -45,6 +63,11 @@ func CreateClientApplication(c *gin.Context) {
 
 func DeleteClientApplication(c *gin.Context) {
 	appID := c.Param("appID")
+	app := service.GetClientApplicationByID(appID)
+
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, app.UserID))
+
 	err := service.DeleteClientApplication(appID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
@@ -54,10 +77,7 @@ func DeleteClientApplication(c *gin.Context) {
 }
 
 func OauthAuthorize(c *gin.Context) {
-	if service.GetRequestUserID(c) == "" || !service.RequestTokenHasScope(c, "sentinel:all") {
-		c.JSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
-		return
-	}
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	clientID := c.Query("client_id")
 	println(clientID)
