@@ -53,6 +53,8 @@ func CreateClientApplication(c *gin.Context) {
 		RequireAny(c, RequestUserHasID(c, existing.UserID), RequestUserHasRole(c, "d_admin"))
 	}
 
+	app.UserID = GetRequestUserID(c)
+
 	created, err := service.CreateClientApplication(app)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
