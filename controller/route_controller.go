@@ -25,6 +25,7 @@ func SetupRouter() *gin.Engine {
 		AllowCredentials: true,
 	}))
 	r.Use(AuthChecker())
+	r.Use(UnauthorizedPanicHandler())
 	return r
 }
 
@@ -72,22 +73,40 @@ func AuthChecker() gin.HandlerFunc {
 	}
 }
 
+func UnauthorizedPanicHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if err := recover(); err != nil {
+				if err == "Unauthorized" {
+					c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
+				} else {
+					// Handle other panics
+					utils.SugarLogger.Errorf("Unexpected panic: %v", err)
+					c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": err.(string)})
+				}
+			}
+		}()
+		c.Next()
+	}
+}
+
+// RequireAll checks if all conditions are true, otherwise aborts the request
 func RequireAll(c *gin.Context, conditions ...bool) {
 	for _, condition := range conditions {
 		if !condition {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
-			return
+			panic("Unauthorized")
 		}
 	}
 }
 
+// RequireAny checks if any condition is true, otherwise aborts the request
 func RequireAny(c *gin.Context, conditions ...bool) {
 	for _, condition := range conditions {
 		if condition {
 			return
 		}
 	}
-	c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
+	panic("Unauthorized")
 }
 
 func RequestUserHasID(c *gin.Context, id string) bool {

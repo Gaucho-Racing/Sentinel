@@ -64,6 +64,10 @@ func CreateClientApplication(c *gin.Context) {
 func DeleteClientApplication(c *gin.Context) {
 	appID := c.Param("appID")
 	app := service.GetClientApplicationByID(appID)
+	if app.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"message": "no client application found with id: " + appID})
+		return
+	}
 
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 	RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, app.UserID))
