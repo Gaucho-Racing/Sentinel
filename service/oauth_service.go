@@ -6,6 +6,7 @@ import (
 	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
+	"strings"
 	"time"
 )
 
@@ -117,6 +118,16 @@ func generateCryptoString(length int) string {
 func ValidateRedirectURI(uri string, clientID string) bool {
 	validUris := GetRedirectURIsForClientApplication(clientID)
 	return contains(validUris, uri)
+}
+
+func ValidateScopes(scopes string) bool {
+	inputScopes := strings.Split(scopes, "+")
+	for _, scope := range inputScopes {
+		if !contains(model.ValidOauthScopes, scope) {
+			return false
+		}
+	}
+	return true
 }
 
 func GenerateAuthorizationCode(clientID, userID, scope string) (string, error) {

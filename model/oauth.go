@@ -39,8 +39,8 @@ func (AuthorizationCode) TableName() string {
 }
 
 var ValidOauthScopes = []string{
-	"read:identity",
-	"write:identity",
+	"read:user",
+	"write:user",
 	"read:drive",
 	"write:drive",
 	"read:github",

@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"errors"
 	"sentinel/config"
 	"sentinel/service"
 	"sentinel/utils"
@@ -10,7 +9,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
 )
 
 func SetupRouter() *gin.Engine {
@@ -60,12 +58,13 @@ func AuthChecker() gin.HandlerFunc {
 			claims, err := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
 			if err != nil {
 				utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
-				if errors.Is(err, jwt.ErrTokenExpired) {
-					c.AbortWithStatusJSON(401, gin.H{"message": "Token expired"})
-				}
+				c.AbortWithStatusJSON(401, gin.H{"message": err.Error()})
 			} else {
 				utils.SugarLogger.Infoln("Decoded token: " + claims.ID + " " + claims.Email)
-				c.Set("Request-UserID", claims.ID)
+				c.Set("Auth-UserID", claims.ID)
+				c.Set("Auth-Email", claims.Email)
+				c.Set("Auth-Audience", claims.Audience[0])
+				c.Set("Auth-Scopes", claims.Scopes)
 			}
 		}
 		c.Next()

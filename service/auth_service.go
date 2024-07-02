@@ -6,6 +6,7 @@ import (
 	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
+	"strings"
 	"time"
 	"unicode"
 
@@ -36,7 +37,7 @@ func RegisterEmailPassword(email string, password string) (string, error) {
 		Email:    email,
 		Password: hash,
 	})
-	token, err := GenerateJWT(user.ID, email)
+	token, err := GenerateJWT(user.ID, email, "sentinel:all", "sentinel")
 	if err != nil {
 		return "", err
 	}
@@ -57,7 +58,7 @@ func LoginEmailPassword(email string, password string) (string, error) {
 		utils.SugarLogger.Errorln(err.Error())
 		return "", err
 	}
-	token, err := GenerateJWT(user.ID, email)
+	token, err := GenerateJWT(user.ID, email, "sentinel:all", "sentinel")
 	if err != nil {
 		return "", err
 	}
@@ -85,12 +86,16 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func GenerateJWT(id string, email string) (string, error) {
+func GenerateJWT(id string, email string, scopes string, client_id string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &model.AuthClaims{
-		Email: email,
+		Email:  email,
+		Scopes: scopes,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        id,
+			Issuer:    "sso.gauchoracing.com",
+			Audience:  jwt.ClaimStrings{client_id},
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
 	}
@@ -112,6 +117,18 @@ func ValidateJWT(token string) (*model.AuthClaims, error) {
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())
 		return nil, err
+	}
+	if !ValidateScopes(claims.Scopes) {
+		return nil, fmt.Errorf("token has invalid scopes")
+	}
+	if len(claims.Audience) == 0 {
+		return nil, fmt.Errorf("token has invalid audience")
+	}
+	if GetClientApplicationByID(claims.Audience[0]).ID == "" && claims.Audience[0] != "sentinel" {
+		return nil, fmt.Errorf("token has invalid audience")
+	}
+	if claims.Audience[0] != "sentinel" && strings.Contains(claims.Scopes, "sentinel:all") {
+		return nil, fmt.Errorf("token has unauthorized scope")
 	}
 	return claims, nil
 }
@@ -169,11 +186,45 @@ func CreateUserAuth(userAuth model.UserAuth) {
 }
 
 func GetRequestUserID(c *gin.Context) string {
-	id, exists := c.Get("Request-UserID")
+	id, exists := c.Get("Auth-UserID")
 	if !exists {
 		return ""
 	}
 	return id.(string)
+}
+
+func GetRequestUserEmail(c *gin.Context) string {
+	email, exists := c.Get("Auth-Email")
+	if !exists {
+		return ""
+	}
+	return email.(string)
+}
+
+func GetRequestTokenScopes(c *gin.Context) string {
+	scopes, exists := c.Get("Auth-Scopes")
+	if !exists {
+		return ""
+	}
+	return scopes.(string)
+}
+
+func RequestTokenHasScope(c *gin.Context, scope string) bool {
+	scopes := GetRequestTokenScopes(c)
+	for _, s := range strings.Split(scopes, "+") {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func GetRequestTokenAudience(c *gin.Context) string {
+	audience, exists := c.Get("Auth-Audience")
+	if !exists {
+		return ""
+	}
+	return audience.(string)
 }
 
 func RequestUserHasRole(c *gin.Context, role string) bool {
