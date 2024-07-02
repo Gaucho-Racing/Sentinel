@@ -10,7 +10,7 @@ import (
 
 func GetAllLogins() []model.UserLogin {
 	var logins []model.UserLogin
-	database.DB.Find(&logins)
+	database.DB.Order("created_at DESC").Find(&logins)
 	return logins
 }
 

@@ -40,6 +40,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:appID", GetClientApplicationByID)
 	router.POST("/applications", CreateClientApplication)
 	router.DELETE("/applications/:appID", DeleteClientApplication)
+	router.GET("/applications/:appID/logins", GetLoginsForDestination)
+	router.GET("/logins", GetAllLogins)
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
@@ -52,6 +54,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/users/:userID/github", GetGithubStatusForUser)
 	router.POST("/users/:userID/github", AddUserToGithub)
 	router.GET("/users/:userID/applications", GetClientApplicationsForUser)
+	router.GET("/users/:userID/logins", GetLoginsForUser)
 }
 
 func AuthChecker() gin.HandlerFunc {

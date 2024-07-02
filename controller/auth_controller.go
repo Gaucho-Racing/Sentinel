@@ -46,6 +46,13 @@ func LoginAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+	go service.CreateLogin(model.UserLogin{
+		UserID:      GetRequestUserID(c),
+		Destination: "sentinel",
+		Scopes:      "sentinel:all",
+		IPAddress:   c.ClientIP(),
+		LoginType:   "email",
+	})
 	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
 }
 
@@ -70,6 +77,13 @@ func LoginDiscord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+	go service.CreateLogin(model.UserLogin{
+		UserID:      GetRequestUserID(c),
+		Destination: "sentinel",
+		Scopes:      "sentinel:all",
+		IPAddress:   c.ClientIP(),
+		LoginType:   "discord",
+	})
 	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
 }
 

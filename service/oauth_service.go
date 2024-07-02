@@ -130,7 +130,7 @@ func ValidateScopes(scopes string) bool {
 	return true
 }
 
-func GenerateAuthorizationCode(clientID, userID, scope string) (string, error) {
+func GenerateAuthorizationCode(clientID, userID, scope string) (model.AuthorizationCode, error) {
 	code := generateCryptoString(8)
 	expiresAt := time.Now().Add(5 * time.Minute)
 	authCode := model.AuthorizationCode{
@@ -141,9 +141,9 @@ func GenerateAuthorizationCode(clientID, userID, scope string) (string, error) {
 		ExpiresAt: expiresAt,
 	}
 	if result := database.DB.Create(&authCode); result.Error != nil {
-		return "", result.Error
+		return authCode, result.Error
 	}
-	return code, nil
+	return authCode, nil
 }
 
 func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {

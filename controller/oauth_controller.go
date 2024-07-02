@@ -4,7 +4,9 @@ import (
 	"net/http"
 	"sentinel/model"
 	"sentinel/service"
+	"sentinel/utils"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -109,15 +111,38 @@ func OauthAuthorize(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are invalid"})
 		return
 	}
-	prompt := c.Query("prompt")
+	prompt := true
+	silent := c.Query("silent")
+	if silent == "true" {
+		// check if user previously authorized this client
+		lastLogin := service.GetLastLoginForUserToDestinationWithScopes(GetRequestUserID(c), clientID, scopes)
+		if lastLogin.ID != "" && time.Since(lastLogin.CreatedAt).Hours() < 24*7 {
+			utils.SugarLogger.Infof("User %s previously authorized client %s with scopes %s", GetRequestUserID(c), clientID, scopes)
+			prompt = false
+		}
+	}
 	// Handle Validate Request
 	if c.Request.Method == "GET" {
 		c.JSON(http.StatusOK, gin.H{
 			"client_id":    clientID,
 			"redirect_uri": redirectUri,
 			"scopes":       scopes,
+			"prompt":       prompt,
 		})
 		return
 	}
 	// Handle Authorize Request
+	code, err := service.GenerateAuthorizationCode(GetRequestUserID(c), clientID, scopes)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	go service.CreateLogin(model.UserLogin{
+		UserID:      GetRequestUserID(c),
+		Destination: clientID,
+		Scopes:      scopes,
+		IPAddress:   c.ClientIP(),
+		LoginType:   "oauth",
+	})
+	c.JSON(http.StatusOK, code)
 }

@@ -10,6 +10,7 @@ var ValidOauthScopes = []string{
 	"read:github",
 	"write:github",
 	"read:applications",
+	"read:logins",
 	"sentinel:all",
 }
 
