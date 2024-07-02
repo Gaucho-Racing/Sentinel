@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterAccount(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "write:user"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	var input model.UserAuth
