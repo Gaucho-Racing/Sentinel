@@ -9,6 +9,9 @@ import (
 )
 
 func GetGithubStatusForUser(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "write:drive"))
+	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
 	if user.ID == "" {

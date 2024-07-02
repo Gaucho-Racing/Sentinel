@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sentinel/model"
 	"sentinel/service"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -107,7 +108,7 @@ func OauthAuthorize(c *gin.Context) {
 	if scopes == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are required"})
 		return
-	} else if !service.ValidateScopes(scopes) {
+	} else if !service.ValidateScopes(scopes) || strings.Contains(scopes, "sentinel:all") {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are invalid"})
 		return
 	}
