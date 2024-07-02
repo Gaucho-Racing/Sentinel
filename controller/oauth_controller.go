@@ -109,6 +109,7 @@ func OauthAuthorize(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are invalid"})
 		return
 	}
+	prompt := c.Query("prompt")
 	// Handle Validate Request
 	if c.Request.Method == "GET" {
 		c.JSON(http.StatusOK, gin.H{

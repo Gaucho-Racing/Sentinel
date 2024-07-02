@@ -2,6 +2,17 @@ package model
 
 import "time"
 
+var ValidOauthScopes = []string{
+	"read:user",
+	"write:user",
+	"read:drive",
+	"write:drive",
+	"read:github",
+	"write:github",
+	"read:applications",
+	"sentinel:all",
+}
+
 type ClientApplication struct {
 	ID           string    `gorm:"primaryKey" json:"id"`
 	UserID       string    `json:"user_id"`
@@ -36,15 +47,4 @@ type AuthorizationCode struct {
 
 func (AuthorizationCode) TableName() string {
 	return "authorization_code"
-}
-
-var ValidOauthScopes = []string{
-	"read:user",
-	"write:user",
-	"read:drive",
-	"write:drive",
-	"read:github",
-	"write:github",
-	"read:applications",
-	"sentinel:all",
 }
