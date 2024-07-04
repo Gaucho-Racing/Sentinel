@@ -14,6 +14,9 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
 import { checkCredentials } from "@/lib/auth";
+import { ClientApplication, initClientApplication } from "@/models/application";
+import { OutlineButton } from "@/components/ui/outline-button";
+import { Button } from "@/components/ui/button";
 
 function AuthorizePage() {
   const navigate = useNavigate();
@@ -23,6 +26,10 @@ function AuthorizePage() {
   const [loginLoading, setLoginLoading] = React.useState(true);
   const [errorMsg, setErrorMsg] = React.useState("");
   const [promptRequired, setPromptRequired] = React.useState(false);
+
+  const [application, setApplication] = React.useState<ClientApplication>(
+    initClientApplication,
+  );
 
   React.useEffect(() => {
     checkAuth().then(() => {
@@ -50,8 +57,8 @@ function AuthorizePage() {
   };
 
   const validate = async () => {
+    setLoginLoading(true);
     const url = window.location.href;
-    console.log(url);
     try {
       const response = await axios.get(
         `${SENTINEL_API_URL}/oauth/authorize${url.split("oauth/authorize")[1]}`,
@@ -63,7 +70,14 @@ function AuthorizePage() {
       );
       if (response.status == 200) {
         setErrorMsg("");
-        console.log(response.data);
+        getApplication(response.data.client_id);
+        if (response.data.prompt == "consent") {
+          setLoginLoading(false);
+          setPromptRequired(true);
+        } else if (response.data.prompt == "none") {
+          setPromptRequired(false);
+          authorize();
+        }
       }
     } catch (error: any) {
       toast(getAxiosErrorMessage(error));
@@ -72,15 +86,49 @@ function AuthorizePage() {
     }
   };
 
-  const authorize = async () => {};
-
-  const handleRedirect = () => {
-    const route = queryParameters.get("state");
-    if (route) {
-      navigate(route);
-    } else {
-      navigate("/");
+  const authorize = async () => {
+    setLoginLoading(true);
+    const url = window.location.href;
+    try {
+      const response = await axios.post(
+        `${SENTINEL_API_URL}/oauth/authorize${url.split("oauth/authorize")[1]}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      if (response.status == 200) {
+        handleRedirect(response.data.code);
+      }
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+      setLoginLoading(false);
+      setErrorMsg(error.response.data.message);
     }
+  };
+
+  const getApplication = async (clientId: string) => {
+    try {
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/applications/${clientId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        },
+      );
+      setApplication(response.data);
+    } catch (error: any) {
+      toast(getAxiosErrorMessage(error));
+    }
+  };
+
+  const handleRedirect = (code: string) => {
+    const state = queryParameters.get("state");
+    const redirectUri = queryParameters.get("redirect_uri");
+    window.location.href = redirectUri + `?code=${code}&state=${state}`;
   };
 
   const LoadingCard = () => {
@@ -126,30 +174,43 @@ function AuthorizePage() {
             className="mx-auto h-20 md:h-24"
           />
           <h1 className="mt-6 text-2xl font-semibold tracking-tight">
-            No Account Found
+            Login to {application.name}
           </h1>
           <p className="mt-4">
-            No Sentinel account found. Make sure that you have joined the Gaucho
-            Racing Discord server and verified your account.
+            {application.name} would like to access your Sentinel account.
           </p>
-          <p className="mt-4">
-            You can verify your account using the <code>!verify</code> command
-            in the <strong>#verification</strong> channel.
-            <br />
-            <br />
-            Example: <code>{`!verify <first name> <last name> <email>`}</code>
-          </p>
-          <button
-            className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
-            onClick={() => {
-              window.location.href = DISCORD_SERVER_INVITE_URL;
-            }}
-          >
-            <span className="flex items-center justify-center">
-              <FontAwesomeIcon icon={faDiscord} className="me-2" />
-              Join the Discord
-            </span>
-          </button>
+          <p className="mt-4">Requested Scopes:</p>
+          <div className="mt-2 flex flex-wrap">
+            {queryParameters
+              .get("scope")
+              ?.split(" ")
+              .map((scope) => (
+                <div key={scope} className="mx-1 mb-2">
+                  <Card className="rounded-sm px-1 text-gray-400">
+                    <code className="">{scope}</code>
+                  </Card>
+                </div>
+              ))}
+          </div>
+          <div className="mt-4 flex w-full items-center justify-end">
+            <Button
+              className="mr-2"
+              variant={"ghost"}
+              onClick={() => {
+                navigate("/");
+              }}
+            >
+              Cancel
+            </Button>
+            <OutlineButton
+              className=""
+              onClick={() => {
+                authorize();
+              }}
+            >
+              Authorize
+            </OutlineButton>
+          </div>
         </div>
       </Card>
     );
