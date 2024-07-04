@@ -36,6 +36,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/auth/login/discord", LoginDiscord)
 	router.GET("/oauth/authorize", OauthAuthorize)
 	router.POST("/oauth/authorize", OauthAuthorize)
+	router.POST("/oauth/token", OauthExchange)
 	router.GET("/applications", GetAllClientApplications)
 	router.GET("/applications/:appID", GetClientApplicationByID)
 	router.POST("/applications", CreateClientApplication)
@@ -60,20 +61,23 @@ func InitializeRoutes(router *gin.Engine) {
 func AuthChecker() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.GetHeader("Authorization") != "" {
-			claims, err := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
-			if err != nil {
-				utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
-				c.AbortWithStatusJSON(401, gin.H{"message": err.Error()})
-			} else {
-				utils.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Email)
-				utils.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
-				utils.SugarLogger.Infof("↳ Scopes: %s", claims.Scopes)
-				utils.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
-				utils.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
-				c.Set("Auth-UserID", claims.ID)
-				c.Set("Auth-Email", claims.Email)
-				c.Set("Auth-Audience", claims.Audience[0])
-				c.Set("Auth-Scopes", claims.Scopes)
+			authHeader := c.GetHeader("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				claims, err := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
+				if err != nil {
+					utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
+					c.AbortWithStatusJSON(401, gin.H{"message": err.Error()})
+				} else {
+					utils.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Email)
+					utils.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
+					utils.SugarLogger.Infof("↳ Scopes: %s", claims.Scopes)
+					utils.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
+					utils.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
+					c.Set("Auth-UserID", claims.ID)
+					c.Set("Auth-Email", claims.Email)
+					c.Set("Auth-Audience", claims.Audience[0])
+					c.Set("Auth-Scopes", claims.Scopes)
+				}
 			}
 		}
 		c.Next()

@@ -111,15 +111,18 @@ func OauthAuthorize(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are invalid"})
 		return
 	}
-	prompt := true
-	silent := c.Query("silent")
-	if silent == "true" {
+	prompt := c.Query("prompt")
+	if prompt == "none" {
 		// check if user previously authorized this client
 		lastLogin := service.GetLastLoginForUserToDestinationWithScopes(GetRequestUserID(c), clientID, scopes)
 		if lastLogin.ID != "" && time.Since(lastLogin.CreatedAt).Hours() < 24*7 {
 			utils.SugarLogger.Infof("User %s previously authorized client %s with scopes %s", GetRequestUserID(c), clientID, scopes)
-			prompt = false
+			prompt = "none"
+		} else {
+			prompt = "consent"
 		}
+	} else {
+		prompt = "consent"
 	}
 	// Handle Validate Request
 	if c.Request.Method == "GET" {
@@ -132,7 +135,7 @@ func OauthAuthorize(c *gin.Context) {
 		return
 	}
 	// Handle Authorize Request
-	code, err := service.GenerateAuthorizationCode(GetRequestUserID(c), clientID, scopes)
+	code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scopes)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -145,4 +148,85 @@ func OauthAuthorize(c *gin.Context) {
 		LoginType:   "oauth",
 	})
 	c.JSON(http.StatusOK, code)
+}
+
+func OauthExchange(c *gin.Context) {
+	// Check for Basic Auth
+	clientID, clientSecret, hasAuth := c.Request.BasicAuth()
+	if hasAuth {
+		// Validate client credentials
+		println(clientID, clientSecret)
+		client := service.GetClientApplicationByID(clientID)
+		if client.ID == "" || client.Secret != clientSecret {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid client credentials"})
+			return
+		}
+	} else {
+		// Check for client_id and client_secret in form
+		clientID = c.PostForm("client_id")
+		clientSecret = c.PostForm("client_secret")
+		if clientID == "" || clientSecret == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"message": "client_id and client_secret are required"})
+			return
+		}
+		// Validate client credentials
+		client := service.GetClientApplicationByID(clientID)
+		if client.ID == "" || client.Secret != clientSecret {
+			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid client credentials"})
+			return
+		}
+	}
+
+	clientID = c.PostForm("client_id")
+	if clientID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "client_id is required"})
+		return
+	}
+	client := service.GetClientApplicationByID(clientID)
+	if client.ID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "no client application found with id: " + clientID})
+		return
+	}
+	redirectUri := c.PostForm("redirect_uri")
+	if !service.ValidateRedirectURI(redirectUri, clientID) {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "redirect_uri is invalid"})
+		return
+	}
+	code := c.PostForm("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "code is required"})
+		return
+	}
+	grantType := c.PostForm("grant_type")
+	if grantType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "grant_type is required"})
+		return
+	}
+	if grantType == "authorization_code" {
+		handleAuthorizationCodeExchange(c)
+		return
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "unsupported grant_type"})
+	}
+}
+
+func handleAuthorizationCodeExchange(c *gin.Context) {
+	code := c.PostForm("code")
+	authCode, err := service.VerifyAuthorizationCode(code)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+	token, err := service.GenerateJWT(authCode.UserID, service.GetUserByID(authCode.UserID).Email, authCode.Scope, authCode.ClientID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	response := model.TokenResponse{
+		AccessToken: token,
+		TokenType:   "Bearer",
+		ExpiresIn:   24 * 60 * 60,
+		Scope:       authCode.Scope,
+	}
+	c.JSON(http.StatusOK, response)
 }

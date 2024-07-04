@@ -150,10 +150,11 @@ func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {
 	var authCode model.AuthorizationCode
 	database.DB.Where("code = ?", code).First(&authCode)
 	if authCode.Code == "" {
-		return model.AuthorizationCode{}, fmt.Errorf("authorization code not found")
+		return model.AuthorizationCode{}, fmt.Errorf("invalid code")
 	}
 	if time.Now().After(authCode.ExpiresAt) {
-		return model.AuthorizationCode{}, fmt.Errorf("authorization code has expired")
+		return model.AuthorizationCode{}, fmt.Errorf("invalid code")
 	}
+	database.DB.Delete(&authCode)
 	return authCode, nil
 }
