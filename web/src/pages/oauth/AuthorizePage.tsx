@@ -1,18 +1,11 @@
 import React from "react";
 import axios from "axios";
-import {
-  DISCORD_CLIENT_ID,
-  DISCORD_OAUTH_BASE_URL,
-  DISCORD_SERVER_INVITE_URL,
-  SENTINEL_API_URL,
-} from "@/consts/config";
+import { SENTINEL_API_URL } from "@/consts/config";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faDiscord } from "@fortawesome/free-brands-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import { ClientApplication, initClientApplication } from "@/models/application";
 import { OutlineButton } from "@/components/ui/outline-button";

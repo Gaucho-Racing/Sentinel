@@ -132,7 +132,7 @@ function LoginPage() {
                 <Separator className="m-4 w-8 md:w-32" />
               </div>
               <button
-                className="bg-discord-blurple hover:bg-discord-blurple/90 mt-4 w-full rounded-md p-2 font-medium text-white transition-colors"
+                className="mt-4 w-full rounded-md bg-discord-blurple p-2 font-medium text-white transition-colors hover:bg-discord-blurple/90"
                 onClick={() => {
                   const redirect_url =
                     window.location.origin + "/auth/login/discord";
