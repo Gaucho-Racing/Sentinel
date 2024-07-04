@@ -11,6 +11,7 @@ import LoginDiscordPage from "@/pages/auth/LoginDiscordPage.tsx";
 import LoginPage from "@/pages/auth/LoginPage.tsx";
 import EditUserPage from "@/pages/users/EditUserPage.tsx";
 import ApplicationsPage from "@/pages/applications/ApplicationsPage.tsx";
+import AuthorizePage from "@/pages/oauth/AuthorizePage.tsx";
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
   {
     path: "/auth/login/discord",
     element: <LoginDiscordPage />,
+  },
+  {
+    path: "/oauth/authorize",
+    element: <AuthorizePage />,
   },
   {
     path: "/users/:id/edit",

@@ -70,13 +70,13 @@ func AuthChecker() gin.HandlerFunc {
 				} else {
 					utils.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Email)
 					utils.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
-					utils.SugarLogger.Infof("↳ Scopes: %s", claims.Scopes)
+					utils.SugarLogger.Infof("↳ Scope: %s", claims.Scope)
 					utils.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
 					utils.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
 					c.Set("Auth-UserID", claims.ID)
 					c.Set("Auth-Email", claims.Email)
 					c.Set("Auth-Audience", claims.Audience[0])
-					c.Set("Auth-Scopes", claims.Scopes)
+					c.Set("Auth-Scope", claims.Scope)
 				}
 			}
 		}
@@ -164,7 +164,7 @@ func GetRequestUserEmail(c *gin.Context) string {
 }
 
 func GetRequestTokenScopes(c *gin.Context) string {
-	scopes, exists := c.Get("Auth-Scopes")
+	scopes, exists := c.Get("Auth-Scope")
 	if !exists {
 		return ""
 	}

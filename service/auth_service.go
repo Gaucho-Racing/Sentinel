@@ -85,11 +85,11 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func GenerateJWT(id string, email string, scopes string, client_id string) (string, error) {
+func GenerateJWT(id string, email string, scope string, client_id string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &model.AuthClaims{
-		Email:  email,
-		Scopes: scopes,
+		Email: email,
+		Scope: scope,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        id,
 			Issuer:    "sso.gauchoracing.com",
@@ -117,8 +117,8 @@ func ValidateJWT(token string) (*model.AuthClaims, error) {
 		utils.SugarLogger.Errorln(err.Error())
 		return nil, err
 	}
-	if !ValidateScopes(claims.Scopes) {
-		return nil, fmt.Errorf("token has invalid scopes")
+	if !ValidateScopes(claims.Scope) {
+		return nil, fmt.Errorf("token has invalid scope")
 	}
 	if len(claims.Audience) == 0 {
 		return nil, fmt.Errorf("token has invalid audience")
@@ -128,7 +128,7 @@ func ValidateJWT(token string) (*model.AuthClaims, error) {
 			return nil, fmt.Errorf("token has invalid audience")
 		}
 	}
-	if claims.Audience[0] != "sentinel" && strings.Contains(claims.Scopes, "sentinel:all") {
+	if claims.Audience[0] != "sentinel" && strings.Contains(claims.Scope, "sentinel:all") {
 		return nil, fmt.Errorf("token has unauthorized scope")
 	}
 	return claims, nil

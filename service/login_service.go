@@ -38,9 +38,9 @@ func GetLastNLoginsForDestination(destination string, n int) []model.UserLogin {
 	return logins
 }
 
-func GetLastLoginForUserToDestinationWithScopes(userID string, destination string, scopes string) model.UserLogin {
+func GetLastLoginForUserToDestinationWithScopes(userID string, destination string, scope string) model.UserLogin {
 	var login model.UserLogin
-	database.DB.Where("user_id = ? AND destination = ? AND scopes = ?", userID, destination, scopes).Order("created_at DESC").First(&login)
+	database.DB.Where("user_id = ? AND destination = ? AND scope = ?", userID, destination, scope).Order("created_at DESC").First(&login)
 	return login
 }
 

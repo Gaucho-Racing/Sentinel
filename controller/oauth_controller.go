@@ -103,20 +103,20 @@ func OauthAuthorize(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "redirect_uri is invalid"})
 		return
 	}
-	scopes := c.Query("scopes")
-	if scopes == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are required"})
+	scope := c.Query("scope")
+	if scope == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "scope is required"})
 		return
-	} else if !service.ValidateScopes(scopes) || strings.Contains(scopes, "sentinel:all") {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "scopes are invalid"})
+	} else if !service.ValidateScopes(scope) || strings.Contains(scope, "sentinel:all") {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "scope is invalid"})
 		return
 	}
 	prompt := c.Query("prompt")
 	if prompt == "none" {
 		// check if user previously authorized this client
-		lastLogin := service.GetLastLoginForUserToDestinationWithScopes(GetRequestUserID(c), clientID, scopes)
+		lastLogin := service.GetLastLoginForUserToDestinationWithScopes(GetRequestUserID(c), clientID, scope)
 		if lastLogin.ID != "" && time.Since(lastLogin.CreatedAt).Hours() < 24*7 {
-			utils.SugarLogger.Infof("User %s previously authorized client %s with scopes %s", GetRequestUserID(c), clientID, scopes)
+			utils.SugarLogger.Infof("User %s previously authorized client %s with scope %s", GetRequestUserID(c), clientID, scope)
 			prompt = "none"
 		} else {
 			prompt = "consent"
@@ -129,13 +129,13 @@ func OauthAuthorize(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"client_id":    clientID,
 			"redirect_uri": redirectUri,
-			"scopes":       scopes,
+			"scope":        scope,
 			"prompt":       prompt,
 		})
 		return
 	}
 	// Handle Authorize Request
-	code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scopes)
+	code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scope)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -143,7 +143,7 @@ func OauthAuthorize(c *gin.Context) {
 	go service.CreateLogin(model.UserLogin{
 		UserID:      GetRequestUserID(c),
 		Destination: clientID,
-		Scopes:      scopes,
+		Scope:       scope,
 		IPAddress:   c.ClientIP(),
 		LoginType:   "oauth",
 	})

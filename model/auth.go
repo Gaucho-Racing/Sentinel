@@ -7,8 +7,8 @@ import (
 )
 
 type AuthClaims struct {
-	Email  string `json:"email"`
-	Scopes string `json:"scopes"`
+	Email string `json:"email"`
+	Scope string `json:"scope"`
 	jwt.RegisteredClaims
 }
 

@@ -49,7 +49,7 @@ func LoginAccount(c *gin.Context) {
 	go service.CreateLogin(model.UserLogin{
 		UserID:      GetRequestUserID(c),
 		Destination: "sentinel",
-		Scopes:      "sentinel:all",
+		Scope:       "sentinel:all",
 		IPAddress:   c.ClientIP(),
 		LoginType:   "email",
 	})
@@ -80,7 +80,7 @@ func LoginDiscord(c *gin.Context) {
 	go service.CreateLogin(model.UserLogin{
 		UserID:      GetRequestUserID(c),
 		Destination: "sentinel",
-		Scopes:      "sentinel:all",
+		Scope:       "sentinel:all",
 		IPAddress:   c.ClientIP(),
 		LoginType:   "discord",
 	})
