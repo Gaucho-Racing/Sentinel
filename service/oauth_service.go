@@ -120,8 +120,8 @@ func ValidateRedirectURI(uri string, clientID string) bool {
 	return contains(validUris, uri)
 }
 
-func ValidateScopes(scopes string) bool {
-	inputScopes := strings.Split(scopes, "+")
+func ValidateScope(scopes string) bool {
+	inputScopes := strings.Split(scopes, " ")
 	for _, scope := range inputScopes {
 		if !contains(model.ValidOauthScopes, scope) {
 			return false

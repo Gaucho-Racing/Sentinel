@@ -107,7 +107,7 @@ func OauthAuthorize(c *gin.Context) {
 	if scope == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scope is required"})
 		return
-	} else if !service.ValidateScopes(scope) || strings.Contains(scope, "sentinel:all") {
+	} else if !service.ValidateScope(scope) || strings.Contains(scope, "sentinel:all") {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scope is invalid"})
 		return
 	}

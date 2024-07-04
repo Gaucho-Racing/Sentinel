@@ -117,7 +117,7 @@ func ValidateJWT(token string) (*model.AuthClaims, error) {
 		utils.SugarLogger.Errorln(err.Error())
 		return nil, err
 	}
-	if !ValidateScopes(claims.Scope) {
+	if !ValidateScope(claims.Scope) {
 		return nil, fmt.Errorf("token has invalid scope")
 	}
 	if len(claims.Audience) == 0 {
