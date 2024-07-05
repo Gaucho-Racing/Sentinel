@@ -222,11 +222,22 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+	idToken := ""
+	if strings.Contains(authCode.Scope, "openid") {
+		idToken, err = service.GenerateJWT(authCode.UserID, service.GetUserByID(authCode.UserID).Email, authCode.Scope, authCode.ClientID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+	}
+	refreshToken := ""
 	response := model.TokenResponse{
-		AccessToken: token,
-		TokenType:   "Bearer",
-		ExpiresIn:   24 * 60 * 60,
-		Scope:       authCode.Scope,
+		IDToken:      idToken,
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    24 * 60 * 60,
+		Scope:        authCode.Scope,
 	}
 	c.JSON(http.StatusOK, response)
 }
