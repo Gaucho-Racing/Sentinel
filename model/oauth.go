@@ -1,6 +1,8 @@
 package model
 
-import "time"
+import (
+	"time"
+)
 
 var ValidOauthScopes = []string{
 	"read:user",
@@ -12,6 +14,19 @@ var ValidOauthScopes = []string{
 	"read:applications",
 	"read:logins",
 	"sentinel:all",
+	// openid scopes
+	"openid",
+	"sub",
+	"name",
+	"given_name",
+	"family_name",
+	"preferred_username",
+	"profile",
+	"picture",
+	"email",
+	"gender",
+	"birthdate",
+	"phone_number",
 }
 
 type ClientApplication struct {
@@ -51,8 +66,10 @@ func (AuthorizationCode) TableName() string {
 }
 
 type TokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-	Scope       string `json:"scope"`
+	IDToken      string `json:"id_token,omitempty"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	TokenType    string `json:"token_type,omitempty"`
+	ExpiresIn    int    `json:"expires_in,omitempty"`
+	Scope        string `json:"scope,omitempty"`
 }
