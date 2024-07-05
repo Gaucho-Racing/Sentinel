@@ -224,7 +224,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	}
 	idToken := ""
 	if strings.Contains(authCode.Scope, "openid") {
-		idToken, err = service.GenerateJWT(authCode.UserID, service.GetUserByID(authCode.UserID).Email, authCode.Scope, authCode.ClientID)
+		idToken, err = service.GenerateIDToken(authCode.UserID, service.GetUserByID(authCode.UserID).Email, authCode.Scope, authCode.ClientID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
