@@ -9,6 +9,8 @@ type User struct {
 	LastName              string    `json:"last_name"`
 	Email                 string    `json:"email"`
 	PhoneNumber           string    `json:"phone_number"`
+	Gender                string    `json:"gender"`
+	Birthday              string    `json:"birthday"`
 	GraduateLevel         string    `json:"graduate_level"`
 	GraduationYear        int       `json:"graduation_year"`
 	Major                 string    `json:"major"`
