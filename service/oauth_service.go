@@ -8,8 +8,6 @@ import (
 	"sentinel/utils"
 	"strings"
 	"time"
-
-	"github.com/golang-jwt/jwt/v4"
 )
 
 func GetAllClientApplications() []model.ClientApplication {
@@ -159,28 +157,4 @@ func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {
 	}
 	database.DB.Delete(&authCode)
 	return authCode, nil
-}
-
-func GenerateIDToken(id string, email string, scope string, client_id string) (string, error) {
-	app := GetClientApplicationByID(client_id)
-	expirationTime := time.Now().Add(24 * time.Hour)
-	claims := &model.AuthClaims{
-		Email: email,
-		Scope: scope,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        id,
-			Issuer:    "sso.gauchoracing.com",
-			Audience:  jwt.ClaimStrings{client_id},
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
-	signedToken, err := token.SignedString([]byte(app.Secret))
-	if err != nil {
-		utils.SugarLogger.Errorln(err.Error())
-		return "", err
-	}
-	return signedToken, nil
 }
