@@ -106,6 +106,7 @@ func CreateWikiUser(input model.WikiUserCreate) int {
 		utils.SugarLogger.Errorf("Error decoding response: %v", err)
 		return 0
 	}
+	utils.SugarLogger.Infof("Created wiki user: %s (%s)", user.Name, user.Email)
 	return user.ID
 }
 

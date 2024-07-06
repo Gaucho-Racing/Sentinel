@@ -16,6 +16,8 @@ import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faArrowUpRightFromSquare,
+  faBook,
   faCheckCircle,
   faLock,
   faUser,
@@ -42,9 +44,6 @@ function App() {
 
   const [loginLoading, setLoginLoading] = React.useState(false);
   const [loginAccess, setLoginAccess] = React.useState<any>({});
-
-  const [wikiLoading, setWikiLoading] = React.useState(false);
-  const [wikiAccess, setWikiAccess] = React.useState<any>({});
 
   const [driveLoading, setDriveLoading] = React.useState(false);
   const [driveAccess, setDriveAccess] = React.useState<any>({});
@@ -437,14 +436,14 @@ function App() {
     return (
       <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
         <div className="flex items-center justify-start">
-          <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
+          <FontAwesomeIcon icon={faBook} className="h-5 w-5" />
           <h3 className="ml-4">Wiki</h3>
         </div>
         <Separator className="my-2" />
         <div className="flex items-center justify-start">
           <div className="flex flex-col">
             {loginAccess.password != null ? (
-              <p>Email / Password</p>
+              <p>Login with your Sentinel account.</p>
             ) : (
               <p>Please set a password for your sentinel account first!</p>
             )}
@@ -466,12 +465,18 @@ function App() {
           ) : (
             <div>
               {loginAccess.password != null ? (
-                <Button className="ml-auto" variant={"secondary"}>
+                <OutlineButton
+                  className="ml-auto"
+                  onClick={() => window.open(WIKI_URL, "_blank")}
+                >
                   <span>
-                    <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                    <FontAwesomeIcon
+                      icon={faArrowUpRightFromSquare}
+                      className="me-2"
+                    />
                   </span>
-                  Access Granted
-                </Button>
+                  Launch Wiki
+                </OutlineButton>
               ) : (
                 <></>
               )}
