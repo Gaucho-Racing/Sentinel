@@ -285,7 +285,7 @@ func SendUserWelcomeMessage(userID string) {
 		utils.SugarLogger.Errorln("User not found")
 		return
 	}
-	message := fmt.Sprintf("Welcome to Gaucho Racing, %s! We're super excited to have you on board.\n\nPlease take a moment to complete your Sentinel profile at https://sso.gauchoracing.com. This is where you will be able to access all our internal tools and resources.\n\nHere are some important links:\n**Website:** <https://gauchoracing.com>\n**GitHub:** <https://github.com/gaucho-racing>\n**Google Drive:** <https://drive.gauchoracing.com>\n**Wiki:** <https://wiki.gauchoracing.com>\n\nIf you have any questions, feel free to ask in <#756738476887638111> or DM an officer or lead.", user.FirstName)
+	message := fmt.Sprintf("Welcome to Gaucho Racing, %s! We're super excited to have you on board.\n\nPlease take a moment to complete your Sentinel profile at https://sso.gauchoracing.com. This is where you will be able to access all our internal tools and resources. You should have been added to our shared drive already and you'll need to set a password in Sentinel to gain access to our wiki.\n\nHere are some important links:\n**Website:** <https://gauchoracing.com>\n**Wiki:** <https://wiki.gauchoracing.com>\n**GitHub:** <https://github.com/gaucho-racing>\n**Google Drive:** <https://drive.gauchoracing.com>\n\nIf you have any questions, feel free to ask in <#756738476887638111> or DM an officer or lead.", user.FirstName)
 	SendDirectMessage(userID, message)
 }
 
@@ -322,5 +322,5 @@ func FindAllNonVerifiedUsers() {
 	utils.SugarLogger.Infof("Total Members: %d", guildMembers)
 	utils.SugarLogger.Infof("Members Role: %d", memberMembers)
 	utils.SugarLogger.Infof("Verified Members: %d", verifiedMembers)
-	SendDirectMessage("348220961155448833", "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before July 8th to avoid any disruption to your server access. You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
+	SendDirectMessage("348220961155448833", "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before July 12th to avoid any disruption to your server access.  You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
 }
