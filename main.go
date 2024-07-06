@@ -23,6 +23,7 @@ func main() {
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
 	// service.FindAllNonVerifiedUsers()
+	service.TestSheetEdit()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

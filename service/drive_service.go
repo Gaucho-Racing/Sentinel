@@ -7,13 +7,16 @@ import (
 	"log"
 	"sentinel/config"
 	"sentinel/utils"
+	"strings"
 
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
 	"google.golang.org/api/option"
+	"google.golang.org/api/sheets/v4"
 )
 
 var DriveClient *drive.Service
+var SheetClient *sheets.Service
 
 func InitializeDrive() {
 	ctx := context.Background()
@@ -31,6 +34,12 @@ func InitializeDrive() {
 		log.Fatalf("Unable to create Drive service: %v", err)
 	}
 	DriveClient = srv
+
+	srv2, err := sheets.NewService(ctx, option.WithCredentials(creds))
+	if err != nil {
+		log.Fatalf("Unable to create Sheets service: %v", err)
+	}
+	SheetClient = srv2
 }
 
 // GetDriveMemberPermission returns the permissions of the user in the shared drive.
@@ -109,4 +118,67 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	}
 	utils.SugarLogger.Infof("Permission ID: %s", resp.Id)
 	return nil
+}
+
+func TestSheetEdit() {
+	readRange := "A1:K4"
+	resp, err := SheetClient.Spreadsheets.Values.Get(config.MemberDirectorySheetID, readRange).Do()
+	if err != nil {
+		utils.SugarLogger.Errorf("Unable to retrieve data from sheet: %v", err)
+		return
+	}
+	if len(resp.Values) == 0 {
+		utils.SugarLogger.Infoln("No data found.")
+	} else {
+		for _, row := range resp.Values {
+			utils.SugarLogger.Infof("%v\n", row)
+		}
+	}
+	// Delete all rows after 5
+	clearRange := "A6:O"
+	clearRequest := &sheets.ClearValuesRequest{}
+	_, err = SheetClient.Spreadsheets.Values.Clear(config.MemberDirectorySheetID, clearRange, clearRequest).Do()
+	if err != nil {
+		utils.SugarLogger.Errorf("Unable to clear data from sheet: %v", err)
+		return
+	}
+	utils.SugarLogger.Infoln("Rows after 5 have been deleted successfully.")
+
+	users := GetAllUsers()
+	for i, user := range users {
+		subteams := []string{}
+		for _, subteam := range user.Subteams {
+			subteams = append(subteams, subteam.Name)
+		}
+		subteamString := strings.Join(subteams, ",")
+		roleString := strings.Join(user.Roles, ",")
+		values := []interface{}{
+			user.ID,
+			user.FirstName,
+			user.LastName,
+			user.Email,
+			user.PhoneNumber,
+			user.Gender,
+			user.Birthday,
+			user.GraduateLevel,
+			user.GraduationYear,
+			user.Major,
+			user.ShirtSize,
+			user.JacketSize,
+			user.SAERegistrationNumber,
+			subteamString,
+			roleString,
+		}
+		writeRange := fmt.Sprintf("A%d", i+6)
+		writeRequest := &sheets.ValueRange{
+			Values: [][]interface{}{values},
+		}
+		_, err = SheetClient.Spreadsheets.Values.Update(config.MemberDirectorySheetID, writeRange, writeRequest).
+			ValueInputOption("RAW").
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to write data to sheet: %v", err)
+			return
+		}
+	}
 }
