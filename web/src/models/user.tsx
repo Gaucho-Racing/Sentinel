@@ -4,6 +4,8 @@ export interface User {
   last_name: string;
   email: string;
   phone_number: string;
+  gender: string;
+  birthday: string;
   graduate_level: string;
   graduation_year: number;
   major: string;
@@ -30,6 +32,8 @@ export const initUser: User = {
   last_name: "",
   email: "",
   phone_number: "",
+  gender: "",
+  birthday: "",
   graduate_level: "",
   graduation_year: 0,
   major: "",
@@ -50,6 +54,8 @@ export const setUser = (user: User, data: User) => {
   user.last_name = data.last_name;
   user.email = data.email;
   user.phone_number = data.phone_number;
+  user.gender = data.gender;
+  user.birthday = data.birthday;
   user.graduate_level = data.graduate_level;
   user.graduation_year = data.graduation_year;
   user.major = data.major;

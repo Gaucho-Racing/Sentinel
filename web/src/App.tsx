@@ -292,6 +292,8 @@ function App() {
         </div>
         <ProfileField label="ID" value={currentUser.id} />
         <ProfileField label="Phone Number" value={currentUser.phone_number} />
+        <ProfileField label="Gender" value={currentUser.gender} />
+        <ProfileField label="Birthday" value={currentUser.birthday} />
         <ProfileField
           label="Graduate Level"
           value={currentUser.graduate_level}

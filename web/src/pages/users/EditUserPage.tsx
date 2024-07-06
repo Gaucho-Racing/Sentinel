@@ -4,7 +4,6 @@ import { SENTINEL_API_URL, currentUser } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useParams } from "react-router-dom";
@@ -24,6 +23,23 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { AuthLoading } from "@/components/AuthLoading";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { notify } from "@/lib/notify";
 
 function EditUserPage() {
   const navigate = useNavigate();
@@ -34,6 +50,8 @@ function EditUserPage() {
   const [canEdit, setCanEdit] = React.useState(false);
   const [editUser, setEditUser] = React.useState<User>(initUser);
   const [userLoading, setUserLoading] = React.useState(false);
+
+  const [date, setDate] = React.useState<Date>();
 
   React.useEffect(() => {
     checkAuth().then(() => {
@@ -71,9 +89,13 @@ function EditUserPage() {
       });
       if (response.status == 200) {
         setEditUser(response.data);
+        if (response.data.birthday) {
+          const date = new Date(response.data.birthday);
+          setDate(date);
+        }
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
       setEditUser(initUser);
     }
     setUserLoading(false);
@@ -81,6 +103,14 @@ function EditUserPage() {
 
   const saveUser = async () => {
     setUserLoading(true);
+    if (date) {
+      const dateString = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
+      editUser.birthday = dateString;
+    }
     try {
       const response = await axios.post(
         `${SENTINEL_API_URL}/users/${id}`,
@@ -94,8 +124,12 @@ function EditUserPage() {
       if (response.status == 200) {
         setEditUser(response.data);
       }
+      notify.success(
+        "Changes saved",
+        "Your profile has successfully been updated.",
+      );
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     setUserLoading(false);
   };
@@ -161,7 +195,6 @@ function EditUserPage() {
                       onClick={async () => {
                         await saveUser();
                         setUser(currentUser, editUser);
-                        navigate(`/`);
                       }}
                     >
                       {userLoading && <Loader2 className="mr-2 animate-spin" />}
@@ -229,6 +262,128 @@ function EditUserPage() {
                         });
                       }}
                     />
+                  </div>
+                  <div className="mx-2 mt-2 flex items-center">
+                    <div className="mr-2 w-2/3 font-semibold">Gender:</div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button className="w-full" variant="outline">
+                          {editUser.gender}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[250px]">
+                        <DropdownMenuRadioGroup
+                          value={editUser.gender}
+                          onValueChange={(value) => {
+                            setEditUser({
+                              ...editUser,
+                              gender: value,
+                            });
+                          }}
+                        >
+                          <DropdownMenuRadioItem value="Male">
+                            Male
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="Female">
+                            Female
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value="Other">
+                            Other
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="mx-2 mt-2 flex items-center">
+                    <div className="mr-2 w-2/3 font-semibold">Birthday:</div>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-normal",
+                            !date && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date ? (
+                            format(date, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto bg-background p-0">
+                        <div className="flex justify-between">
+                          <div className="w-full p-2">
+                            <Select
+                              value={date ? date.getFullYear().toString() : ""}
+                              onValueChange={(value) => {
+                                const newDate = new Date(date || new Date());
+                                newDate.setFullYear(parseInt(value));
+                                setDate(newDate);
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select year" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 100 }, (_, i) => {
+                                  const year = new Date().getFullYear() - i;
+                                  return (
+                                    <SelectItem
+                                      key={year}
+                                      value={year.toString()}
+                                    >
+                                      {year}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="w-full p-2">
+                            <Select
+                              value={
+                                date ? (date.getMonth() + 1).toString() : ""
+                              }
+                              onValueChange={(value) => {
+                                const newDate = new Date(date || new Date());
+                                newDate.setMonth(parseInt(value) - 1);
+                                setDate(newDate);
+                              }}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Select month" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: 12 }, (_, i) => {
+                                  const month = i + 1;
+                                  return (
+                                    <SelectItem
+                                      key={month}
+                                      value={month.toString()}
+                                    >
+                                      {new Date(0, i).toLocaleString(
+                                        "default",
+                                        { month: "long" },
+                                      )}
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <Calendar
+                          mode="single"
+                          selected={date}
+                          onSelect={setDate}
+                          month={date || new Date()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                   <div className="mx-2 mt-2 flex items-center">
                     <div className="mr-2 w-2/3 font-semibold">
