@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
@@ -31,6 +30,7 @@ import {
 import { ClientApplication } from "@/models/application";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { AuthLoading } from "@/components/AuthLoading";
+import { notify } from "@/lib/notify";
 
 function App() {
   const navigate = useNavigate();
@@ -103,7 +103,7 @@ function App() {
       setLoginAccess(response.data);
     } catch (error: any) {
       if (!getAxiosErrorMessage(error).includes("No authentication found")) {
-        toast(getAxiosErrorMessage(error));
+        notify.error(getAxiosErrorMessage(error));
       }
     }
     setLoginLoading(false);
@@ -130,7 +130,7 @@ function App() {
         checkCredentials();
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     checkLoginAccess();
   };
@@ -149,7 +149,7 @@ function App() {
       setDriveAccess(response.data);
     } catch (error: any) {
       if (!getAxiosErrorMessage(error).includes("No permissions found")) {
-        toast(getAxiosErrorMessage(error));
+        notify.error(getAxiosErrorMessage(error));
       }
     }
     setDriveLoading(false);
@@ -169,7 +169,7 @@ function App() {
       );
       setDriveAccess(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     checkDriveAccess();
   };
@@ -187,7 +187,7 @@ function App() {
       );
       setDriveAccess(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     checkDriveAccess();
   };
@@ -206,7 +206,7 @@ function App() {
       setGithubAccess(response.data);
     } catch (error: any) {
       if (!getAxiosErrorMessage(error).includes("user does not have")) {
-        toast(getAxiosErrorMessage(error));
+        notify.error(getAxiosErrorMessage(error));
       }
     }
     setGithubLoading(false);
@@ -228,7 +228,7 @@ function App() {
       );
       setGithubAccess(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     checkGithubAccess();
   };
@@ -246,7 +246,7 @@ function App() {
       );
       setApplications(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     setApplicationsLoading(false);
   };

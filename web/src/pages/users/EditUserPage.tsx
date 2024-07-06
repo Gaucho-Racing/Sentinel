@@ -4,7 +4,6 @@ import { SENTINEL_API_URL, currentUser } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";

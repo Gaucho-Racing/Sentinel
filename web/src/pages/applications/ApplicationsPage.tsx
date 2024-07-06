@@ -4,7 +4,6 @@ import { SENTINEL_API_URL, currentUser } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useParams } from "react-router-dom";
 import { checkCredentials } from "@/lib/auth";
@@ -29,6 +28,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { faAppStore } from "@fortawesome/free-brands-svg-icons";
+import { notify } from "@/lib/notify";
 
 function ApplicationsPage() {
   const navigate = useNavigate();
@@ -104,7 +104,7 @@ function ApplicationsPage() {
         setCanEdit(false);
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
       navigate("/applications");
     }
     setSelectedApplicationLoading(false);
@@ -122,7 +122,7 @@ function ApplicationsPage() {
       });
       setApplications(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     setApplicationsLoading(false);
   };
@@ -138,14 +138,14 @@ function ApplicationsPage() {
       });
       setSelectedOwner(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     setSelectedApplicationLoading(false);
   };
 
   const createApplication = async () => {
     if (selectedApplication.name.trim() == "") {
-      toast("You must specify a name for your application.");
+      notify.error("You must specify a name for your application.");
       return;
     }
     const cleanedApplication = {
@@ -168,9 +168,10 @@ function ApplicationsPage() {
       );
       if (response.status == 200) {
         navigate(`/applications/${response.data.id}`);
+        notify.success("Application updated successfully.");
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     getApplications();
   };
@@ -189,7 +190,7 @@ function ApplicationsPage() {
         navigate("/applications");
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     setSelectedApplication(initClientApplication);
     getApplications();

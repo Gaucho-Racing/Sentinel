@@ -3,13 +3,13 @@ import axios from "axios";
 import { SENTINEL_API_URL } from "@/consts/config";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { checkCredentials } from "@/lib/auth";
 import { ClientApplication, initClientApplication } from "@/models/application";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 
 function AuthorizePage() {
   const navigate = useNavigate();
@@ -37,7 +37,7 @@ function AuthorizePage() {
       console.log(response.data);
       setSentinelMsg(response.data.message);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
   };
 
@@ -73,7 +73,7 @@ function AuthorizePage() {
         }
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
       setLoginLoading(false);
       setErrorMsg(error.response.data.message);
     }
@@ -96,7 +96,7 @@ function AuthorizePage() {
         handleRedirect(response.data.code);
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
       setLoginLoading(false);
       setErrorMsg(error.response.data.message);
     }
@@ -114,7 +114,7 @@ function AuthorizePage() {
       );
       setApplication(response.data);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
   };
 

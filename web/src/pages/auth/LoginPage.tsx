@@ -8,7 +8,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +15,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import { OutlineButton } from "@/components/ui/outline-button";
+import { notify } from "@/lib/notify";
 
 function LoginPage() {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ function LoginPage() {
       console.log(response.data);
       setSentinelMsg(response.data.message);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
   };
 
@@ -63,7 +63,7 @@ function LoginPage() {
         checkAuth();
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
     setLoginLoading(false);
   };

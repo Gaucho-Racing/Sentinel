@@ -8,12 +8,12 @@ import {
 } from "@/consts/config";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
 import { checkCredentials } from "@/lib/auth";
+import { notify } from "@/lib/notify";
 
 function LoginDiscordPage() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ function LoginDiscordPage() {
       console.log(response.data);
       setSentinelMsg(response.data.message);
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
     }
   };
 
@@ -61,7 +61,7 @@ function LoginDiscordPage() {
         checkAuth();
       }
     } catch (error: any) {
-      toast(getAxiosErrorMessage(error));
+      notify.error(getAxiosErrorMessage(error));
       setLoginLoading(false);
       if (getAxiosErrorMessage(error).includes("No account with this")) {
         setAccountExists(false);
