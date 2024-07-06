@@ -120,24 +120,11 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	return nil
 }
 
-func TestSheetEdit() {
-	readRange := "A1:K4"
-	resp, err := SheetClient.Spreadsheets.Values.Get(config.MemberDirectorySheetID, readRange).Do()
-	if err != nil {
-		utils.SugarLogger.Errorf("Unable to retrieve data from sheet: %v", err)
-		return
-	}
-	if len(resp.Values) == 0 {
-		utils.SugarLogger.Infoln("No data found.")
-	} else {
-		for _, row := range resp.Values {
-			utils.SugarLogger.Infof("%v\n", row)
-		}
-	}
+func PopulateMemberDirectorySheet() {
 	// Delete all rows after 5
 	clearRange := "A6:O"
 	clearRequest := &sheets.ClearValuesRequest{}
-	_, err = SheetClient.Spreadsheets.Values.Clear(config.MemberDirectorySheetID, clearRange, clearRequest).Do()
+	_, err := SheetClient.Spreadsheets.Values.Clear(config.MemberDirectorySheetID, clearRange, clearRequest).Do()
 	if err != nil {
 		utils.SugarLogger.Errorf("Unable to clear data from sheet: %v", err)
 		return
@@ -150,8 +137,8 @@ func TestSheetEdit() {
 		for _, subteam := range user.Subteams {
 			subteams = append(subteams, subteam.Name)
 		}
-		subteamString := strings.Join(subteams, ",")
-		roleString := strings.Join(user.Roles, ",")
+		subteamString := strings.Join(subteams, ", ")
+		roleString := strings.Join(user.Roles, ", ")
 		values := []interface{}{
 			user.ID,
 			user.FirstName,

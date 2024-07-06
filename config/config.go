@@ -2,7 +2,7 @@ package config
 
 import "os"
 
-var Version = "2.2.6"
+var Version = "2.2.7"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
@@ -38,3 +38,4 @@ var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electron
 var AuthSigningKey = os.Getenv("AUTH_SIGNING_KEY")
 
 var MemberDirectorySheetID = "1reuLZox2daj8r2H-lZrwB4oFPYlJ6oC7983UUaZd6AY"
+var MemberDirectoryCron = os.Getenv("MEMBER_DIRECTORY_CRON")
