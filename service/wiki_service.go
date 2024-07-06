@@ -95,7 +95,7 @@ func CreateWikiUser(input model.WikiUserCreate) int {
 		return 0
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode != http.StatusOK {
 		utils.SugarLogger.Errorf("Unexpected status code: %d", resp.StatusCode)
 		return 0
 	}
