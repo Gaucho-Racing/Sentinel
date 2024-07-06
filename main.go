@@ -22,8 +22,8 @@ func main() {
 	service.InitializeSubteams()
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
-	// service.FindAllNonVerifiedUsers()
 	controller.RegisterMemberDirectoryCronJob()
+	// service.FindAllNonVerifiedUsers()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

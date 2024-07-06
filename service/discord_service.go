@@ -318,6 +318,7 @@ func FindAllNonVerifiedUsers() {
 	}
 	for _, id := range sendIds {
 		println(id)
+		// SendDirectMessage(id, "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before July 12th to avoid any disruption to your server access.  You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
 	}
 	utils.SugarLogger.Infof("Total Members: %d", guildMembers)
 	utils.SugarLogger.Infof("Members Role: %d", memberMembers)
