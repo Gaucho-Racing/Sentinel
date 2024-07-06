@@ -10,7 +10,6 @@ import (
 
 func RegisterAccount(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	var input model.UserAuth
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -22,6 +21,8 @@ func RegisterAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "No account with this email exists. Make sure to verify your account on the discord server first!"})
 		return
 	}
+	RequireAny(c, RequestUserHasID(c, user.ID), RequestUserHasRole(c, "d_admin"))
+
 	token, err := service.RegisterEmailPassword(input.Email, input.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
