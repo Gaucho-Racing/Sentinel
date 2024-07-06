@@ -73,22 +73,23 @@ func RemoveUserFromDrive(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User removed from drive"})
 }
 
-func RegisterMemberDirectoryCronJob() {
+func RegisterDriveCronJob() {
 	c := cron.New()
-	entryID, err := c.AddFunc(config.MemberDirectoryCron, func() {
-		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":alarm_clock: Starting member directory export CRON Job")
-		utils.SugarLogger.Infoln("Starting member directory export CRON Job...")
+	entryID, err := c.AddFunc(config.DriveCron, func() {
+		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":alarm_clock: Starting google drive CRON Job")
+		utils.SugarLogger.Infoln("Starting google drive CRON Job...")
 		var wg sync.WaitGroup
-		wg.Add(1)
+		wg.Add(2)
 		go service.PopulateMemberDirectorySheet()
+		go service.CleanDriveMembers()
 		wg.Wait()
-		utils.SugarLogger.Infoln("Finished member directory export CRON Job!")
-		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":white_check_mark: Finished member directory export job!")
+		utils.SugarLogger.Infoln("Finished google drive CRON Job!")
+		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":white_check_mark: Finished google drive job!")
 	})
 	if err != nil {
 		utils.SugarLogger.Errorln("Error registering CRON Job: " + err.Error())
 		return
 	}
 	c.Start()
-	utils.SugarLogger.Infoln("Registered CRON Job: " + strconv.Itoa(int(entryID)) + " scheduled with cron expression: " + config.MemberDirectoryCron)
+	utils.SugarLogger.Infoln("Registered CRON Job: " + strconv.Itoa(int(entryID)) + " scheduled with cron expression: " + config.DriveCron)
 }

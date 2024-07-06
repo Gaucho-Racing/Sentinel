@@ -120,6 +120,49 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	return nil
 }
 
+func CleanDriveMembers() {
+	keepEmails := []string{
+		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",
+		"ucsantabarbarasae@gmail.com",
+	}
+
+	resp, err := DriveClient.Permissions.List(config.SharedDriveID).
+		SupportsAllDrives(true).
+		Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+		Do()
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return
+	}
+	for _, perm := range resp.Permissions {
+		user := GetUserByEmail(perm.EmailAddress)
+		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+		}
+	}
+	nextPageToken := resp.NextPageToken
+	for nextPageToken != "" {
+		resp, err = DriveClient.Permissions.List(config.SharedDriveID).
+			SupportsAllDrives(true).
+			Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+			PageToken(nextPageToken).
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorln(err)
+			return
+		}
+		for _, perm := range resp.Permissions {
+			user := GetUserByEmail(perm.EmailAddress)
+			if user.ID == "" && perm.EmailAddress != "sentinel-drive@sentinel-416604.iam.gserviceaccount.com" {
+				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			}
+		}
+		nextPageToken = resp.NextPageToken
+	}
+}
+
 func PopulateMemberDirectorySheet() {
 	// Delete all rows after 5
 	clearRange := "A6:O"

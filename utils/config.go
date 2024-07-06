@@ -44,8 +44,8 @@ func VerifyConfig() {
 	if config.AuthSigningKey == "" {
 		SugarLogger.Errorf("AUTH_SIGNING_KEY is not set")
 	}
-	if config.MemberDirectoryCron == "" {
-		config.MemberDirectoryCron = "0 * * * *"
-		SugarLogger.Infof("MEMBER_DIRECTORY_CRON is not set, defaulting to %s", config.MemberDirectoryCron)
+	if config.DriveCron == "" {
+		config.DriveCron = "0 * * * *"
+		SugarLogger.Infof("DRIVE_CRON is not set, defaulting to %s", config.DriveCron)
 	}
 }
