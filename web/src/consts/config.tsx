@@ -13,6 +13,7 @@ export const DISCORD_SERVER_INVITE_URL = "https://discord.gg/tvYFre2m4F";
 export const SHARED_DRIVE_URL =
   "https://drive.google.com/drive/u/0/folders/0ADMP93ZBlor_Uk9PVA";
 export const GITHUB_ORG_URL = "https://github.com/Gaucho-Racing";
+export const WIKI_URL = "https://wiki.gauchoracing.com";
 
 export const SOCIAL_LINKS = {
   github: "https://github.com/gaucho-racing/sentinel",

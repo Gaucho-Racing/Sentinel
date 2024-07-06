@@ -168,7 +168,10 @@ function ApplicationsPage() {
       );
       if (response.status == 200) {
         navigate(`/applications/${response.data.id}`);
-        notify.success("Application updated successfully.");
+        notify.success(
+          "Changes saved",
+          "Your application has successfully been updated.",
+        );
       }
     } catch (error: any) {
       notify.error(getAxiosErrorMessage(error));

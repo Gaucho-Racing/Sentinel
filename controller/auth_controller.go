@@ -27,6 +27,7 @@ func RegisterAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+	service.CreateWikiUserWithPassword(input.Password, user.ID)
 	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
 }
 

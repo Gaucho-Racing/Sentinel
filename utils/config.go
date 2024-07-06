@@ -35,6 +35,12 @@ func VerifyConfig() {
 	if config.GithubToken == "" {
 		SugarLogger.Errorf("GITHUB_PAT is not set")
 	}
+	if config.DriveServiceAccount == "" {
+		SugarLogger.Errorf("DRIVE_SERVICE_ACCOUNT is not set")
+	}
+	if config.WikiToken == "" {
+		SugarLogger.Errorf("WIKI_TOKEN is not set")
+	}
 	if config.AuthSigningKey == "" {
 		SugarLogger.Errorf("AUTH_SIGNING_KEY is not set")
 	}

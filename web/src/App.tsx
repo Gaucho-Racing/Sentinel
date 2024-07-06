@@ -4,6 +4,7 @@ import {
   GITHUB_ORG_URL,
   SENTINEL_API_URL,
   SHARED_DRIVE_URL,
+  WIKI_URL,
   currentUser,
 } from "@/consts/config";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,9 @@ function App() {
 
   const [loginLoading, setLoginLoading] = React.useState(false);
   const [loginAccess, setLoginAccess] = React.useState<any>({});
+
+  const [wikiLoading, setWikiLoading] = React.useState(false);
+  const [wikiAccess, setWikiAccess] = React.useState<any>({});
 
   const [driveLoading, setDriveLoading] = React.useState(false);
   const [driveAccess, setDriveAccess] = React.useState<any>({});
@@ -390,13 +394,13 @@ function App() {
                 setPassword(e.target.value);
               }}
             />
-            <Button
+            <OutlineButton
               onClick={() => {
                 registerPassword(password);
               }}
             >
               Set Password
-            </Button>
+            </OutlineButton>
           </div>
         ) : (
           <></>
@@ -422,6 +426,55 @@ function App() {
                 </span>
                 Enabled
               </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
+  };
+
+  const WikiCard = () => {
+    return (
+      <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
+        <div className="flex items-center justify-start">
+          <FontAwesomeIcon icon={faGithub} className="h-5 w-5" />
+          <h3 className="ml-4">Wiki</h3>
+        </div>
+        <Separator className="my-2" />
+        <div className="flex items-center justify-start">
+          <div className="flex flex-col">
+            {loginAccess.password != null ? (
+              <p>Email / Password</p>
+            ) : (
+              <p>Please set a password for your sentinel account first!</p>
+            )}
+            <p className="text-gray-400">
+              Access all Gaucho Racing documentation through the team's{" "}
+              <span
+                className="cursor-pointer text-gr-pink hover:text-gr-pink/80"
+                onClick={() => window.open(WIKI_URL, "_blank")}
+              >
+                wiki
+              </span>
+              .
+            </p>
+          </div>
+          {loginLoading ? (
+            <Button className="ml-auto" variant={"outline"}>
+              <Loader2 className="h-6 w-6 animate-spin" />
+            </Button>
+          ) : (
+            <div>
+              {loginAccess.password != null ? (
+                <Button className="ml-auto" variant={"secondary"}>
+                  <span>
+                    <FontAwesomeIcon icon={faCheckCircle} className="me-2" />
+                  </span>
+                  Access Granted
+                </Button>
+              ) : (
+                <></>
+              )}
             </div>
           )}
         </div>
@@ -670,6 +723,7 @@ function App() {
               </div>
               <div>
                 <LoginCard />
+                <WikiCard />
                 <DriveCard />
                 <GithubCard />
               </div>

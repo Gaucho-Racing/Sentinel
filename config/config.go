@@ -22,6 +22,7 @@ var DiscordRedirectURI = os.Getenv("DISCORD_REDIRECT_URI")
 
 var DriveServiceAccount = os.Getenv("DRIVE_SERVICE_ACCOUNT")
 var GithubToken = os.Getenv("GITHUB_PAT")
+var WikiToken = os.Getenv("WIKI_TOKEN")
 
 var SharedDriveID = "0ADMP93ZBlor_Uk9PVA"
 var LeadsDriveID = "0AF4DbFL3cclkUk9PVA"
