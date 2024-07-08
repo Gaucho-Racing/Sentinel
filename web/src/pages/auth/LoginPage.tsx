@@ -117,6 +117,11 @@ function LoginPage() {
                 onChange={(e) => {
                   setLoginPassword(e.target.value);
                 }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    login();
+                  }
+                }}
               />
               <OutlineButton
                 disabled={loginLoading}
