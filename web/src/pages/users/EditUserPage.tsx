@@ -193,7 +193,9 @@ function EditUserPage() {
                       disabled={userLoading}
                       onClick={async () => {
                         await saveUser();
-                        setUser(currentUser, editUser);
+                        if (currentUser.id == id) {
+                          setUser(currentUser, editUser);
+                        }
                       }}
                     >
                       {userLoading && <Loader2 className="mr-2 animate-spin" />}
@@ -542,14 +544,14 @@ function EditUserPage() {
 
                   <ProfileField
                     label="Subteams"
-                    value={currentUser.subteams
+                    value={editUser.subteams
                       .map((subteam) => subteam.name)
                       .join(", ")}
                   />
                   <div className="mx-2 mt-2 flex">
                     <div className="mr-2 font-semibold">Roles:</div>
                     <div className="flex flex-wrap">
-                      {currentUser.roles.map((role) => (
+                      {editUser.roles.map((role) => (
                         <div key={role} className="mx-1 mb-2">
                           <Card className="rounded-sm px-1 text-gray-400">
                             <code className="">{role}</code>
@@ -560,11 +562,11 @@ function EditUserPage() {
                   </div>
                   <ProfileField
                     label="Updated At"
-                    value={new Date(currentUser.updated_at).toLocaleString()}
+                    value={new Date(editUser.updated_at).toLocaleString()}
                   />
                   <ProfileField
                     label="Created At"
-                    value={new Date(currentUser.created_at).toLocaleString()}
+                    value={new Date(editUser.created_at).toLocaleString()}
                   />
                 </Card>
               ) : (
