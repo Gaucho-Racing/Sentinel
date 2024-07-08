@@ -11,7 +11,7 @@ import (
 func GetSubteamsForUser(userID string) []model.Subteam {
 	var userSubteams []model.UserSubteam
 	database.DB.Where("user_id = ?", userID).Find(&userSubteams)
-	var subteams []model.Subteam
+	var subteams = make([]model.Subteam, 0)
 	for i := range userSubteams {
 		subteams = append(subteams, GetSubteamByID(userSubteams[i].RoleID))
 	}
