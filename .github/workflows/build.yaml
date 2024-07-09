@@ -1,0 +1,33 @@
+name: build
+run-name: Triggered by ${{ github.event_name }} to ${{ github.ref }} by @${{ github.actor }}
+
+on: [push]
+
+jobs:
+    all_build_job:
+        runs-on: ubuntu-latest
+        name: all
+        defaults:
+          run:
+            shell: bash
+        steps:
+          - uses: actions/checkout@v4
+            with:
+              submodules: true
+          - name: Setup Node
+            uses: actions/setup-node@v4
+            with:
+                node-version: '22.x'
+          - name: Web
+            run: |
+              cd web
+              npm ci
+              npm run build
+          - name: Setup Go
+            uses: actions/setup-go@v4
+            with:
+              go-version: '1.22.0'
+          - name: Sentinel
+            run: |
+              go get .
+              go build
