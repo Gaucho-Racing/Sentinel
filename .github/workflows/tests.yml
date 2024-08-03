@@ -4,9 +4,9 @@ run-name: Triggered by ${{ github.event_name }} to ${{ github.ref }} by @${{ git
 on: [push]
 
 jobs:
-    go_test_job:
+    go_unit_test:
         runs-on: ubuntu-latest
-        name: sentinel unit
+        name: unit
         defaults:
             run:
                 shell: bash
