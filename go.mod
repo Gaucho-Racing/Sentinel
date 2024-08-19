@@ -10,7 +10,6 @@ require (
 	github.com/singlestore-labs/gorm-singlestore v1.0.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.21.0
-	gorm.io/driver/postgres v1.5.6
 	gorm.io/gorm v1.25.7
 )
 
@@ -38,7 +37,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.24.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240624140628-dc46fd24d27d // indirect
 	google.golang.org/grpc v1.64.0 // indirect
-	gorm.io/driver/mysql v1.5.7 // indirect
 )
 
 require (
@@ -53,9 +51,6 @@ require (
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/jackc/pgpassfile v1.0.0 // indirect
-	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
-	github.com/jackc/pgx/v5 v5.4.3 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
