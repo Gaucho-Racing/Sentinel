@@ -7,6 +7,12 @@ var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
 
+var DBHost = os.Getenv("DB_HOST")
+var DBPort = os.Getenv("DB_PORT")
+var DBUser = os.Getenv("DB_USER")
+var DBPassword = os.Getenv("DB_PASSWORD")
+var DBName = os.Getenv("DB_NAME")
+
 var PostgresHost = os.Getenv("POSTGRES_HOST")
 var PostgresUser = os.Getenv("POSTGRES_USER")
 var PostgresPassword = os.Getenv("POSTGRES_PASSWORD")

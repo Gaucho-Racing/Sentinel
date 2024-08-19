@@ -7,6 +7,7 @@ import (
 	"sentinel/utils"
 	"time"
 
+	"github.com/singlestore-labs/gorm-singlestore"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
