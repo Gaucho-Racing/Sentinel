@@ -7,6 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.6.0
 	github.com/lithammer/fuzzysearch v1.1.8
+	github.com/singlestore-labs/gorm-singlestore v1.0.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.21.0
 	gorm.io/driver/postgres v1.5.6

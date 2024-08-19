@@ -2,16 +2,16 @@ package config
 
 import "os"
 
-var Version = "2.3.2"
+var Version = "3.0.0"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
 
-var DBHost = os.Getenv("DB_HOST")
-var DBPort = os.Getenv("DB_PORT")
-var DBUser = os.Getenv("DB_USER")
-var DBPassword = os.Getenv("DB_PASSWORD")
-var DBName = os.Getenv("DB_NAME")
+var DatabaseHost = os.Getenv("DATABASE_HOST")
+var DatabasePort = os.Getenv("DATABASE_PORT")
+var DatabaseUser = os.Getenv("DATABASE_USER")
+var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
+var DatabaseName = os.Getenv("DATABASE_NAME")
 
 var PostgresHost = os.Getenv("POSTGRES_HOST")
 var PostgresUser = os.Getenv("POSTGRES_USER")
