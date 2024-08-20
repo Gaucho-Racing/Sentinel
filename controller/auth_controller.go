@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sentinel/model"
 	"sentinel/service"
+	"sentinel/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,7 +29,15 @@ func RegisterAccountPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	service.CreateWikiUserWithPassword(input.Password, user.ID)
+	err = service.CreateWikiUserWithPassword(input.Password, user.ID)
+	if err != nil {
+		utils.SugarLogger.Errorf("Error creating wiki user: %v", err)
+		utils.SugarLogger.Infoln("Attempting to update wiki user")
+		err = service.UpdateWikiUserWithPassword(input.Password, user.ID)
+		if err != nil {
+			utils.SugarLogger.Errorf("Error updating wiki user: %v", err)
+		}
+	}
 	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
 }
 

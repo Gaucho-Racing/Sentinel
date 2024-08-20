@@ -52,4 +52,8 @@ func VerifyConfig() {
 		config.GithubCron = "0 * * * *"
 		SugarLogger.Infof("GITHUB_CRON is not set, defaulting to %s", config.GithubCron)
 	}
+	if config.WikiCron == "" {
+		config.WikiCron = "0 * * * *"
+		SugarLogger.Infof("WIKI_CRON is not set, defaulting to %s", config.WikiCron)
+	}
 }
