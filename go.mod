@@ -2,14 +2,12 @@ module sentinel
 
 go 1.22.0
 
-replace github.com/singlestore-labs/gorm-singlestore v1.0.0 => "/Users/bk1031/Documents/Projects/Dev Projects/gorm-singlestore"
-
 require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.6.0
 	github.com/lithammer/fuzzysearch v1.1.8
-	github.com/singlestore-labs/gorm-singlestore v1.0.0
+	github.com/singlestore-labs/gorm-singlestore v1.1.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.21.0
 	gorm.io/gorm v1.25.7
