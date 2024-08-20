@@ -68,9 +68,45 @@ func AddUserToGithub(userID string, username string) error {
 	return nil
 }
 
+func RemoveUserFromGithub(userID string, username string) error {
+	req, err := http.NewRequest("DELETE", "https://api.github.com/orgs/gaucho-racing/memberships/"+username, nil)
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+config.GithubToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		if resp.StatusCode == http.StatusNotFound {
+			return nil
+		}
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to remove user from GitHub organization: %s", string(body))
+	}
+	removeGithubUsernameFromRoles(username, userID)
+	return nil
+}
+
 func addGithubUsernameToRoles(ghUsername string, userID string) {
 	roles := GetRolesForUser(userID)
 	roles = append(roles, "github_"+ghUsername)
+	SetRolesForUser(userID, roles)
+}
+
+func removeGithubUsernameFromRoles(ghUsername string, userID string) {
+	roles := GetRolesForUser(userID)
+	for i, role := range roles {
+		if role == "github_"+ghUsername {
+			roles = append(roles[:i], roles[i+1:]...)
+			break
+		}
+	}
 	SetRolesForUser(userID, roles)
 }
 
