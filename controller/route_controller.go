@@ -45,6 +45,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:appID/logins", GetLoginsForDestination)
 	router.GET("/logins", GetAllLogins)
 	router.GET("/users", GetAllUsers)
+	router.GET("/users/@me", GetCurrentUser)
 	router.GET("/users/:userID", GetUserByID)
 	router.POST("/users/:userID", CreateUser)
 	router.GET("/users/:userID/roles", GetAllRolesForUser)
