@@ -23,6 +23,7 @@ func main() {
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
 	controller.RegisterDriveCronJob()
+	controller.RegisteGithubCronJob()
 	// service.FindAllNonVerifiedUsers()
 
 	router := controller.SetupRouter()

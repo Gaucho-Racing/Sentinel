@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-func GetAllGithubUsers() ([]*model.GithubOrgUser, error) {
+func GetAllGithubUsers() ([]*model.GithubUser, error) {
 	req, err := http.NewRequest("GET", "https://api.github.com/orgs/gaucho-racing/members", nil)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
@@ -30,7 +30,7 @@ func GetAllGithubUsers() ([]*model.GithubOrgUser, error) {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("failed to get all GitHub users: %s", string(body))
 	}
-	var githubUsers []*model.GithubOrgUser
+	var githubUsers []*model.GithubUser
 	err = json.NewDecoder(resp.Body).Decode(&githubUsers)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)
@@ -132,10 +132,10 @@ func CleanGithubMembers() {
 		return
 	}
 	for _, ghUser := range githubUsers {
-		user := getUserForGithubUsername(ghUser.User.Login)
-		if user.ID == "" && !contains(keepUsers, ghUser.User.Login) {
-			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.User.Login)
-			// RemoveUserFromGithub(user.ID, ghUser.User.Login)
+		user := getUserForGithubUsername(ghUser.Login)
+		if user.ID == "" && !contains(keepUsers, ghUser.Login) {
+			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
+			RemoveUserFromGithub(user.ID, ghUser.Login)
 		}
 	}
 }
