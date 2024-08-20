@@ -7,7 +7,7 @@ import (
 )
 
 func GetAllRolesForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "read:user"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:read"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	roles := service.GetRolesForUser(c.Param("userID"))

@@ -11,6 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func GetValidOauthScopes(c *gin.Context) {
+	c.JSON(http.StatusOK, model.ValidOauthScopes)
+}
+
 func GetAllClientApplications(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 
@@ -19,7 +23,7 @@ func GetAllClientApplications(c *gin.Context) {
 }
 
 func GetClientApplicationsForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "read:applications"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "applications:read"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	userID := c.Param("userID")
@@ -36,7 +40,7 @@ func GetClientApplicationByID(c *gin.Context) {
 	}
 
 	if !RequestTokenHasScope(c, "sentinel:all") {
-		RequireAny(c, RequestTokenHasScope(c, "read:applications"))
+		RequireAny(c, RequestTokenHasScope(c, "applications:read"))
 		RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, app.UserID))
 	}
 

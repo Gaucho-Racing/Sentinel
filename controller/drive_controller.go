@@ -13,7 +13,7 @@ import (
 )
 
 func GetDriveStatusForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "read:drive"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "drive:read"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	userID := c.Param("userID")
@@ -34,7 +34,7 @@ func GetDriveStatusForUser(c *gin.Context) {
 }
 
 func AddUserToDrive(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "write:drive"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "drive:write"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	userID := c.Param("userID")
@@ -56,7 +56,7 @@ func AddUserToDrive(c *gin.Context) {
 }
 
 func RemoveUserFromDrive(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "write:drive"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "drive:write"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	userID := c.Param("userID")

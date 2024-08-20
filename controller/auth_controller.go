@@ -38,7 +38,15 @@ func RegisterAccountPassword(c *gin.Context) {
 			utils.SugarLogger.Errorf("Error updating wiki user: %v", err)
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
+	refreshToken := ""
+	response := model.TokenResponse{
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    24 * 60 * 60,
+		Scope:        "sentinel:all",
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func LoginAccount(c *gin.Context) {
@@ -64,7 +72,15 @@ func LoginAccount(c *gin.Context) {
 		IPAddress:   c.ClientIP(),
 		LoginType:   "email",
 	})
-	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
+	refreshToken := ""
+	response := model.TokenResponse{
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    24 * 60 * 60,
+		Scope:        "sentinel:all",
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func LoginDiscord(c *gin.Context) {
@@ -95,7 +111,15 @@ func LoginDiscord(c *gin.Context) {
 		IPAddress:   c.ClientIP(),
 		LoginType:   "discord",
 	})
-	c.JSON(http.StatusOK, gin.H{"id": user.ID, "token": token})
+	refreshToken := ""
+	response := model.TokenResponse{
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    24 * 60 * 60,
+		Scope:        "sentinel:all",
+	}
+	c.JSON(http.StatusOK, response)
 }
 
 func GetAuthForUser(c *gin.Context) {
