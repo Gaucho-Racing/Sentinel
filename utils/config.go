@@ -7,21 +7,21 @@ func VerifyConfig() {
 		config.Port = "7999"
 		SugarLogger.Infof("PORT is not set, defaulting to %s", config.Port)
 	}
-	if config.PostgresHost == "" {
-		config.PostgresHost = "localhost"
-		SugarLogger.Infof("POSTGRES_HOST is not set, defaulting to %s", config.PostgresHost)
+	if config.DatabaseHost == "" {
+		config.DatabaseHost = "localhost"
+		SugarLogger.Infof("DATABASE_HOST is not set, defaulting to %s", config.DatabaseHost)
 	}
-	if config.PostgresPort == "" {
-		config.PostgresPort = "5432"
-		SugarLogger.Infof("POSTGRES_PORT is not set, defaulting to %s", config.PostgresPort)
+	if config.DatabasePort == "" {
+		config.DatabasePort = "3306"
+		SugarLogger.Infof("DATABASE_PORT is not set, defaulting to %s", config.DatabasePort)
 	}
-	if config.PostgresUser == "" {
-		config.PostgresUser = "postgres"
-		SugarLogger.Infof("POSTGRES_USER is not set, defaulting to %s", config.PostgresUser)
+	if config.DatabaseUser == "" {
+		config.DatabaseUser = "root"
+		SugarLogger.Infof("DATABASE_USER is not set, defaulting to %s", config.DatabaseUser)
 	}
-	if config.PostgresPassword == "" {
-		config.PostgresPassword = "postgres"
-		SugarLogger.Infof("POSTGRES_PASSWORD is not set, defaulting to %s", config.PostgresPassword)
+	if config.DatabasePassword == "" {
+		config.DatabasePassword = "password"
+		SugarLogger.Infof("DATABASE_PASSWORD is not set, defaulting to %s", config.DatabasePassword)
 	}
 	if config.DiscordToken == "" {
 		SugarLogger.Errorf("DISCORD_TOKEN is not set")
