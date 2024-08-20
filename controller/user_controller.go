@@ -16,7 +16,7 @@ func GetAllUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "read:user"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:read"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	result := service.GetUserByID(c.Param("userID"))
@@ -28,7 +28,7 @@ func GetUserByID(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "write:user"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:write"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	var user model.User

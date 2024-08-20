@@ -16,7 +16,7 @@ func GetAllLogins(c *gin.Context) {
 }
 
 func GetLoginsForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "read:logins"))
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "logins:read"))
 	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
 
 	userID := c.Param("userID")
@@ -61,7 +61,7 @@ func GetLoginByID(c *gin.Context) {
 	}
 
 	if !RequestTokenHasScope(c, "sentinel:all") {
-		RequireAny(c, RequestTokenHasScope(c, "read:logins"))
+		RequireAny(c, RequestTokenHasScope(c, "logins:read"))
 		RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, login.UserID))
 	}
 
