@@ -1,57 +1,57 @@
-version: "3.9"
-
 services:
   db:
     container_name: db
-    image: postgres:16.2-alpine
+    image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
+    platform: linux/amd64
     restart: unless-stopped
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - s2data:/data
+      - ./singlestore/init.sql:/init.sql
     ports:
-      - "${EXTERNAL_POSTGRES_PORT}:${POSTGRES_PORT}"
+      - "3306:3306"
+      - "8080:8080"
+      - "9000:9000"
     environment:
-      POSTGRES_DB: main
-      POSTGRES_USER: $POSTGRES_USER
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      ROOT_PASSWORD: "password"
 
-  web:
-    container_name: web
-    depends_on:
-      - sentinel
-    image: gauchoracing/sentinel_web:latest
-    restart: unless-stopped
-    ports:
-      - "8881:80"
-    environment:
-      VITE_SENTINEL_API_URL: $VITE_SENTINEL_API_URL
+  # web:
+  #   container_name: web
+  #   depends_on:
+  #     - sentinel
+  #   image: gauchoracing/sentinel_web:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8881:80"
+  #   environment:
+  #     VITE_SENTINEL_API_URL: $VITE_SENTINEL_API_URL
 
-  sentinel:
-    container_name: sentinel
-    depends_on:
-      - db
-    image: gauchoracing/sentinel:latest
-    restart: unless-stopped
-    ports:
-      - "${PORT}:${PORT}"
-    environment:
-      ENV: $ENV
-      PORT: $PORT
-      PREFIX: $PREFIX
-      POSTGRES_HOST: $POSTGRES_HOST
-      POSTGRES_USER: $POSTGRES_USER
-      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
-      POSTGRES_PORT: $POSTGRES_PORT
-      DISCORD_TOKEN: $DISCORD_TOKEN
-      DISCORD_GUILD: $DISCORD_GUILD
-      DISCORD_LOG_CHANNEL: $DISCORD_LOG_CHANNEL
-      DISCORD_CLIENT_ID: $DISCORD_CLIENT_ID
-      DISCORD_CLIENT_SECRET: $DISCORD_CLIENT_SECRET
-      DISCORD_REDIRECT_URI: $DISCORD_REDIRECT_URI
-      DRIVE_SERVICE_ACCOUNT: $DRIVE_SERVICE_ACCOUNT
-      GITHUB_PAT: $GITHUB_PAT
-      WIKI_TOKEN: $WIKI_TOKEN
-      AUTH_SIGNING_KEY: $AUTH_SIGNING_KEY
-      DRIVE_CRON: $DRIVE_CRON
+  # sentinel:
+  #   container_name: sentinel
+  #   depends_on:
+  #     - db
+  #   image: gauchoracing/sentinel:latest
+  #   restart: unless-stopped
+  #   ports:
+  #     - "${PORT}:${PORT}"
+  #   environment:
+  #     ENV: $ENV
+  #     PORT: $PORT
+  #     PREFIX: $PREFIX
+  #     POSTGRES_HOST: $POSTGRES_HOST
+  #     POSTGRES_USER: $POSTGRES_USER
+  #     POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+  #     POSTGRES_PORT: $POSTGRES_PORT
+  #     DISCORD_TOKEN: $DISCORD_TOKEN
+  #     DISCORD_GUILD: $DISCORD_GUILD
+  #     DISCORD_LOG_CHANNEL: $DISCORD_LOG_CHANNEL
+  #     DISCORD_CLIENT_ID: $DISCORD_CLIENT_ID
+  #     DISCORD_CLIENT_SECRET: $DISCORD_CLIENT_SECRET
+  #     DISCORD_REDIRECT_URI: $DISCORD_REDIRECT_URI
+  #     DRIVE_SERVICE_ACCOUNT: $DRIVE_SERVICE_ACCOUNT
+  #     GITHUB_PAT: $GITHUB_PAT
+  #     WIKI_TOKEN: $WIKI_TOKEN
+  #     AUTH_SIGNING_KEY: $AUTH_SIGNING_KEY
+  #     DRIVE_CRON: $DRIVE_CRON
 
 volumes:
-  pgdata:
+  s2data:
