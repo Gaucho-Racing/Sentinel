@@ -6,10 +6,38 @@ import (
 	"io"
 	"net/http"
 	"sentinel/config"
+	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
 	"strings"
 )
+
+func GetAllGithubUsers() ([]*model.GithubOrgUser, error) {
+	req, err := http.NewRequest("GET", "https://api.github.com/orgs/gaucho-racing/members", nil)
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+config.GithubToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get all GitHub users: %s", string(body))
+	}
+	var githubUsers []*model.GithubOrgUser
+	err = json.NewDecoder(resp.Body).Decode(&githubUsers)
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return nil, err
+	}
+	return githubUsers, nil
+}
 
 func GetGithubStatusForUser(userID string) (*model.GithubOrgUser, error) {
 	username := getGithubUsernameForUser(userID)
@@ -30,7 +58,8 @@ func GetGithubStatusForUser(userID string) (*model.GithubOrgUser, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("failed to get user membership status from GitHub organization")
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to get user membership status from GitHub organization: %s", string(body))
 	}
 	var githubUser *model.GithubOrgUser
 	err = json.NewDecoder(resp.Body).Decode(&githubUser)
@@ -93,6 +122,24 @@ func RemoveUserFromGithub(userID string, username string) error {
 	return nil
 }
 
+func CleanGithubMembers() {
+	keepUsers := []string{
+		"gauchoracing",
+	}
+	githubUsers, err := GetAllGithubUsers()
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return
+	}
+	for _, ghUser := range githubUsers {
+		user := getUserForGithubUsername(ghUser.User.Login)
+		if user.ID == "" && !contains(keepUsers, ghUser.User.Login) {
+			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.User.Login)
+			// RemoveUserFromGithub(user.ID, ghUser.User.Login)
+		}
+	}
+}
+
 func addGithubUsernameToRoles(ghUsername string, userID string) {
 	roles := GetRolesForUser(userID)
 	roles = append(roles, "github_"+ghUsername)
@@ -101,13 +148,8 @@ func addGithubUsernameToRoles(ghUsername string, userID string) {
 
 func removeGithubUsernameFromRoles(ghUsername string, userID string) {
 	roles := GetRolesForUser(userID)
-	for i, role := range roles {
-		if role == "github_"+ghUsername {
-			roles = append(roles[:i], roles[i+1:]...)
-			break
-		}
-	}
-	SetRolesForUser(userID, roles)
+	newRoles := removeValue(roles, "github_"+ghUsername)
+	SetRolesForUser(userID, newRoles)
 }
 
 func getGithubUsernameForUser(userID string) string {
@@ -118,4 +160,13 @@ func getGithubUsernameForUser(userID string) string {
 		}
 	}
 	return ""
+}
+
+func getUserForGithubUsername(ghUsername string) model.User {
+	var userID string
+	database.DB.Table("user_role").Where("role = ?", "github_"+ghUsername).Select("user_id").Scan(&userID)
+	if userID == "" {
+		return model.User{}
+	}
+	return GetUserByID(userID)
 }
