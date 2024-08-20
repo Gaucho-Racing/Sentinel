@@ -120,6 +120,7 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	return nil
 }
 
+// CleanDriveMembers removes users from the shared drive that are not in the member directory.
 func CleanDriveMembers() {
 	keepEmails := []string{
 		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",

@@ -11,3 +11,7 @@ type UserLogin struct {
 	LoginType   string    `json:"login_type"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"created_at"`
 }
+
+func (UserLogin) TableName() string {
+	return "user_login"
+}

@@ -8,7 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterAccount(c *gin.Context) {
+func RegisterAccountPassword(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	var input model.UserAuth
@@ -49,7 +49,7 @@ func LoginAccount(c *gin.Context) {
 		return
 	}
 	go service.CreateLogin(model.UserLogin{
-		UserID:      GetRequestUserID(c),
+		UserID:      user.ID,
 		Destination: "sentinel",
 		Scope:       "sentinel:all",
 		IPAddress:   c.ClientIP(),
@@ -80,7 +80,7 @@ func LoginDiscord(c *gin.Context) {
 		return
 	}
 	go service.CreateLogin(model.UserLogin{
-		UserID:      GetRequestUserID(c),
+		UserID:      user.ID,
 		Destination: "sentinel",
 		Scope:       "sentinel:all",
 		IPAddress:   c.ClientIP(),

@@ -31,7 +31,7 @@ func SetupRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
-	router.POST("/auth/register", RegisterAccount)
+	router.POST("/auth/register", RegisterAccountPassword)
 	router.POST("/auth/login", LoginAccount)
 	router.POST("/auth/login/discord", LoginDiscord)
 	router.GET("/oauth/authorize", OauthAuthorize)

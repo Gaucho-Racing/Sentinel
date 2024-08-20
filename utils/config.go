@@ -48,4 +48,8 @@ func VerifyConfig() {
 		config.DriveCron = "0 * * * *"
 		SugarLogger.Infof("DRIVE_CRON is not set, defaulting to %s", config.DriveCron)
 	}
+	if config.GithubCron == "" {
+		config.GithubCron = "0 * * * *"
+		SugarLogger.Infof("GITHUB_CRON is not set, defaulting to %s", config.GithubCron)
+	}
 }

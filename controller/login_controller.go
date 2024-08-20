@@ -37,7 +37,7 @@ func GetLoginsForUser(c *gin.Context) {
 func GetLoginsForDestination(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 
-	destination := c.Param("destination")
+	destination := c.Param("appID")
 	if c.Query("count") != "" {
 		n, err := strconv.Atoi(c.Query("count"))
 		if err != nil {

@@ -39,4 +39,6 @@ var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electron
 var AuthSigningKey = os.Getenv("AUTH_SIGNING_KEY")
 
 var MemberDirectorySheetID = "1reuLZox2daj8r2H-lZrwB4oFPYlJ6oC7983UUaZd6AY"
+
 var DriveCron = os.Getenv("DRIVE_CRON")
+var GithubCron = os.Getenv("GITHUB_CRON")

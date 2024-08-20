@@ -2,10 +2,14 @@ package controller
 
 import (
 	"net/http"
+	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
+	"sentinel/utils"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	cron "github.com/robfig/cron/v3"
 )
 
 func GetGithubStatusForUser(c *gin.Context) {
@@ -35,6 +39,10 @@ func AddUserToGithub(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
+	if input.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Username is required"})
+		return
+	}
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
 	if user.ID == "" {
@@ -47,4 +55,21 @@ func AddUserToGithub(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "User added to github"})
+}
+
+func RegisteGithubCronJob() {
+	c := cron.New()
+	entryID, err := c.AddFunc(config.GithubCron, func() {
+		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":alarm_clock: Starting github CRON Job")
+		utils.SugarLogger.Infoln("Starting github CRON Job...")
+		service.CleanGithubMembers()
+		utils.SugarLogger.Infoln("Finished github CRON Job!")
+		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":white_check_mark: Finished github job!")
+	})
+	if err != nil {
+		utils.SugarLogger.Errorln("Error registering CRON Job: " + err.Error())
+		return
+	}
+	c.Start()
+	utils.SugarLogger.Infoln("Registered CRON Job: " + strconv.Itoa(int(entryID)) + " scheduled with cron expression: " + config.GithubCron)
 }
