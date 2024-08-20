@@ -37,6 +37,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/oauth/authorize", OauthAuthorize)
 	router.POST("/oauth/authorize", OauthAuthorize)
 	router.POST("/oauth/token", OauthExchange)
+	router.GET("/oauth/scopes", GetValidOauthScopes)
 	router.GET("/applications", GetAllClientApplications)
 	router.GET("/applications/:appID", GetClientApplicationByID)
 	router.POST("/applications", CreateClientApplication)

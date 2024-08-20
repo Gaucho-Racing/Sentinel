@@ -11,6 +11,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func GetValidOauthScopes(c *gin.Context) {
+	c.JSON(http.StatusOK, model.ValidOauthScopes)
+}
+
 func GetAllClientApplications(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
 
