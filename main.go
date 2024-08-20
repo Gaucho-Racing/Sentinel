@@ -24,6 +24,7 @@ func main() {
 	commands.InitializeDiscordBot()
 	controller.RegisterDriveCronJob()
 	controller.RegisteGithubCronJob()
+	controller.RegisterWikiCronJob()
 	// service.FindAllNonVerifiedUsers()
 
 	router := controller.SetupRouter()

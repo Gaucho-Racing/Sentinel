@@ -7,8 +7,11 @@ import (
 	"io"
 	"net/http"
 	"sentinel/config"
+	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
+	"strconv"
+	"strings"
 )
 
 func GetAllWikiUsers() ([]model.WikiUser, error) {
@@ -183,8 +186,87 @@ func CreateWikiUserWithPassword(password string, userID string) error {
 	if err != nil {
 		return err
 	}
-	er := GetRolesForUser(userID)
-	er = append(er, "wiki_"+fmt.Sprint(id))
-	SetRolesForUser(userID, er)
+	addWikiIDToRoles(id, userID)
 	return nil
+}
+
+func UpdateWikiUserWithPassword(password string, userID string) error {
+	user := GetUserByID(userID)
+	if user.ID == "" {
+		return fmt.Errorf("user not found")
+	}
+	roles := []int{int(model.WikiRoleEditor)}
+	if user.IsInnerCircle() {
+		roles = append(roles, int(model.WikiRoleLead))
+	}
+	wikiID := getWikiIDForUser(userID)
+	if wikiID == 0 {
+		return fmt.Errorf("wiki user not found")
+	}
+	wikiUser, err := GetWikiUserByID(wikiID)
+	if err != nil {
+		return err
+	}
+	wikiCreateUser := model.WikiUserCreate{
+		Name:           user.FirstName + " " + user.LastName,
+		Email:          user.Email,
+		Roles:          roles,
+		ExternalAuthID: userID,
+		Password:       password,
+		SendInvite:     false,
+	}
+	return UpdateWikiUser(wikiUser.ID, wikiCreateUser)
+}
+
+func CleanWikiMembers() {
+	keepUsers := []string{"ucsantabarbarasae@gmail.com"}
+	wikiUsers, err := GetAllWikiUsers()
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return
+	}
+	for _, wikiUser := range wikiUsers {
+		senUser := getUserForWikiID(wikiUser.ID)
+		if senUser.ID == "" && !contains(keepUsers, wikiUser.Email) {
+			utils.SugarLogger.Infof("Deleting wiki user: %s (%s)", wikiUser.Name, wikiUser.Email)
+			DeleteWikiUser(wikiUser.ID)
+			removeWikiIDFromRoles(wikiUser.ID, senUser.ID)
+		}
+	}
+}
+
+func addWikiIDToRoles(wikiID int, userID string) {
+	roles := GetRolesForUser(userID)
+	roles = append(roles, "wiki_"+fmt.Sprint(wikiID))
+	SetRolesForUser(userID, roles)
+}
+
+func removeWikiIDFromRoles(wikiID int, userID string) {
+	roles := GetRolesForUser(userID)
+	newRoles := removeValue(roles, "wiki_"+fmt.Sprint(wikiID))
+	SetRolesForUser(userID, newRoles)
+}
+
+func getWikiIDForUser(userID string) int {
+	roles := GetRolesForUser(userID)
+	for _, role := range roles {
+		if strings.HasPrefix(role, "wiki_") {
+			id, err := strconv.Atoi(strings.TrimPrefix(role, "wiki_"))
+			if err != nil {
+				utils.SugarLogger.Errorln(err)
+				return 0
+			}
+			return id
+		}
+	}
+	return 0
+}
+
+func getUserForWikiID(wikiID int) model.User {
+	var userID string
+	database.DB.Table("user_role").Where("role = ?", "wiki_"+fmt.Sprint(wikiID)).Select("user_id").Scan(&userID)
+	if userID == "" {
+		return model.User{}
+	}
+	return GetUserByID(userID)
 }
