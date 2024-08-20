@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sentinel/config"
 	"sentinel/model"
@@ -60,7 +61,8 @@ func AddUserToGithub(userID string, username string) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to add user to GitHub organization")
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to add user to GitHub organization: %s", string(body))
 	}
 	addGithubUsernameToRoles(username, userID)
 	return nil

@@ -35,6 +35,10 @@ func AddUserToGithub(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
+	if input.Username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Username is required"})
+		return
+	}
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
 	if user.ID == "" {
