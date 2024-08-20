@@ -4,16 +4,16 @@ import (
 	"time"
 )
 
-var ValidOauthScopes = []string{
-	"read:user",
-	"write:user",
-	"read:drive",
-	"write:drive",
-	"read:github",
-	"write:github",
-	"read:applications",
-	"read:logins",
-	"sentinel:all",
+var ValidOauthScopes = map[string][]string{
+	"user:read":         {"Read user account information"},
+	"user:write":        {"Edit user account information"},
+	"drive:read":        {"Read user's team drive access information"},
+	"drive:write":       {"Add/remove user from the team drive"},
+	"github:read":       {"Read user's github access information"},
+	"github:write":      {"Add/remove user from the github org"},
+	"applications:read": {"Read user's applications (this includes the client id and secret)"},
+	"logins:read":       {"Read users's login history"},
+	"sentinel:all":      {"Internal scope for Sentinel, client applications should not request this scope."},
 }
 
 type ClientApplication struct {
