@@ -121,9 +121,13 @@ func ValidateRedirectURI(uri string, clientID string) bool {
 }
 
 func ValidateScope(scopes string) bool {
+	validScopes := []string{}
+	for k := range model.ValidOauthScopes {
+		validScopes = append(validScopes, k)
+	}
 	inputScopes := strings.Split(scopes, " ")
 	for _, scope := range inputScopes {
-		if !contains(model.ValidOauthScopes, scope) {
+		if !contains(validScopes, scope) {
 			return false
 		}
 	}
