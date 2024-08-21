@@ -29,7 +29,7 @@ func main() {
 
 	c, e := service.GenerateAuthorizationCode("test", "test", "test")
 	if e != nil {
-		utils.SugarLogger.Fatalln(e)
+		utils.SugarLogger.Errorln(e)
 	}
 	utils.SugarLogger.Info(c)
 

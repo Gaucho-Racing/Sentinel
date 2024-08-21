@@ -134,6 +134,8 @@ github.com/singlestore-labs/gorm-singlestore v1.0.0 h1:n/2NgHcXRBd31gsUs7s/CzhA4
 github.com/singlestore-labs/gorm-singlestore v1.0.0/go.mod h1:Bxq1nC7Gr1I7Hb0tS4bF/aLp3/EqD64kY79LeBKYKBQ=
 github.com/singlestore-labs/gorm-singlestore v1.1.0 h1:wwUo+tAUMkg28rKG0UvJpfNWxLmh0FLbXCv7mND+r/s=
 github.com/singlestore-labs/gorm-singlestore v1.1.0/go.mod h1:Bxq1nC7Gr1I7Hb0tS4bF/aLp3/EqD64kY79LeBKYKBQ=
+github.com/singlestore-labs/gorm-singlestore v1.2.0 h1:mccrEa5tyZDvq7LdEl7oIVfizVC0gxkcf2MHoZG1TWQ=
+github.com/singlestore-labs/gorm-singlestore v1.2.0/go.mod h1:Bxq1nC7Gr1I7Hb0tS4bF/aLp3/EqD64kY79LeBKYKBQ=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.4.0/go.mod h1:YvHI0jy2hoMjB+UWwv71VJQ9isScKT/TqJzVSSt89Yw=
 github.com/stretchr/objx v0.5.0/go.mod h1:Yh+to48EsGEfYuaHDzXPcE3xhTkx73EhmCGUpEOglKo=
@@ -273,6 +275,8 @@ gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c/go.mod h1:JHkPIbrfpd72SG/EV
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gorm.io/driver/mysql v1.5.7 h1:MndhOPYOfEp2rHKgkZIhJ16eVUIRf2HmzgoPmh7FCWo=
+gorm.io/driver/mysql v1.5.7/go.mod h1:sEtPWMiqiN1N1cMXoXmBbd8C6/l+TESwriotuRRpkDM=
 gorm.io/gorm v1.25.7 h1:VsD6acwRjz2zFxGO50gPO6AkNs7KKnvfzUjHQhZDz/A=
 gorm.io/gorm v1.25.7/go.mod h1:hbnx/Oo0ChWMn1BIhpy1oYozzpM15i4YPuHDmfYtwg8=
 honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
