@@ -7,3 +7,4 @@
   from = "/api/*"
   to = "https://sentinel-api.gauchoracing.com/:splat"
   status = 200
+  force = true
