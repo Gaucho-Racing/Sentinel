@@ -99,7 +99,7 @@ function App() {
         `${SENTINEL_API_URL}/users/${currentUser.id}/auth`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -123,13 +123,15 @@ function App() {
         },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
       if (response.status == 200) {
-        localStorage.setItem("id", response.data.id);
-        localStorage.setItem("token", response.data.token);
+        localStorage.setItem(
+          "sentinel_access_token",
+          response.data.access_token,
+        );
         checkCredentials();
       }
     } catch (error: any) {
@@ -145,7 +147,7 @@ function App() {
         `${SENTINEL_API_URL}/users/${currentUser.id}/drive`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -166,7 +168,7 @@ function App() {
         {},
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -184,7 +186,7 @@ function App() {
         `${SENTINEL_API_URL}/users/${currentUser.id}/drive`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -202,7 +204,7 @@ function App() {
         `${SENTINEL_API_URL}/users/${currentUser.id}/github`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -225,7 +227,7 @@ function App() {
         },
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -243,7 +245,7 @@ function App() {
         `${SENTINEL_API_URL}/users/${currentUser.id}/applications`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );

@@ -57,7 +57,7 @@ function AuthorizePage() {
         `${SENTINEL_API_URL}/oauth/authorize${url.split("oauth/authorize")[1]}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -88,7 +88,7 @@ function AuthorizePage() {
         {},
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -108,7 +108,7 @@ function AuthorizePage() {
         `${SENTINEL_API_URL}/applications/${clientId}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );

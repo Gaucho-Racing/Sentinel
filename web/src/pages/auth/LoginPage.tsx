@@ -58,8 +58,10 @@ function LoginPage() {
         password: loginPassword,
       });
       if (response.status == 200) {
-        localStorage.setItem("id", response.data.id);
-        localStorage.setItem("token", response.data.token);
+        localStorage.setItem(
+          "sentinel_access_token",
+          response.data.access_token,
+        );
         checkAuth();
       }
     } catch (error: any) {

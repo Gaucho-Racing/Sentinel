@@ -89,7 +89,7 @@ function ApplicationsPage() {
         `${SENTINEL_API_URL}/applications/${applicationId}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -117,7 +117,7 @@ function ApplicationsPage() {
     try {
       const response = await axios.get(`${SENTINEL_API_URL}/applications`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
         },
       });
       setApplications(response.data);
@@ -133,7 +133,7 @@ function ApplicationsPage() {
     try {
       const response = await axios.get(`${SENTINEL_API_URL}/users/${userId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
         },
       });
       setSelectedOwner(response.data);
@@ -162,7 +162,7 @@ function ApplicationsPage() {
         cleanedApplication,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
@@ -185,7 +185,7 @@ function ApplicationsPage() {
         `${SENTINEL_API_URL}/applications/${selectedApplication.id}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );
