@@ -42,6 +42,8 @@ services:
       WIKI_TOKEN: $WIKI_TOKEN
       AUTH_SIGNING_KEY: $AUTH_SIGNING_KEY
       DRIVE_CRON: $DRIVE_CRON
+      GITHUB_CRON: $GITHUB_CRON
+      WIKI_CRON: $WIKI_CRON
 
 volumes:
   s2data:
