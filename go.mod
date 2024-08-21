@@ -2,14 +2,18 @@ module sentinel
 
 go 1.22.0
 
+// replace github.com/singlestore-labs/gorm-singlestore v1.2.0 => "/Users/bk1031/Documents/Projects/Dev Projects/gorm-singlestore"
+
 require (
 	github.com/bwmarrin/discordgo v0.27.1
 	github.com/gin-gonic/gin v1.9.1
+	github.com/go-sql-driver/mysql v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/lithammer/fuzzysearch v1.1.8
-	github.com/singlestore-labs/gorm-singlestore v1.1.0
+	github.com/singlestore-labs/gorm-singlestore v1.2.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.21.0
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.7
 )
 
@@ -23,7 +27,6 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
-	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect

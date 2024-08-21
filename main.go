@@ -27,6 +27,12 @@ func main() {
 	controller.RegisterWikiCronJob()
 	// service.FindAllNonVerifiedUsers()
 
+	c, e := service.GenerateAuthorizationCode("test", "test", "test")
+	if e != nil {
+		utils.SugarLogger.Errorln(e)
+	}
+	utils.SugarLogger.Info(c)
+
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)
 	err := router.Run(":" + config.Port)

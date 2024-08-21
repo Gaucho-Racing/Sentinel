@@ -142,9 +142,15 @@ func GenerateAuthorizationCode(clientID, userID, scope string) (model.Authorizat
 		ClientID:  clientID,
 		UserID:    userID,
 		Scope:     scope,
-		ExpiresAt: expiresAt,
+		ExpiresAt: utils.WithPrecision(expiresAt),
 	}
-	if result := database.DB.Create(&authCode); result.Error != nil {
+	// result := database.DB.Exec("INSERT INTO authorization_code (code, client_id, user_id, scope, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+	// 	authCode.Code, authCode.ClientID, authCode.UserID, authCode.Scope, utils.WithPrecision(expiresAt), utils.WithPrecision(time.Now()))
+	// if result.Error != nil {
+	// 	return authCode, result.Error
+	// }
+	result := database.DB.Create(&authCode)
+	if result.Error != nil {
 		return authCode, result.Error
 	}
 	return authCode, nil
@@ -156,9 +162,9 @@ func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {
 	if authCode.Code == "" {
 		return model.AuthorizationCode{}, fmt.Errorf("invalid code")
 	}
+	defer database.DB.Delete(&authCode)
 	if time.Now().After(authCode.ExpiresAt) {
 		return model.AuthorizationCode{}, fmt.Errorf("invalid code")
 	}
-	database.DB.Delete(&authCode)
 	return authCode, nil
 }
