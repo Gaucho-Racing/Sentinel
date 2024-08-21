@@ -83,7 +83,7 @@ function EditUserPage() {
     try {
       const response = await axios.get(`${SENTINEL_API_URL}/users/${id}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
         },
       });
       if (response.status == 200) {
@@ -116,7 +116,7 @@ function EditUserPage() {
         editUser,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
           },
         },
       );

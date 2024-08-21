@@ -3,17 +3,13 @@ import { initUser, setUser } from "@/models/user";
 import axios from "axios";
 
 export const checkCredentials = async () => {
-  if (
-    localStorage.getItem("id") == null ||
-    localStorage.getItem("token") == null
-  ) {
+  if (localStorage.getItem("sentinel_access_token") == null) {
     return 1;
   } else if (currentUser.id == "") {
     try {
-      const userId = localStorage.getItem("id");
-      const response = await axios.get(`${SENTINEL_API_URL}/users/${userId}`, {
+      const response = await axios.get(`${SENTINEL_API_URL}/users/@me`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
         },
       });
       if (response.status == 200) {
@@ -31,7 +27,6 @@ export const checkCredentials = async () => {
 };
 
 export const logout = () => {
-  localStorage.removeItem("id");
-  localStorage.removeItem("token");
+  localStorage.removeItem("sentinel_access_token");
   setUser(currentUser, initUser);
 };
