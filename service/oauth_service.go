@@ -156,9 +156,9 @@ func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {
 	if authCode.Code == "" {
 		return model.AuthorizationCode{}, fmt.Errorf("invalid code")
 	}
+	defer database.DB.Delete(&authCode)
 	if time.Now().After(authCode.ExpiresAt) {
 		return model.AuthorizationCode{}, fmt.Errorf("invalid code")
 	}
-	database.DB.Delete(&authCode)
 	return authCode, nil
 }
