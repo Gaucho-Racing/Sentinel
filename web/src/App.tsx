@@ -20,7 +20,6 @@ import {
   faBook,
   faCheckCircle,
   faLock,
-  faTrashAlt,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials, logout } from "@/lib/auth";
@@ -163,10 +162,13 @@ function App() {
           },
         },
       );
+      if (response.status == 200) {
+        localStorage.removeItem("sentinel_access_token");
+        window.location.reload();
+      }
     } catch (error: any) {
       notify.error(getAxiosErrorMessage(error));
     }
-    window.location.reload();
   };
 
   const checkDriveAccess = async () => {
