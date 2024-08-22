@@ -163,12 +163,12 @@ function App() {
         },
       );
       if (response.status == 200) {
-        localStorage.removeItem("sentinel_access_token");
         window.location.reload();
       }
     } catch (error: any) {
       notify.error(getAxiosErrorMessage(error));
     }
+    checkLoginAccess();
   };
 
   const checkDriveAccess = async () => {
@@ -393,29 +393,35 @@ function App() {
                 : "Create a password to log into Sentinel."}
             </p>
             <div>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <p className="cursor-pointer text-gr-pink">Reset password?</p>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      You will no longer be able to sign into Sentinel using
-                      your email and password.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={resetPassword}
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/50"
-                    >
-                      Reset
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {loginAccess.password != null ? (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <p className="cursor-pointer text-gr-pink">
+                      Reset password?
+                    </p>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        You will no longer be able to sign into Sentinel using
+                        your email and password.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={resetPassword}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/50"
+                      >
+                        Reset
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              ) : (
+                <></>
+              )}
             </div>
           </div>
           {loginLoading ? (
