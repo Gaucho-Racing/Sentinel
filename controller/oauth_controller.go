@@ -115,7 +115,17 @@ func OauthAuthorize(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "scope is invalid"})
 		return
 	}
+	// there seems to be a variety of prompts that people send
+	// the oidc spec says to prompt when prompt=login and bypass when prompt=none
+	// discord prompts when prompt=consent and bypass when prompt=none
+	// portainer prompts when prompt=login and just doesn't send the prompt at all when bypassing
+	//
+	// We will first check if there is no prompt provided, defaulting to bypass (prompt=none)
+	// if any other prompt is provided, we will default to requiring consent (prompt=consent)
 	prompt := c.Query("prompt")
+	if prompt == "" {
+		prompt = "none"
+	}
 	if prompt == "none" {
 		// check if user previously authorized this client
 		lastLogin := service.GetLastLoginForUserToDestinationWithScopes(GetRequestUserID(c), clientID, scope)
