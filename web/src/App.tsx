@@ -20,6 +20,7 @@ import {
   faBook,
   faCheckCircle,
   faLock,
+  faTrashAlt,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials, logout } from "@/lib/auth";
@@ -34,6 +35,17 @@ import { ClientApplication } from "@/models/application";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { AuthLoading } from "@/components/AuthLoading";
 import { notify } from "@/lib/notify";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 function App() {
   const navigate = useNavigate();
@@ -138,6 +150,23 @@ function App() {
       notify.error(getAxiosErrorMessage(error));
     }
     checkLoginAccess();
+  };
+
+  const resetPassword = async () => {
+    setLoginLoading(true);
+    try {
+      const response = await axios.delete(
+        `${SENTINEL_API_URL}/users/${currentUser.id}/auth`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+          },
+        },
+      );
+    } catch (error: any) {
+      notify.error(getAxiosErrorMessage(error));
+    }
+    window.location.reload();
   };
 
   const checkDriveAccess = async () => {
@@ -361,6 +390,31 @@ function App() {
                 ? "Log into Sentinel using your email and password."
                 : "Create a password to log into Sentinel."}
             </p>
+            <div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <p className="cursor-pointer text-gr-pink">Reset password?</p>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      You will no longer be able to sign into Sentinel using
+                      your email and password.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={resetPassword}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/50"
+                    >
+                      Reset
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           </div>
           {loginLoading ? (
             <Button className="ml-auto" variant={"outline"}>
