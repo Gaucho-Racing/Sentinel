@@ -43,6 +43,11 @@ func RegisterEmailPassword(email string, password string) (string, error) {
 	return token, nil
 }
 
+func RemovePasswordForEmail(email string) error {
+	result := database.DB.Table("user_auth").Where("email = ?", email).Delete(&model.UserAuth{})
+	return result.Error
+}
+
 func LoginEmailPassword(email string, password string) (string, error) {
 	user := GetUserByEmail(email)
 	if user.ID == "" {
