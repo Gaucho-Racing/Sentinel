@@ -49,6 +49,32 @@ func RegisterAccountPassword(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+func ResetAccountPassword(c *gin.Context) {
+	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+
+	userID := c.Param("userID")
+	user := service.GetUserByID(userID)
+	if user.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No user found with id: " + userID})
+		return
+	}
+
+	RequireAny(c, RequestUserHasID(c, user.ID), RequestUserHasRole(c, "d_admin"))
+
+	auth := service.GetUserAuthByID(userID)
+	if auth.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No authentication found for user with id: " + userID})
+		return
+	}
+
+	err := service.RemovePasswordForEmail(auth.Email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
+}
+
 func LoginAccount(c *gin.Context) {
 	var input model.UserAuth
 	if err := c.ShouldBindJSON(&input); err != nil {

@@ -51,6 +51,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/users/:userID/roles", GetAllRolesForUser)
 	router.POST("/users/:userID/roles", SetRolesForUser)
 	router.GET("/users/:userID/auth", GetAuthForUser)
+	router.DELETE("/users/:userID/auth", ResetAccountPassword)
 	router.GET("/users/:userID/drive", GetDriveStatusForUser)
 	router.POST("/users/:userID/drive", AddUserToDrive)
 	router.DELETE("/users/:userID/drive", RemoveUserFromDrive)
