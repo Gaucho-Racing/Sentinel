@@ -22,7 +22,7 @@ import {
   faLock,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import { checkCredentials, logout } from "@/lib/auth";
+import { checkCredentials, logout, saveAccessToken } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -97,7 +97,11 @@ function App() {
     const currentRoute = window.location.pathname + window.location.search;
     const status = await checkCredentials();
     if (status != 0) {
-      navigate(`/auth/login?route=${encodeURIComponent(currentRoute)}`);
+      if (currentRoute == "/") {
+        navigate(`/auth/login`);
+      } else {
+        navigate(`/auth/login?route=${encodeURIComponent(currentRoute)}`);
+      }
     } else {
       setAuthCheckLoading(false);
     }
@@ -139,10 +143,7 @@ function App() {
         },
       );
       if (response.status == 200) {
-        localStorage.setItem(
-          "sentinel_access_token",
-          response.data.access_token,
-        );
+        saveAccessToken(response.data.access_token);
         checkCredentials();
       }
     } catch (error: any) {

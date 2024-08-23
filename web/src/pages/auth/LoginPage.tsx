@@ -13,7 +13,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
-import { checkCredentials } from "@/lib/auth";
+import { checkCredentials, saveAccessToken } from "@/lib/auth";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { notify } from "@/lib/notify";
 
@@ -58,10 +58,7 @@ function LoginPage() {
         password: loginPassword,
       });
       if (response.status == 200) {
-        localStorage.setItem(
-          "sentinel_access_token",
-          response.data.access_token,
-        );
+        saveAccessToken(response.data.access_token);
         checkAuth();
       }
     } catch (error: any) {
