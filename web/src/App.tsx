@@ -22,7 +22,7 @@ import {
   faLock,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import { checkCredentials, logout } from "@/lib/auth";
+import { checkCredentials, logout, saveAccessToken } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -143,10 +143,7 @@ function App() {
         },
       );
       if (response.status == 200) {
-        localStorage.setItem(
-          "sentinel_access_token",
-          response.data.access_token,
-        );
+        saveAccessToken(response.data.access_token);
         checkCredentials();
       }
     } catch (error: any) {

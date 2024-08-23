@@ -121,9 +121,12 @@ function AuthorizePage() {
   const handleRedirect = (code: string) => {
     const state = queryParameters.get("state");
     const redirectUri = queryParameters.get("redirect_uri");
-    // Set same site cookies for nginx proxy
-    document.cookie = `sentinel_access_token=${localStorage.getItem("sentinel_access_token")}; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
-    document.cookie = `sentinel_authorization_code=${code}; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
+    // Save authorize time for client in cookies
+    const clientId = queryParameters.get("client_id");
+    if (clientId) {
+      const currentMillis = new Date().getTime();
+      document.cookie = `sentinel_${clientId}=${currentMillis}; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
+    }
     window.location.href = redirectUri + `?code=${code}&state=${state}`;
   };
 

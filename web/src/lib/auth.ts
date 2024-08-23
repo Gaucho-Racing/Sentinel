@@ -29,7 +29,11 @@ export const checkCredentials = async () => {
 export const logout = () => {
   // Remove cookies
   document.cookie = `sentinel_access_token=; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
-  document.cookie = `sentinel_authorization_code=; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
   localStorage.removeItem("sentinel_access_token");
   setUser(currentUser, initUser);
+};
+
+export const saveAccessToken = (accessToken: string) => {
+  localStorage.setItem("sentinel_access_token", accessToken);
+  document.cookie = `sentinel_access_token=${accessToken}; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
 };
