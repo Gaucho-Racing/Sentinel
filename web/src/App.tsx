@@ -97,7 +97,11 @@ function App() {
     const currentRoute = window.location.pathname + window.location.search;
     const status = await checkCredentials();
     if (status != 0) {
-      navigate(`/auth/login?route=${encodeURIComponent(currentRoute)}`);
+      if (currentRoute == "/") {
+        navigate(`/auth/login`);
+      } else {
+        navigate(`/auth/login?route=${encodeURIComponent(currentRoute)}`);
+      }
     } else {
       setAuthCheckLoading(false);
     }
