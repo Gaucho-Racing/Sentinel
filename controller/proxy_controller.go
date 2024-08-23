@@ -21,7 +21,7 @@ func OauthProxyValidate(c *gin.Context) {
 	}
 	originalHost := c.GetHeader("X-Original-Host")
 	if originalHost == "" {
-		utils.SugarLogger.Errorf("Missing X-Original-Host header")
+		utils.SugarLogger.Infoln("Missing X-Original-Host header")
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "you are not authorized to access this resource"})
 		return
 	}
@@ -41,7 +41,7 @@ func OauthProxyValidate(c *gin.Context) {
 	// Check last auth time for client application
 	lastAuthTime, err := c.Cookie(fmt.Sprintf("sentinel_%s", app.ID))
 	if err != nil || lastAuthTime == "" {
-		utils.SugarLogger.Errorf("Missing last auth time cookie")
+		utils.SugarLogger.Infoln("Missing last auth time cookie")
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
 		return
 	}
@@ -51,7 +51,7 @@ func OauthProxyValidate(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
 		return
 	}
-	timeSinceLastAuth := time.Now().UnixMilli() - int64(lastAuthTimeInt)/1000
+	timeSinceLastAuth := (time.Now().UnixMilli() - int64(lastAuthTimeInt)) / 1000
 	utils.SugarLogger.Infof("Last authorized %d seconds ago", timeSinceLastAuth)
 	if timeSinceLastAuth > 60*60 {
 		utils.SugarLogger.Errorf("Last authorized too long ago")
@@ -62,7 +62,7 @@ func OauthProxyValidate(c *gin.Context) {
 	// Check sentinel access token
 	accessToken, err := c.Cookie("sentinel_access_token")
 	if err != nil || accessToken == "" {
-		utils.SugarLogger.Errorf("Missing sentinel_access_token cookie")
+		utils.SugarLogger.Infoln("Missing sentinel_access_token cookie")
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"message": "you are not authorized to access this resource"})
 		return
 	}
