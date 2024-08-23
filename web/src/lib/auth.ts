@@ -27,9 +27,15 @@ export const checkCredentials = async () => {
 };
 
 export const logout = () => {
-  // Remove cookies
-  document.cookie = `sentinel_access_token=; domain=.gauchoracing.com; path=/; secure; samesite=lax`;
   localStorage.removeItem("sentinel_access_token");
+  // Remove all cookies that start with sentinel_
+  document.cookie.split(";").forEach((cookie) => {
+    const trimmedCookie = cookie.trim();
+    if (trimmedCookie.startsWith("sentinel_")) {
+      const cookieName = trimmedCookie.split("=")[0];
+      document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.gauchoracing.com; secure; samesite=lax`;
+    }
+  });
   setUser(currentUser, initUser);
 };
 
