@@ -12,7 +12,7 @@ import (
 
 func GetAllClientApplications() []model.ClientApplication {
 	var clientApplications []model.ClientApplication
-	database.DB.Find(&clientApplications)
+	database.DB.Order("name asc").Find(&clientApplications)
 	for i := range clientApplications {
 		clientApplications[i].RedirectURIs = GetRedirectURIsForClientApplication(clientApplications[i].ID)
 	}
@@ -21,7 +21,7 @@ func GetAllClientApplications() []model.ClientApplication {
 
 func GetClientApplicationsForUser(userID string) []model.ClientApplication {
 	var clientApplications []model.ClientApplication
-	database.DB.Where("user_id = ?", userID).Find(&clientApplications)
+	database.DB.Where("user_id = ?", userID).Order("name asc").Find(&clientApplications)
 	for i := range clientApplications {
 		clientApplications[i].RedirectURIs = GetRedirectURIsForClientApplication(clientApplications[i].ID)
 	}
@@ -144,11 +144,6 @@ func GenerateAuthorizationCode(clientID, userID, scope string) (model.Authorizat
 		Scope:     scope,
 		ExpiresAt: utils.WithPrecision(expiresAt),
 	}
-	// result := database.DB.Exec("INSERT INTO authorization_code (code, client_id, user_id, scope, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-	// 	authCode.Code, authCode.ClientID, authCode.UserID, authCode.Scope, utils.WithPrecision(expiresAt), utils.WithPrecision(time.Now()))
-	// if result.Error != nil {
-	// 	return authCode, result.Error
-	// }
 	result := database.DB.Create(&authCode)
 	if result.Error != nil {
 		return authCode, result.Error
