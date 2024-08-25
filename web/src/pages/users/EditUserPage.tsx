@@ -1,6 +1,6 @@
 import React from "react";
 import axios from "axios";
-import { SENTINEL_API_URL, currentUser } from "@/consts/config";
+import { SENTINEL_API_URL } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -12,7 +12,8 @@ import { faArrowLeft, faLock, faUser } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { User, initUser, setUser } from "@/models/user";
+import { User, initUser } from "@/models/user";
+import { setUser, useUser } from "@/lib/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +44,7 @@ import { notify } from "@/lib/notify";
 function EditUserPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const currentUser = useUser();
 
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
 
@@ -194,7 +196,7 @@ function EditUserPage() {
                       onClick={async () => {
                         await saveUser();
                         if (currentUser.id == id) {
-                          setUser(currentUser, editUser);
+                          setUser(editUser);
                         }
                       }}
                     >

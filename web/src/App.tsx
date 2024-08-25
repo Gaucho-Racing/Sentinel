@@ -5,7 +5,6 @@ import {
   SENTINEL_API_URL,
   SHARED_DRIVE_URL,
   WIKI_URL,
-  currentUser,
 } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,9 +44,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { getUser, useUser } from "@/lib/store";
 
 function App() {
   const navigate = useNavigate();
+  const currentUser = useUser();
 
   const [cardWidth, setCardWidth] = React.useState(500);
 
@@ -108,6 +109,7 @@ function App() {
   };
 
   const checkLoginAccess = async () => {
+    const currentUser = getUser();
     setLoginLoading(true);
     try {
       const response = await axios.get(
@@ -128,6 +130,7 @@ function App() {
   };
 
   const registerPassword = async (password: string) => {
+    const currentUser = getUser();
     setLoginLoading(true);
     try {
       const response = await axios.post(
@@ -153,6 +156,7 @@ function App() {
   };
 
   const resetPassword = async () => {
+    const currentUser = getUser();
     setLoginLoading(true);
     try {
       const response = await axios.delete(
@@ -173,6 +177,7 @@ function App() {
   };
 
   const checkDriveAccess = async () => {
+    const currentUser = getUser();
     setDriveLoading(true);
     try {
       const response = await axios.get(
@@ -193,6 +198,7 @@ function App() {
   };
 
   const addUserToDrive = async () => {
+    const currentUser = getUser();
     setDriveLoading(true);
     try {
       const response = await axios.post(
@@ -212,6 +218,7 @@ function App() {
   };
 
   const removeUserFromDrive = async () => {
+    const currentUser = getUser();
     setDriveLoading(true);
     try {
       const response = await axios.delete(
@@ -230,6 +237,7 @@ function App() {
   };
 
   const checkGithubAccess = async () => {
+    const currentUser = getUser();
     setGithubLoading(true);
     try {
       const response = await axios.get(
@@ -250,6 +258,7 @@ function App() {
   };
 
   const addUserToGithub = async (username: string) => {
+    const currentUser = getUser();
     setGithubLoading(true);
     try {
       const response = await axios.post(
@@ -271,6 +280,7 @@ function App() {
   };
 
   const getApplications = async () => {
+    const currentUser = getUser();
     setApplicationsLoading(true);
     try {
       const response = await axios.get(
