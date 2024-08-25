@@ -109,7 +109,7 @@ function App() {
   };
 
   const checkLoginAccess = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setLoginLoading(true);
     try {
       const response = await axios.get(
@@ -130,7 +130,7 @@ function App() {
   };
 
   const registerPassword = async (password: string) => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setLoginLoading(true);
     try {
       const response = await axios.post(
@@ -156,7 +156,7 @@ function App() {
   };
 
   const resetPassword = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setLoginLoading(true);
     try {
       const response = await axios.delete(
@@ -177,7 +177,7 @@ function App() {
   };
 
   const checkDriveAccess = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setDriveLoading(true);
     try {
       const response = await axios.get(
@@ -198,7 +198,7 @@ function App() {
   };
 
   const addUserToDrive = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setDriveLoading(true);
     try {
       const response = await axios.post(
@@ -218,7 +218,7 @@ function App() {
   };
 
   const removeUserFromDrive = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setDriveLoading(true);
     try {
       const response = await axios.delete(
@@ -237,7 +237,7 @@ function App() {
   };
 
   const checkGithubAccess = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setGithubLoading(true);
     try {
       const response = await axios.get(
@@ -258,7 +258,7 @@ function App() {
   };
 
   const addUserToGithub = async (username: string) => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setGithubLoading(true);
     try {
       const response = await axios.post(
@@ -280,7 +280,7 @@ function App() {
   };
 
   const getApplications = async () => {
-    let currentUser = getUser();
+    const currentUser = getUser();
     setApplicationsLoading(true);
     try {
       const response = await axios.get(

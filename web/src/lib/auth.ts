@@ -4,7 +4,7 @@ import { getUser, setUser } from "@/lib/store";
 import axios from "axios";
 
 export const checkCredentials = async () => {
-  let currentUser = getUser();
+  const currentUser = getUser();
   if (localStorage.getItem("sentinel_access_token") == null) {
     return 1;
   } else if (currentUser.id == "") {
