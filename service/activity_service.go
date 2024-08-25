@@ -19,7 +19,7 @@ func GetActivitiesForUser(userID string) []model.UserActivity {
 
 func GetLastActivityForUser(userID string) model.UserActivity {
 	var activity model.UserActivity
-	database.DB.Where("user_id = ?", userID).Order("created_at desc").Last(&activity)
+	database.DB.Where("user_id = ?", userID).Order("created_at asc").First(&activity)
 	return activity
 }
 
