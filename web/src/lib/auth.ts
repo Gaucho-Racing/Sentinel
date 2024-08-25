@@ -1,4 +1,4 @@
-import { SENTINEL_API_URL, currentUser } from "@/consts/config";
+import { SENTINEL_API_URL } from "@/consts/config";
 import { initUser } from "@/models/user";
 import { getUser, setUser } from "@/lib/store";
 import axios from "axios";

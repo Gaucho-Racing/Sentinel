@@ -5,7 +5,6 @@ import {
   SENTINEL_API_URL,
   SHARED_DRIVE_URL,
   WIKI_URL,
-  currentUser,
 } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,9 +44,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { useUser } from "@/lib/store";
 
 function App() {
   const navigate = useNavigate();
+  const currentUser = useUser();
 
   const [cardWidth, setCardWidth] = React.useState(500);
 

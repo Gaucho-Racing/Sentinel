@@ -1,6 +1,6 @@
 import React from "react";
 import axios from "axios";
-import { SENTINEL_API_URL, currentUser } from "@/consts/config";
+import { SENTINEL_API_URL } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
@@ -29,10 +29,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { faAppStore } from "@fortawesome/free-brands-svg-icons";
 import { notify } from "@/lib/notify";
+import { useUser } from "@/lib/store";
 
 function ApplicationsPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const currentUser = useUser();
 
   const [authCheckLoading, setAuthCheckLoading] = React.useState(false);
 
