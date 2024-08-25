@@ -6,9 +6,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { currentUser } from "@/consts/config";
 import { useNavigate } from "react-router-dom";
 import { logout } from "@/lib/auth";
+import { useUser } from "@/lib/store";
 
 interface HeaderProps {
   className?: string;
@@ -17,7 +17,7 @@ interface HeaderProps {
 
 const Header = (props: HeaderProps) => {
   const navigate = useNavigate();
-
+  const currentUser = useUser();
   return (
     <div
       className={`w-full items-center justify-start transition-all duration-200 lg:pl-32 lg:pr-32 ${props.className}`}
