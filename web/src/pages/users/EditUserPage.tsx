@@ -12,7 +12,8 @@ import { faArrowLeft, faLock, faUser } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { User, initUser, setUser } from "@/models/user";
+import { User, initUser } from "@/models/user";
+import { setUser } from "@/lib/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -194,7 +195,7 @@ function EditUserPage() {
                       onClick={async () => {
                         await saveUser();
                         if (currentUser.id == id) {
-                          setUser(currentUser, editUser);
+                          setUser(editUser);
                         }
                       }}
                     >

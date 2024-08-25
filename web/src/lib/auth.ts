@@ -1,8 +1,10 @@
 import { SENTINEL_API_URL, currentUser } from "@/consts/config";
-import { initUser, setUser } from "@/models/user";
+import { initUser } from "@/models/user";
+import { getUser, setUser } from "@/lib/store";
 import axios from "axios";
 
 export const checkCredentials = async () => {
+  let currentUser = getUser();
   if (localStorage.getItem("sentinel_access_token") == null) {
     return 1;
   } else if (currentUser.id == "") {
@@ -13,17 +15,15 @@ export const checkCredentials = async () => {
         },
       });
       if (response.status == 200) {
-        setUser(currentUser, response.data);
+        setUser(response.data);
         return 0;
       }
     } catch (error) {
       logout();
       return 1;
     }
-  } else {
-    return 0;
   }
-  return 1;
+  return 0;
 };
 
 export const logout = () => {
@@ -36,7 +36,7 @@ export const logout = () => {
       document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.gauchoracing.com; secure; samesite=lax`;
     }
   });
-  setUser(currentUser, initUser);
+  setUser(initUser);
 };
 
 export const saveAccessToken = (accessToken: string) => {
