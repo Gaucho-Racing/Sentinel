@@ -141,7 +141,7 @@ function LoginPage() {
                   const redirect_url =
                     window.location.origin + "/auth/login/discord";
                   const scope = "identify+email";
-                  let oauthUrl = `${DISCORD_OAUTH_BASE_URL}?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${scope}`;
+                  let oauthUrl = `${DISCORD_OAUTH_BASE_URL}?client_id=${DISCORD_CLIENT_ID}&response_type=code&redirect_uri=${encodeURIComponent(redirect_url)}&scope=${scope}&prompt=none`;
                   const route = queryParameters.get("route");
                   if (route) {
                     oauthUrl += `&state=${encodeURIComponent(route)}`;
