@@ -1,5 +1,5 @@
 import { Card } from "@/components/ui/card";
-import { SHARED_DRIVE_URL, WIKI_URL } from "@/consts/config";
+import { GITHUB_ORG_URL, SHARED_DRIVE_URL, WIKI_URL } from "@/consts/config";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
 import { faBook } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -33,7 +33,7 @@ export default function AppGrid() {
         <Card
           className="flex-1 cursor-pointer p-4 transition-all hover:bg-neutral-800"
           onClick={() => {
-            window.open("https://portainer.gauchoracing.com", "_blank");
+            window.open(GITHUB_ORG_URL, "_blank");
           }}
         >
           <div className="flex flex-col items-center justify-center">
