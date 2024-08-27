@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { SHARED_DRIVE_URL, WIKI_URL } from "@/consts/config";
 import { faGithub } from "@fortawesome/free-brands-svg-icons";
-import { faBook, faDatabase } from "@fortawesome/free-solid-svg-icons";
+import { faBook } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 
 export default function AppGrid() {
