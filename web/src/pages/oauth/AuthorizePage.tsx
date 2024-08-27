@@ -24,9 +24,12 @@ function AuthorizePage() {
     initClientApplication,
   );
 
+  const [_, setScopes] = React.useState<{ [key: string]: string }>({});
+
   React.useEffect(() => {
     checkAuth().then(() => {
       ping();
+      getScopes();
       validate();
     });
   }, []);
@@ -46,6 +49,21 @@ function AuthorizePage() {
     const status = await checkCredentials();
     if (status != 0) {
       navigate(`/auth/login?route=${encodeURIComponent(currentRoute)}`);
+    }
+  };
+
+  const getScopes = async () => {
+    try {
+      const response = await axios.get(`${SENTINEL_API_URL}/oauth/scopes`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+        },
+      });
+      if (response.status == 200) {
+        setScopes(response.data);
+      }
+    } catch (error: any) {
+      notify.error(getAxiosErrorMessage(error));
     }
   };
 
@@ -179,12 +197,12 @@ function AuthorizePage() {
             {application.name} would like to access your Sentinel account.
           </p>
           <p className="mt-4">Requested Scopes:</p>
-          <div className="mt-2 flex flex-wrap">
+          <div className="mt-2 flex flex-wrap gap-2">
             {queryParameters
               .get("scope")
               ?.split(" ")
               .map((scope) => (
-                <div key={scope} className="mx-1 mb-2">
+                <div key={scope}>
                   <Card className="rounded-sm px-1 text-gray-400">
                     <code className="">{scope}</code>
                   </Card>
