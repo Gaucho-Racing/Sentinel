@@ -45,6 +45,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getUser, useUser } from "@/lib/store";
+import AppGrid from "@/components/AppGrid";
 
 function App() {
   const navigate = useNavigate();
@@ -692,51 +693,6 @@ function App() {
 
   const ApplicationsCard = () => {
     return (
-      <div
-        className={`mr-4 mt-4 w-[${cardWidth}px] flex flex-row justify-between`}
-      >
-        <Card
-          className="mx-2 flex-1 cursor-pointer p-4 transition-all hover:bg-neutral-800"
-          onClick={() => {
-            window.open(
-              "https://portal.singlestore.com/organizations/cacb1a27-44c3-4171-8714-2f1a0bc83e09/homepage",
-              "_blank",
-            );
-          }}
-        >
-          <div className="flex flex-col items-center justify-center">
-            <img src={"/logo/singlestore.png"} className="h-12 w-12" />
-            <p className="text-center text-lg font-semibold">SingleStore</p>
-          </div>
-        </Card>
-        <Card
-          className="mx-2 flex-1 cursor-pointer p-4 transition-all hover:bg-neutral-800"
-          onClick={() => {
-            window.open("https://s2.gauchoracing.com", "_blank");
-          }}
-        >
-          <div className="flex flex-col items-center justify-center">
-            <img src={"/logo/s2.png"} className="h-10 w-10" />
-            <p className="mt-2 text-center text-lg font-semibold">S2DB</p>
-          </div>
-        </Card>
-        <Card
-          className="mx-2 flex-1 cursor-pointer p-4 transition-all hover:bg-neutral-800"
-          onClick={() => {
-            window.open("https://portainer.gauchoracing.com", "_blank");
-          }}
-        >
-          <div className="flex flex-col items-center justify-center">
-            <img src={"/logo/portainer.png"} className="h-12 w-12" />
-            <p className="text-center text-lg font-semibold">Portainer</p>
-          </div>
-        </Card>
-      </div>
-    );
-  };
-
-  const OauthApplicationsCard = () => {
-    return (
       <Card className={`mr-4 mt-4 w-[${cardWidth}px] p-4`}>
         <div className="flex items-center justify-start">
           <FontAwesomeIcon icon={faAppStore} className="h-5 w-5" />
@@ -852,9 +808,9 @@ function App() {
                 <DriveCard />
                 <GithubCard />
               </div>
-              <div>
+              <div className={`mr-4 mt-4 w-[${cardWidth}px]`}>
+                <AppGrid />
                 <ApplicationsCard />
-                <OauthApplicationsCard />
               </div>
             </div>
           </div>
