@@ -139,7 +139,7 @@ func RequestUserHasRole(c *gin.Context, role string) bool {
 
 func RequestTokenHasScope(c *gin.Context, scope string) bool {
 	scopes := GetRequestTokenScopes(c)
-	for _, s := range strings.Split(scopes, "+") {
+	for _, s := range strings.Split(scopes, " ") {
 		if s == scope {
 			return true
 		}
