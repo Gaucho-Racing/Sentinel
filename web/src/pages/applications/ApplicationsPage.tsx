@@ -549,37 +549,39 @@ function ApplicationsPage() {
                               </div>
                             )}
                           </div>
-                          <div className="mx-2 flex w-full flex-col items-start">
-                            <div className="font-semibold">Scopes:</div>
-                            <p className="mt-1 text-gray-400">
-                              You must specify one or more valid scopes when
-                              making an authorization request.
-                            </p>
-                            <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-                              {Object.entries(scopes)
-                                .filter(([scope]) => scope !== "sentinel:all")
-                                .map(([scope, description]) => (
-                                  <div
-                                    key={scope}
-                                    className="flex items-start space-x-2"
-                                  >
-                                    <div className="space-y-1 leading-none">
-                                      <code>
-                                        <label
-                                          htmlFor={`scope-${scope}`}
-                                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                                        >
-                                          {scope}
-                                        </label>
-                                      </code>
-                                      <p className="text-sm text-muted-foreground">
-                                        {description}
-                                      </p>
+                          {!creatingApplication && (
+                            <div className="mx-2 flex w-full flex-col items-start">
+                              <div className="font-semibold">Scopes:</div>
+                              <p className="mt-1 text-gray-400">
+                                You must specify one or more valid scopes when
+                                making an authorization request.
+                              </p>
+                              <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+                                {Object.entries(scopes)
+                                  .filter(([scope]) => scope !== "sentinel:all")
+                                  .map(([scope, description]) => (
+                                    <div
+                                      key={scope}
+                                      className="flex items-start space-x-2"
+                                    >
+                                      <div className="space-y-1 leading-none">
+                                        <code>
+                                          <label
+                                            htmlFor={`scope-${scope}`}
+                                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                          >
+                                            {scope}
+                                          </label>
+                                        </code>
+                                        <p className="text-sm text-muted-foreground">
+                                          {description}
+                                        </p>
+                                      </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  ))}
+                              </div>
                             </div>
-                          </div>
+                          )}
                           {canEdit && (
                             <div className="mt-4 flex w-full items-center justify-end">
                               <div className="flex items-center justify-end">
