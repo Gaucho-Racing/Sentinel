@@ -45,6 +45,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getUser, useUser } from "@/lib/store";
+import AppGrid from "@/components/AppGrid";
 
 function App() {
   const navigate = useNavigate();
@@ -807,7 +808,8 @@ function App() {
                 <DriveCard />
                 <GithubCard />
               </div>
-              <div>
+              <div className={`mr-4 mt-4 w-[${cardWidth}px]`}>
+                <AppGrid />
                 <ApplicationsCard />
               </div>
             </div>
