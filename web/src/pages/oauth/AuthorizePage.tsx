@@ -10,6 +10,12 @@ import { ClientApplication, initClientApplication } from "@/models/application";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { Button } from "@/components/ui/button";
 import { notify } from "@/lib/notify";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function AuthorizePage() {
   const navigate = useNavigate();
@@ -24,7 +30,7 @@ function AuthorizePage() {
     initClientApplication,
   );
 
-  const [_, setScopes] = React.useState<{ [key: string]: string }>({});
+  const [scopes, setScopes] = React.useState<{ [key: string]: string }>({});
 
   React.useEffect(() => {
     checkAuth().then(() => {
@@ -203,9 +209,30 @@ function AuthorizePage() {
               ?.split(" ")
               .map((scope) => (
                 <div key={scope}>
-                  <Card className="rounded-sm px-1 text-gray-400">
-                    <code className="">{scope}</code>
-                  </Card>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Card className="rounded-sm px-1 text-gray-400">
+                          <code className="">{scope}</code>
+                        </Card>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <div className="leading-none">
+                          <code>
+                            <label
+                              htmlFor={`scope-${scope}`}
+                              className="text-sm font-medium leading-none"
+                            >
+                              {scope}
+                            </label>
+                          </code>
+                          <p className="text-sm text-gray-400">
+                            {scopes[scope]}
+                          </p>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               ))}
           </div>
