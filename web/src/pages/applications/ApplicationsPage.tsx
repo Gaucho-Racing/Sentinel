@@ -30,7 +30,6 @@ import {
 import { faAppStore } from "@fortawesome/free-brands-svg-icons";
 import { notify } from "@/lib/notify";
 import { useUser } from "@/lib/store";
-import { Checkbox } from "@/components/ui/checkbox";
 
 function ApplicationsPage() {
   const navigate = useNavigate();
