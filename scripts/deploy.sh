@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# Check if version is provided
-if [ -z "$1" ]
+# Get the version from config.go
+VERSION=$(grep 'var Version =' config/config.go | cut -d '"' -f 2)
+
+# Check if version was successfully extracted
+if [ -z "$VERSION" ]
   then
-    echo "No version number provided"
+    echo "Error: Could not extract version from config/config.go"
     exit 1
 fi
 
@@ -13,9 +16,9 @@ if ! [ -x "$(command -v docker)" ]; then
   exit 1
 fi
 
-echo "Building container for Sentinel v$1"
+echo "Building container for Sentinel v$VERSION"
 # Build the docker container
-docker build -t gauchoracing/sentinel:"$1" -t gauchoracing/sentinel:latest --platform linux/amd64,linux/arm64 --push --progress=plain .
+docker build -t gauchoracing/sentinel:"$VERSION" -t gauchoracing/sentinel:latest --platform linux/amd64,linux/arm64 --push --progress=plain .
 
 echo "Container deployed successfully"
 
@@ -27,10 +30,10 @@ then
 fi
 
 # Create a release tag
-git tag -s v$1 -m "Release version $1"
-git push origin v$1
+git tag -s v$VERSION -m "Release version $VERSION"
+git push origin v$VERSION
 
 # Create a release
-gh release create v$1 --generate-notes
+gh release create v$VERSION --generate-notes
 
-echo "Package released successfully for version $1"
+echo "Package released successfully for version $VERSION"
