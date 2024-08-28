@@ -4,7 +4,7 @@ import "sentinel/config"
 
 func VerifyConfig() {
 	if config.Port == "" {
-		config.Port = "7999"
+		config.Port = "9999"
 		SugarLogger.Infof("PORT is not set, defaulting to %s", config.Port)
 	}
 	if config.DatabaseHost == "" {
