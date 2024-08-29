@@ -28,6 +28,9 @@ func main() {
 	jobs.RegisteGithubCronJob()
 	jobs.RegisterWikiCronJob()
 
+	service.PopulateMemberDirectorySheet()
+	service.CleanDriveMembers()
+
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)
 	err := router.Run(":" + config.Port)

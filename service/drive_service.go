@@ -120,6 +120,19 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	return nil
 }
 
+// PopulateDriveMembers adds all users to the shared drive with the appropriate role.
+// Useful for when you accidentally remove everyone from the shared drive lmfao
+func PopulateDriveMembers() {
+	users := GetAllUsers()
+	for _, user := range users {
+		if user.IsInnerCircle() {
+			AddMemberToDrive(config.SharedDriveID, user.Email, "organizer")
+		} else {
+			AddMemberToDrive(config.SharedDriveID, user.Email, "writer")
+		}
+	}
+}
+
 // CleanDriveMembers removes users from the shared drive that are not in the member directory.
 func CleanDriveMembers() {
 	keepEmails := []string{

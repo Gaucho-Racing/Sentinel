@@ -21,8 +21,14 @@ func RegisterDriveCronJob() {
 		utils.SugarLogger.Infoln("Starting google drive CRON Job...")
 		var wg sync.WaitGroup
 		wg.Add(2)
-		go service.PopulateMemberDirectorySheet()
-		go service.CleanDriveMembers()
+		go func() {
+			defer wg.Done()
+			service.PopulateMemberDirectorySheet()
+		}()
+		go func() {
+			defer wg.Done()
+			service.CleanDriveMembers()
+		}()
 		wg.Wait()
 		utils.SugarLogger.Infoln("Finished google drive CRON Job!")
 		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":white_check_mark: Finished google drive job!")
