@@ -111,6 +111,7 @@ func CreateWikiUser(input model.WikiUserCreate) (int, error) {
 		return 0, err
 	}
 	utils.SugarLogger.Infof("Created wiki user: %s (%s)", user.Name, user.Email)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Created wiki user: %s (%s)", user.Name, user.Email))
 	return user.ID, nil
 }
 
@@ -140,6 +141,8 @@ func UpdateWikiUser(id int, input model.WikiUserCreate) error {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to update wiki user: %s", string(body))
 	}
+	utils.SugarLogger.Infof("Updated wiki user: %d", id)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Updated wiki user: %d", id))
 	return nil
 }
 
@@ -162,6 +165,8 @@ func DeleteWikiUser(id int) error {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("failed to delete wiki user: %s", string(body))
 	}
+	utils.SugarLogger.Infof("Deleted wiki user: %d", id)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Deleted wiki user: %d", id))
 	return nil
 }
 

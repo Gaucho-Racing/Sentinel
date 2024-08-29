@@ -94,6 +94,7 @@ func AddUserToGithub(userID string, username string) error {
 		return fmt.Errorf("failed to add user to GitHub organization: %s", string(body))
 	}
 	addGithubUsernameToRoles(username, userID)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Added %s (%s) to GitHub organization", username, user.Email))
 	return nil
 }
 
@@ -119,6 +120,7 @@ func RemoveUserFromGithub(userID string, username string) error {
 		return fmt.Errorf("failed to remove user from GitHub organization: %s", string(body))
 	}
 	removeGithubUsernameFromRoles(username, userID)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed %s from GitHub organization", username))
 	return nil
 }
 
