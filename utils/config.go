@@ -44,9 +44,6 @@ func VerifyConfig() {
 	if config.WikiToken == "" {
 		SugarLogger.Errorf("WIKI_TOKEN is not set")
 	}
-	if config.AuthSigningKey == "" {
-		SugarLogger.Errorf("AUTH_SIGNING_KEY is not set")
-	}
 	if config.RsaPublicKeyString == "" {
 		SugarLogger.Errorf("RSA_PUBLIC_KEY is not set")
 	}

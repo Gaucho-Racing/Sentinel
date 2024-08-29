@@ -39,8 +39,6 @@ var AlumniRoleID = "817577502968512552"
 
 var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Powertrain", "Suspension"}
 
-var AuthSigningKey = os.Getenv("AUTH_SIGNING_KEY")
-
 var RsaPublicKey *rsa.PublicKey
 var RsaPrivateKey *rsa.PrivateKey
 var RsaPublicKeyJWKS map[string]interface{}
