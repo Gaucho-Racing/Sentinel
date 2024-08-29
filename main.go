@@ -29,7 +29,6 @@ func main() {
 	jobs.RegisterWikiCronJob()
 
 	service.PopulateMemberDirectorySheet()
-	service.CleanDriveMembers()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

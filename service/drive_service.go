@@ -7,6 +7,7 @@ import (
 	"log"
 	"sentinel/config"
 	"sentinel/utils"
+	"sort"
 	"strings"
 
 	"golang.org/x/oauth2/google"
@@ -192,14 +193,19 @@ func PopulateMemberDirectorySheet() {
 	utils.SugarLogger.Infoln("Rows after 5 have been deleted successfully.")
 
 	users := GetAllUsers()
+	sort.Slice(users, func(i, j int) bool {
+		return users[i].FirstName < users[j].FirstName
+	})
+
+	values := make([][]interface{}, len(users))
 	for i, user := range users {
-		subteams := []string{}
-		for _, subteam := range user.Subteams {
-			subteams = append(subteams, subteam.Name)
+		subteams := make([]string, len(user.Subteams))
+		for j, subteam := range user.Subteams {
+			subteams[j] = subteam.Name
 		}
 		subteamString := strings.Join(subteams, ", ")
 		roleString := strings.Join(user.Roles, ", ")
-		values := []interface{}{
+		values[i] = []interface{}{
 			user.ID,
 			user.FirstName,
 			user.LastName,
@@ -216,16 +222,17 @@ func PopulateMemberDirectorySheet() {
 			subteamString,
 			roleString,
 		}
-		writeRange := fmt.Sprintf("A%d", i+6)
-		writeRequest := &sheets.ValueRange{
-			Values: [][]interface{}{values},
-		}
-		_, err = SheetClient.Spreadsheets.Values.Update(config.MemberDirectorySheetID, writeRange, writeRequest).
-			ValueInputOption("RAW").
-			Do()
-		if err != nil {
-			utils.SugarLogger.Errorf("Unable to write data to sheet: %v", err)
-			return
-		}
+	}
+
+	writeRange := "A6:O"
+	writeRequest := &sheets.ValueRange{
+		Values: values,
+	}
+	_, err = SheetClient.Spreadsheets.Values.Update(config.MemberDirectorySheetID, writeRange, writeRequest).
+		ValueInputOption("RAW").
+		Do()
+	if err != nil {
+		utils.SugarLogger.Errorf("Unable to write data to sheet: %v", err)
+		return
 	}
 }
