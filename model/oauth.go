@@ -5,6 +5,9 @@ import (
 )
 
 var ValidOauthScopes = map[string]string{
+	"openid":            "OpenID Connect scope",
+	"profile":           "OIDC profile scope",
+	"email":             "OIDC email scope",
 	"user:read":         "Read user account information",
 	"user:write":        "Edit user account information",
 	"drive:read":        "Read user's team drive access information",

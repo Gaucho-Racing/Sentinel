@@ -137,11 +137,19 @@ func ValidateScope(scopes string) bool {
 func GenerateAuthorizationCode(clientID, userID, scope string) (model.AuthorizationCode, error) {
 	code := generateCryptoString(8)
 	expiresAt := time.Now().Add(5 * time.Minute)
+
+	// Check if scope contains "oidc" and add "user:read" if it does
+	scopes := strings.Split(scope, " ")
+	if contains(scopes, "oidc") && !contains(scopes, "user:read") {
+		scopes = append(scopes, "user:read")
+	}
+	updatedScope := strings.Join(scopes, " ")
+
 	authCode := model.AuthorizationCode{
 		Code:      code,
 		ClientID:  clientID,
 		UserID:    userID,
-		Scope:     scope,
+		Scope:     updatedScope,
 		ExpiresAt: utils.WithPrecision(expiresAt),
 	}
 	result := database.DB.Create(&authCode)
