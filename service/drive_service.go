@@ -127,8 +127,10 @@ func PopulateDriveMembers() {
 	for _, user := range users {
 		if user.IsInnerCircle() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "organizer")
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Adding %s to drive with `organizer` role", user.Email))
 		} else {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "writer")
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Adding %s to drive with `writer` role", user.Email))
 		}
 	}
 }
@@ -152,6 +154,7 @@ func CleanDriveMembers() {
 		user := GetUserByEmail(perm.EmailAddress)
 		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
 			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removing %s from drive", perm.EmailAddress))
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		}
 	}
