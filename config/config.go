@@ -43,6 +43,7 @@ var AuthSigningKey = os.Getenv("AUTH_SIGNING_KEY")
 
 var RsaPublicKey *rsa.PublicKey
 var RsaPrivateKey *rsa.PrivateKey
+var RsaPublicKeyJWKS map[string]interface{}
 
 var RsaPublicKeyString = os.Getenv("RSA_PUBLIC_KEY")
 var RsaPrivateKeyString = os.Getenv("RSA_PRIVATE_KEY")

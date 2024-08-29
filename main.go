@@ -1,7 +1,10 @@
 package main
 
 import (
+	"sentinel/commands"
 	"sentinel/config"
+	"sentinel/controller"
+	"sentinel/database"
 	"sentinel/service"
 	"sentinel/utils"
 )
@@ -12,35 +15,22 @@ func main() {
 	utils.VerifyConfig()
 	defer utils.Logger.Sync()
 
+	database.InitializeDB()
 	service.InitializeKeys()
+	service.InitializeDrive()
+	service.ConnectDiscord()
+	service.InitializeRoles()
+	service.InitializeSubteams()
+	go service.SyncRolesForAllUsers()
+	commands.InitializeDiscordBot()
+	controller.RegisterDriveCronJob()
+	controller.RegisteGithubCronJob()
+	controller.RegisterWikiCronJob()
 
-	// database.InitializeDB()
-	// service.InitializeDrive()
-	// service.ConnectDiscord()
-	// service.InitializeRoles()
-	// service.InitializeSubteams()
-	// go service.SyncRolesForAllUsers()
-	// commands.InitializeDiscordBot()
-	// controller.RegisterDriveCronJob()
-	// controller.RegisteGithubCronJob()
-	// controller.RegisterWikiCronJob()
-
-	token, err := service.GenerateJWT("123", "test@test.com", "sentinel:all", "sentinel")
+	router := controller.SetupRouter()
+	controller.InitializeRoutes(router)
+	err := router.Run(":" + config.Port)
 	if err != nil {
-		utils.SugarLogger.Errorln(err)
+		utils.SugarLogger.Fatalln(err)
 	}
-	utils.SugarLogger.Infoln(token)
-
-	claims, err := service.ValidateJWT(token)
-	if err != nil {
-		utils.SugarLogger.Errorln(err)
-	}
-	utils.SugarLogger.Infoln(claims)
-
-	// router := controller.SetupRouter()
-	// controller.InitializeRoutes(router)
-	// err := router.Run(":" + config.Port)
-	// if err != nil {
-	// 	utils.SugarLogger.Fatalln(err)
-	// }
 }

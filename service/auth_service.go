@@ -1,7 +1,10 @@
 package service
 
 import (
+	"crypto/rsa"
+	"encoding/base64"
 	"fmt"
+	"math/big"
 	"sentinel/config"
 	"sentinel/database"
 	"sentinel/model"
@@ -27,6 +30,25 @@ func InitializeKeys() {
 		utils.SugarLogger.Errorln("Failed to parse RSA private key:", err)
 	}
 	config.RsaPrivateKey = privateKey
+	config.RsaPublicKeyJWKS = PublicKeyToJWKS(publicKey)
+}
+
+func PublicKeyToJWKS(publicKey *rsa.PublicKey) map[string]interface{} {
+	e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(publicKey.E)).Bytes())
+	n := base64.RawURLEncoding.EncodeToString(publicKey.N.Bytes())
+
+	return map[string]interface{}{
+		"keys": []map[string]interface{}{
+			{
+				"kty": "RSA",
+				"use": "sig",
+				"alg": "RS256",
+				"kid": "1",
+				"n":   n,
+				"e":   e,
+			},
+		},
+	}
 }
 
 func RegisterEmailPassword(email string, password string) (string, error) {
@@ -112,7 +134,7 @@ func GenerateJWT(id string, email string, scope string, client_id string) (strin
 		Scope: scope,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        id,
-			Issuer:    "sso.gauchoracing.com",
+			Issuer:    "https://sso.gauchoracing.com/",
 			Audience:  jwt.ClaimStrings{client_id},
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
