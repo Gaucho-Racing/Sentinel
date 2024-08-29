@@ -28,3 +28,6 @@ drive-service-account.json
 go.work
 
 coverage.html
+
+jwtRS256.key
+jwtRS256.key.pub

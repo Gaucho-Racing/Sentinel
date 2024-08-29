@@ -14,6 +14,21 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+func InitializeKeys() {
+	// Parse the RSA public key
+	publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(config.RsaPublicKeyString))
+	if err != nil {
+		utils.SugarLogger.Errorln("Failed to parse RSA public key:", err)
+	}
+	config.RsaPublicKey = publicKey
+	// Parse the RSA private key
+	privateKey, err := jwt.ParseRSAPrivateKeyFromPEM([]byte(config.RsaPrivateKeyString))
+	if err != nil {
+		utils.SugarLogger.Errorln("Failed to parse RSA private key:", err)
+	}
+	config.RsaPrivateKey = privateKey
+}
+
 func RegisterEmailPassword(email string, password string) (string, error) {
 	user := GetUserByEmail(email)
 	if user.ID == "" {
@@ -104,8 +119,8 @@ func GenerateJWT(id string, email string, scope string, client_id string) (strin
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(config.AuthSigningKey))
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	signedToken, err := token.SignedString(config.RsaPrivateKey)
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())
 		return "", err
@@ -116,7 +131,7 @@ func GenerateJWT(id string, email string, scope string, client_id string) (strin
 func ValidateJWT(token string) (*model.AuthClaims, error) {
 	claims := &model.AuthClaims{}
 	_, err := jwt.ParseWithClaims(token, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(config.AuthSigningKey), nil
+		return config.RsaPublicKey, nil
 	})
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())

@@ -1,6 +1,9 @@
 package utils
 
-import "sentinel/config"
+import (
+	"sentinel/config"
+	"strings"
+)
 
 func VerifyConfig() {
 	if config.Port == "" {
@@ -44,6 +47,14 @@ func VerifyConfig() {
 	if config.AuthSigningKey == "" {
 		SugarLogger.Errorf("AUTH_SIGNING_KEY is not set")
 	}
+	if config.RsaPublicKeyString == "" {
+		SugarLogger.Errorf("RSA_PUBLIC_KEY is not set")
+	}
+	config.RsaPublicKeyString = strings.ReplaceAll(config.RsaPublicKeyString, "\\n", "\n")
+	if config.RsaPrivateKeyString == "" {
+		SugarLogger.Errorf("RSA_PRIVATE_KEY is not set")
+	}
+	config.RsaPrivateKeyString = strings.ReplaceAll(config.RsaPrivateKeyString, "\\n", "\n")
 	if config.DriveCron == "" {
 		config.DriveCron = "0 * * * *"
 		SugarLogger.Infof("DRIVE_CRON is not set, defaulting to %s", config.DriveCron)
