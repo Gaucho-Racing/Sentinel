@@ -27,7 +27,7 @@ func (c AuthClaims) Valid() error {
 		vErr.Errors |= jwt.ValidationErrorIssuedAt
 	}
 
-	if !c.VerifyIssuer("sso.gauchoracing.com", true) {
+	if !c.VerifyIssuer("https://sso.gauchoracing.com/", true) {
 		vErr.Inner = jwt.ErrTokenInvalidIssuer
 		vErr.Errors |= jwt.ValidationErrorIssuer
 	}
