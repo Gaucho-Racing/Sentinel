@@ -16,6 +16,7 @@ func main() {
 	defer utils.Logger.Sync()
 
 	database.InitializeDB()
+	service.InitializeKeys()
 	service.InitializeDrive()
 	service.ConnectDiscord()
 	service.InitializeRoles()
@@ -25,7 +26,6 @@ func main() {
 	controller.RegisterDriveCronJob()
 	controller.RegisteGithubCronJob()
 	controller.RegisterWikiCronJob()
-	// service.FindAllNonVerifiedUsers()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

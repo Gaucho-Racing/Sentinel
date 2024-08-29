@@ -2,12 +2,17 @@ package controller
 
 import (
 	"net/http"
+	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
 
 	"github.com/gin-gonic/gin"
 )
+
+func GetJWKS(c *gin.Context) {
+	c.JSON(http.StatusOK, config.RsaPublicKeyJWKS)
+}
 
 func RegisterAccountPassword(c *gin.Context) {
 	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))

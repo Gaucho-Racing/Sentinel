@@ -1,8 +1,11 @@
 package config
 
-import "os"
+import (
+	"crypto/rsa"
+	"os"
+)
 
-var Version = "3.2.13"
+var Version = "3.3.0"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
@@ -37,6 +40,13 @@ var AlumniRoleID = "817577502968512552"
 var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Powertrain", "Suspension"}
 
 var AuthSigningKey = os.Getenv("AUTH_SIGNING_KEY")
+
+var RsaPublicKey *rsa.PublicKey
+var RsaPrivateKey *rsa.PrivateKey
+var RsaPublicKeyJWKS map[string]interface{}
+
+var RsaPublicKeyString = os.Getenv("RSA_PUBLIC_KEY")
+var RsaPrivateKeyString = os.Getenv("RSA_PRIVATE_KEY")
 
 var MemberDirectorySheetID = "1reuLZox2daj8r2H-lZrwB4oFPYlJ6oC7983UUaZd6AY"
 
