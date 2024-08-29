@@ -5,6 +5,7 @@ import (
 	"sentinel/config"
 	"sentinel/controller"
 	"sentinel/database"
+	"sentinel/jobs"
 	"sentinel/service"
 	"sentinel/utils"
 )
@@ -23,9 +24,9 @@ func main() {
 	service.InitializeSubteams()
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
-	controller.RegisterDriveCronJob()
-	controller.RegisteGithubCronJob()
-	controller.RegisterWikiCronJob()
+	jobs.RegisterDriveCronJob()
+	jobs.RegisteGithubCronJob()
+	jobs.RegisterWikiCronJob()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

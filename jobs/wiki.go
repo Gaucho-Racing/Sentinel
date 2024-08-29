@@ -1,4 +1,4 @@
-package controller
+package jobs
 
 import (
 	"sentinel/config"
@@ -10,6 +10,10 @@ import (
 )
 
 func RegisterWikiCronJob() {
+	if config.Env != "PROD" {
+		utils.SugarLogger.Infoln("Wiki CRON Job not registered because environment is not PROD")
+		return
+	}
 	c := cron.New()
 	entryID, err := c.AddFunc(config.WikiCron, func() {
 		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":alarm_clock: Starting wiki CRON Job")
