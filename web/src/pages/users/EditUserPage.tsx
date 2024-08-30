@@ -13,7 +13,7 @@ import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { User, initUser } from "@/models/user";
-import { setUser, useUser } from "@/lib/store";
+import { setUser, useUser, getUser as getCurrentUser } from "@/lib/store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -72,6 +72,7 @@ function EditUserPage() {
   };
 
   const checkEditPermissions = async () => {
+    const currentUser = getCurrentUser();
     if (currentUser.roles.includes("d_admin") || currentUser.id == id) {
       getUser();
       setCanEdit(true);
