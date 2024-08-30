@@ -1,5 +1,6 @@
 export interface User {
   id: string;
+  username: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -28,6 +29,7 @@ export interface Subteam {
 
 export const initUser: User = {
   id: "",
+  username: "",
   first_name: "",
   last_name: "",
   email: "",
