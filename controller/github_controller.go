@@ -9,8 +9,13 @@ import (
 )
 
 func GetGithubStatusForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "github:read"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "github:read"),
+			Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
@@ -27,8 +32,13 @@ func GetGithubStatusForUser(c *gin.Context) {
 }
 
 func AddUserToGithub(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "github:write"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "github:write"),
+			Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	var input model.GithubInvite
 	if err := c.ShouldBindJSON(&input); err != nil {
