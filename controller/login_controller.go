@@ -9,15 +9,20 @@ import (
 )
 
 func GetAllLogins(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	logins := service.GetAllLogins()
 	c.JSON(http.StatusOK, logins)
 }
 
 func GetLoginsForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "logins:read"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "logins:read"),
+			Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	userID := c.Param("userID")
 	if c.Query("count") != "" {
@@ -35,7 +40,7 @@ func GetLoginsForUser(c *gin.Context) {
 }
 
 func GetLoginsForDestination(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	destination := c.Param("appID")
 	if c.Query("count") != "" {
@@ -60,10 +65,13 @@ func GetLoginByID(c *gin.Context) {
 		return
 	}
 
-	if !RequestTokenHasScope(c, "sentinel:all") {
-		RequireAny(c, RequestTokenHasScope(c, "logins:read"))
-		RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, login.UserID))
-	}
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "logins:read"),
+			Any(RequestUserHasID(c, login.UserID), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	c.JSON(http.StatusOK, login)
 }
