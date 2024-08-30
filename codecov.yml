@@ -1,0 +1,6 @@
+ignore:
+  - "main.go"
+  - "model/"
+  - "commands/"
+  - "controller/"
+  - "service/"
