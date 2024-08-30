@@ -86,6 +86,17 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 	}
 	SetSubteamsForUser(userID, subteamRoles)
 	SetRolesForUser(userID, roles)
+
+	if contains(roles, "d_alumni") {
+		RemoveAllSubteamDiscordRolesForUser(userID)
+	}
+}
+
+func RemoveAllSubteamDiscordRolesForUser(userID string) {
+	subteams := GetSubteamsForUser(userID)
+	for _, subteam := range subteams {
+		Discord.GuildMemberRoleRemove(config.DiscordGuild, userID, subteam.ID)
+	}
 }
 
 func contains(s []string, e string) bool {
