@@ -305,23 +305,75 @@ func FindAllNonVerifiedUsers() {
 			verifiedMembers++
 		} else {
 			utils.SugarLogger.Infof("User not found: %s", member.User.ID)
+			sendIds = append(sendIds, member.User.ID)
 		}
 		for _, role := range member.Roles {
 			if role == config.MemberRoleID {
 				memberMembers++
-			}
-			if role == config.AdminRoleID || role == config.OfficerRoleID || role == config.LeadRoleID {
-				sendIds = append(sendIds, member.User.ID)
 			}
 		}
 		guildMembers++
 	}
 	for _, id := range sendIds {
 		println(id)
-		// SendDirectMessage(id, "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before July 12th to avoid any disruption to your server access.  You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
+		SendDirectMessage(id, "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before September 7th to avoid any disruption to your server access.  You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
 	}
 	utils.SugarLogger.Infof("Total Members: %d", guildMembers)
 	utils.SugarLogger.Infof("Members Role: %d", memberMembers)
 	utils.SugarLogger.Infof("Verified Members: %d", verifiedMembers)
-	SendDirectMessage("348220961155448833", "Hey there Gaucho Racer! It look's like you haven't verified your account yet. Please use the `!verify` command to verify your account before July 12th to avoid any disruption to your server access.  You can run this command in any channel in the Gaucho Racing discord server!\n\nHere's the command usage: `!verify <first name> <last name> <email>`\nAnd here's an example: `!verify Bharat Kathi bkathi@ucsb.edu`")
+}
+
+// CleanDiscordMembers removes users from the sentinel database if they are no longer in the discord server
+// It will also remove users from sentinel who no longer have the member role in discord
+// Lastly, it will remove all roles from users who are in the discord server but not in the sentinel database
+// Note that this will NOT kick anyone from the discord server
+func CleanDiscordMembers() {
+	members, err := Discord.GuildMembers(config.DiscordGuild, "", 1000)
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+	}
+	for _, member := range members {
+		user := GetUserByID(member.User.ID)
+		if user.ID == "" {
+			// User is in the discord server but not in the sentinel database
+			// User could have any number of roles, so we will clear all roles.
+			if len(member.Roles) > 0 {
+				utils.SugarLogger.Infof("Discord user not verified: %s", member.User.ID)
+				for _, role := range member.Roles {
+					err := Discord.GuildMemberRoleRemove(config.DiscordGuild, member.User.ID, role)
+					if err != nil {
+						utils.SugarLogger.Errorf("Error removing role %s from user %s: %s", role, member.User.ID, err.Error())
+					}
+				}
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s as they are not in the sentinel database", member.User.ID))
+			}
+		} else if !user.HasRole("d_member") {
+			// User is in the sentinel database but no longer has the member role in discord
+			// Delete user from sentinel, other jobs will take care of the rest
+			utils.SugarLogger.Infof("Removing user %s from sentinel as they are no longer have the member role", user.ID)
+			err := DeleteUser(user.ID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error deleting user %s from sentinel: %s", user.ID, err.Error())
+			} else {
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed user %s from sentinel as they are no longer have the member role", user.ID))
+			}
+		}
+	}
+	for _, user := range GetAllUsers() {
+		member, err := Discord.GuildMember(config.DiscordGuild, user.ID)
+		if err != nil {
+			utils.SugarLogger.Errorf("Error getting discord member for user %s: %s", user.ID, err.Error())
+		}
+		if member == nil {
+			// User is in the sentinel database but no longer in the discord server
+			// Delete user from sentinel, other jobs will take care of the rest
+			utils.SugarLogger.Infof("Removing user %s from sentinel as they are no longer in the discord server", user.ID)
+			err := DeleteUser(user.ID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error deleting user %s from sentinel: %s", user.ID, err.Error())
+			} else {
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed user %s from sentinel as they are no longer in the discord server", user.ID))
+			}
+		}
+	}
 }

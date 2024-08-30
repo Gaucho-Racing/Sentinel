@@ -71,6 +71,10 @@ func DeleteUser(userID string) error {
 	}
 	SetSubteamsForUser(userID, []model.UserSubteam{})
 	SetRolesForUser(userID, []string{})
+	result := database.DB.Table("user_auth").Where("id = ?", userID).Delete(&model.UserAuth{})
+	if result.Error != nil {
+		return result.Error
+	}
 	return nil
 }
 
