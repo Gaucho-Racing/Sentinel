@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var Version = "3.4.0"
+var Version = "3.4.1"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
@@ -51,3 +51,4 @@ var MemberDirectorySheetID = "1reuLZox2daj8r2H-lZrwB4oFPYlJ6oC7983UUaZd6AY"
 var DriveCron = os.Getenv("DRIVE_CRON")
 var GithubCron = os.Getenv("GITHUB_CRON")
 var WikiCron = os.Getenv("WIKI_CRON")
+var DiscordCron = os.Getenv("DISCORD_CRON")

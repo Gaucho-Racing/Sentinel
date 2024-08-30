@@ -42,6 +42,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Verify(args, s, m)
 	case "subteam":
 		Subteam(args, s, m)
+	case "rs":
+		RemoveSubteam(args, s, m)
 	case "github":
 		Github(args, s, m)
 	case "drive":
@@ -50,6 +52,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Whois(args, s, m)
 	case "users":
 		Users(args, s, m)
+	case "alumni":
+		Alumni(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}

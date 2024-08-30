@@ -27,6 +27,7 @@ func main() {
 	jobs.RegisterDriveCronJob()
 	jobs.RegisteGithubCronJob()
 	jobs.RegisterWikiCronJob()
+	jobs.RegisterDiscordCronJob()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

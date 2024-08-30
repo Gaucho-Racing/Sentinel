@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"sentinel/config"
 	"sentinel/database"
 	"sentinel/model"
 	"sentinel/utils"
@@ -71,6 +72,10 @@ func DeleteUser(userID string) error {
 	}
 	SetSubteamsForUser(userID, []model.UserSubteam{})
 	SetRolesForUser(userID, []string{})
+	result := database.DB.Table("user_auth").Where("id = ?", userID).Delete(&model.UserAuth{})
+	if result.Error != nil {
+		return result.Error
+	}
 	return nil
 }
 
@@ -89,4 +94,15 @@ func SearchUsers(search string) []model.User {
 		users = append(users, allUsers[matches[i].OriginalIndex])
 	}
 	return users
+}
+
+func IncompleteProfileReminder() {
+	allUsers := GetAllUsers()
+	for _, user := range allUsers {
+		if user.FirstName == "" || user.LastName == "" || user.Email == "" || user.GraduationYear == 0 || user.GraduateLevel == "" || user.Major == "" || user.ShirtSize == "" || user.JacketSize == "" {
+			utils.SugarLogger.Infof("User %s has incomplete profile", user.ID)
+			SendDirectMessage(user.ID, fmt.Sprintf("Hey there %s! It look's like you haven't completed your Sentinel profile yet. Please go to https://sso.gauchoracing.com/users/%s/edit to complete it when you get a chance. It only takes a few minutes and saves us a lot of trouble later on :pray: Let us know if you need any help.", user.FirstName, user.ID))
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Sent incomplete profile reminder to %s", user))
+		}
+	}
 }
