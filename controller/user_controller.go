@@ -16,8 +16,13 @@ func GetAllUsers(c *gin.Context) {
 }
 
 func GetUserByID(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:read"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "user:read"),
+			Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	result := service.GetUserByID(c.Param("userID"))
 	if result.ID == "" {

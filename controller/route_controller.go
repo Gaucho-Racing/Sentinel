@@ -106,23 +106,31 @@ func UnauthorizedPanicHandler() gin.HandlerFunc {
 	}
 }
 
-// RequireAll checks if all conditions are true, otherwise aborts the request
-func RequireAll(c *gin.Context, conditions ...bool) {
-	for _, condition := range conditions {
-		if !condition {
-			panic("Unauthorized")
-		}
+// Require checks if a condition is true, otherwise aborts the request
+func Require(c *gin.Context, condition bool) {
+	if !condition {
+		panic("Unauthorized")
 	}
 }
 
-// RequireAny checks if any condition is true, otherwise aborts the request
-func RequireAny(c *gin.Context, conditions ...bool) {
+// Any checks if any condition is true, otherwise returns false
+func Any(conditions ...bool) bool {
 	for _, condition := range conditions {
 		if condition {
-			return
+			return true
 		}
 	}
-	panic("Unauthorized")
+	return false
+}
+
+// All checks if all conditions are true, otherwise returns false
+func All(conditions ...bool) bool {
+	for _, condition := range conditions {
+		if !condition {
+			return false
+		}
+	}
+	return true
 }
 
 func RequestUserHasID(c *gin.Context, id string) bool {
