@@ -12,7 +12,7 @@ import (
 func RegisterDiscordCronJob() {
 	if config.Env != "PROD" {
 		utils.SugarLogger.Infoln("Discord CRON Job not registered because environment is not PROD")
-		// return
+		return
 	}
 	c := cron.New()
 	CleanDiscordJob(c)
