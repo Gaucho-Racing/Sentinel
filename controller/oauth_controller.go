@@ -16,15 +16,26 @@ func GetValidOauthScopes(c *gin.Context) {
 }
 
 func GetAllClientApplications(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "applications:read"),
+			RequestUserHasRole(c, "d_admin"),
+		),
+	))
 
 	apps := service.GetAllClientApplications()
 	c.JSON(http.StatusOK, apps)
 }
 
 func GetClientApplicationsForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "applications:read"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "applications:read"),
+			Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	userID := c.Param("userID")
 	apps := service.GetClientApplicationsForUser(userID)
@@ -39,28 +50,35 @@ func GetClientApplicationByID(c *gin.Context) {
 		return
 	}
 
-	if !RequestTokenHasScope(c, "sentinel:all") {
-		RequireAny(c, RequestTokenHasScope(c, "applications:read"))
-		RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, app.UserID))
-	}
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "applications:read"),
+			Any(RequestUserHasID(c, app.UserID), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	c.JSON(http.StatusOK, app)
 }
 
 func CreateClientApplication(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	var app model.ClientApplication
 	if err := c.ShouldBindJSON(&app); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
+
 	if app.ID != "" {
 		existing := service.GetClientApplicationByID(app.ID)
-		RequireAny(c, RequestUserHasID(c, existing.UserID), RequestUserHasRole(c, "d_admin"))
+		Require(c, Any(
+			RequestUserHasID(c, existing.UserID),
+			RequestUserHasRole(c, "d_admin"),
+		))
+	} else {
+		app.UserID = GetRequestUserID(c)
 	}
-
-	app.UserID = GetRequestUserID(c)
 
 	created, err := service.CreateClientApplication(app)
 	if err != nil {
@@ -78,8 +96,10 @@ func DeleteClientApplication(c *gin.Context) {
 		return
 	}
 
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
-	RequireAny(c, RequestUserHasRole(c, "d_admin"), RequestUserHasID(c, app.UserID))
+	Require(c, All(
+		RequestTokenHasScope(c, "sentinel:all"),
+		Any(RequestUserHasID(c, app.UserID), RequestUserHasRole(c, "d_admin")),
+	))
 
 	err := service.DeleteClientApplication(appID)
 	if err != nil {
@@ -90,7 +110,7 @@ func DeleteClientApplication(c *gin.Context) {
 }
 
 func OauthAuthorize(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	clientID := c.Query("client_id")
 	if clientID == "" {
