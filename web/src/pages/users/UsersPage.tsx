@@ -3,23 +3,20 @@ import axios from "axios";
 import { SENTINEL_API_URL } from "@/consts/config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
-  faArrowRight,
   faChevronRight,
   faEnvelope,
-  faLock,
-  faUser,
 } from "@fortawesome/free-solid-svg-icons";
 import { checkCredentials } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { User, initUser } from "@/models/user";
-import { setUser, useUser, getUser as getCurrentUser } from "@/lib/store";
+import { User } from "@/models/user";
+import { useUser } from "@/lib/store";
 import { AuthLoading } from "@/components/AuthLoading";
 import Fuse from "fuse.js";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
