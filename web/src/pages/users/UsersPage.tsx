@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
-import { useNavigate, useParams } from "react-router-dom";
-import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faArrowLeft,
@@ -150,7 +149,7 @@ function UsersPage() {
   const UserCard = ({ user }: { user: User }) => {
     return (
       <Card
-        className={`w-1/3 px-4 transition-all hover:cursor-pointer hover:bg-neutral-800 ${
+        className={`w-full px-4 transition-all hover:cursor-pointer hover:bg-neutral-800 md:w-2/5 ${
           compactView ? "py-2" : "py-4"
         }`}
       >
