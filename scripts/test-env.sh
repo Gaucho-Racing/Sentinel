@@ -1,4 +1,10 @@
-ENV=DEV
-PORT=9999
+#!/bin/bash
 
-AUTH_SIGNING_KEY="wMGxEdWYBo3dCb5e0Tzu3qxNCsfYePCM"
+export ENV=DEV
+export PORT=9999
+
+export DATABASE_HOST=localhost
+export DATABASE_PORT=3306
+export DATABASE_USER=root
+export DATABASE_PASSWORD=password
+export DATABASE_NAME=sentinel
