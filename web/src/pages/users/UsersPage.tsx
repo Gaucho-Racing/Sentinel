@@ -32,6 +32,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { notify } from "@/lib/notify";
+import { Loader2 } from "lucide-react";
+import { faSearch } from "@fortawesome/free-solid-svg-icons";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 function UsersPage() {
   const navigate = useNavigate();
@@ -43,11 +47,11 @@ function UsersPage() {
   const [users, setUsers] = React.useState<User[]>([]);
   const [userLoading, setUserLoading] = React.useState(false);
 
-  const [date, setDate] = React.useState<Date>();
-
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedSubteam, setSelectedSubteam] = React.useState("all");
   const [selectedRole, setSelectedRole] = React.useState("all");
+
+  const [compactView, setCompactView] = React.useState(false);
 
   React.useEffect(() => {
     checkAuth().then(() => {
@@ -145,7 +149,11 @@ function UsersPage() {
 
   const UserCard = ({ user }: { user: User }) => {
     return (
-      <Card className="w-1/3 p-4 transition-all hover:cursor-pointer hover:bg-neutral-800">
+      <Card
+        className={`w-1/3 px-4 transition-all hover:cursor-pointer hover:bg-neutral-800 ${
+          compactView ? "py-2" : "py-4"
+        }`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex flex-col items-start justify-start">
             <div className="flex items-center space-x-2">
@@ -156,46 +164,59 @@ function UsersPage() {
                   {user.last_name[0]}
                 </AvatarFallback>
               </Avatar>
-              <h3>
-                {user.first_name} {user.last_name}
-              </h3>
+              {!compactView ? (
+                <h3>
+                  {user.first_name} {user.last_name}
+                </h3>
+              ) : (
+                <div className="flex flex-col items-start justify-center pl-2">
+                  <h4>
+                    {user.first_name} {user.last_name}
+                  </h4>
+                  <p className="text-gray-400">{user.email}</p>
+                </div>
+              )}
             </div>
-            <div className="mt-2 flex space-x-4">
-              <div className="flex items-center space-x-2">
-                <FontAwesomeIcon icon={faEnvelope} className="" size="lg" />
-                <p className="text-gray-400">{user.email}</p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <FontAwesomeIcon icon={faDiscord} className="" size="lg" />
-                <p className="text-gray-400">{user.username}</p>
-              </div>
-            </div>
-            <div className="mt-2 flex space-x-2">
-              <div className="font-semibold">Subteams:</div>
-              <div className="flex flex-wrap gap-2">
-                {user.subteams.map((subteam) => (
-                  <div key={subteam.id}>
-                    <Card className="rounded-sm px-1 text-gray-400">
-                      <code className="">{subteam.name}</code>
-                    </Card>
+            {!compactView && (
+              <div>
+                <div className="mt-2 flex space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <FontAwesomeIcon icon={faEnvelope} className="" size="lg" />
+                    <p className="text-gray-400">{user.email}</p>
                   </div>
-                ))}
+                  <div className="flex items-center space-x-2">
+                    <FontAwesomeIcon icon={faDiscord} className="" size="lg" />
+                    <p className="text-gray-400">{user.username}</p>
+                  </div>
+                </div>
+                <div className="mt-2 flex space-x-2">
+                  <div className="font-semibold">Subteams:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {user.subteams.map((subteam) => (
+                      <div key={subteam.id}>
+                        <Card className="rounded-sm px-1 text-gray-400">
+                          <code className="">{subteam.name}</code>
+                        </Card>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-2 flex space-x-2">
+                  <div className="font-semibold">Roles:</div>
+                  <div className="flex flex-wrap gap-2">
+                    {user.roles
+                      .filter((role) => role.startsWith("d_"))
+                      .map((role) => (
+                        <div key={role}>
+                          <Card className="rounded-sm px-1 text-gray-400">
+                            <code className="">{formatRoleName(role)}</code>
+                          </Card>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="mt-2 flex space-x-2">
-              <div className="font-semibold">Roles:</div>
-              <div className="flex flex-wrap gap-2">
-                {user.roles
-                  .filter((role) => role.startsWith("d_"))
-                  .map((role) => (
-                    <div key={role}>
-                      <Card className="rounded-sm px-1 text-gray-400">
-                        <code className="">{formatRoleName(role)}</code>
-                      </Card>
-                    </div>
-                  ))}
-              </div>
-            </div>
+            )}
           </div>
           <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
         </div>
@@ -226,6 +247,8 @@ function UsersPage() {
             <h1>Users</h1>
             <div className="mt-4 flex flex-col">
               <SearchAndFilterComponent
+                compactView={compactView}
+                setCompactView={setCompactView}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
                 selectedSubteam={selectedSubteam}
@@ -237,11 +260,17 @@ function UsersPage() {
                 formatRoleName={formatRoleName}
               />
             </div>
-            <div className="flex flex-wrap gap-2">
-              {displayUsers.map((user) => (
-                <UserCard key={user.id} user={user} />
-              ))}
-            </div>
+            {userLoading ? (
+              <div className="flex items-center justify-center">
+                <Loader2 className="mt-8 h-12 w-12 animate-spin" />
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {displayUsers.map((user) => (
+                  <UserCard key={user.id} user={user} />
+                ))}
+              </div>
+            )}
           </div>
           <Footer />
         </div>
@@ -253,6 +282,8 @@ function UsersPage() {
 export default UsersPage;
 
 interface SearchAndFilterComponentProps {
+  compactView: boolean;
+  setCompactView: (value: boolean) => void;
   searchTerm: string;
   setSearchTerm: (value: string) => void;
   selectedSubteam: string;
@@ -265,6 +296,8 @@ interface SearchAndFilterComponentProps {
 }
 
 const SearchAndFilterComponent: React.FC<SearchAndFilterComponentProps> = ({
+  compactView,
+  setCompactView,
   searchTerm,
   setSearchTerm,
   selectedSubteam,
@@ -275,14 +308,26 @@ const SearchAndFilterComponent: React.FC<SearchAndFilterComponentProps> = ({
   allRoles,
   formatRoleName,
 }) => {
+  const [isInputFocused, setIsInputFocused] = React.useState(false);
+
   return (
-    <div className="mb-4 flex flex-wrap gap-4">
-      <Input
-        placeholder="Search users..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className="w-full md:w-64"
-      />
+    <div className="mb-4 flex flex-wrap items-center gap-4">
+      <div className="relative w-full md:w-96">
+        <Input
+          placeholder="Search users"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onFocus={() => setIsInputFocused(true)}
+          onBlur={() => setIsInputFocused(false)}
+          className="w-full pl-10"
+        />
+        <FontAwesomeIcon
+          icon={faSearch}
+          className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${
+            isInputFocused ? "text-white" : "text-gray-400"
+          }`}
+        />
+      </div>
       <Select value={selectedSubteam} onValueChange={setSelectedSubteam}>
         <SelectTrigger className="w-full md:w-48">
           <SelectValue placeholder="Filter by subteam" />
@@ -309,6 +354,14 @@ const SearchAndFilterComponent: React.FC<SearchAndFilterComponentProps> = ({
           ))}
         </SelectContent>
       </Select>
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="compact-view"
+          checked={compactView}
+          onCheckedChange={setCompactView}
+        />
+        <Label htmlFor="compact-view">Compact View</Label>
+      </div>
     </div>
   );
 };
