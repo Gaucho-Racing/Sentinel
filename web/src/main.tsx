@@ -12,6 +12,7 @@ import LoginPage from "@/pages/auth/LoginPage.tsx";
 import EditUserPage from "@/pages/users/EditUserPage.tsx";
 import ApplicationsPage from "@/pages/applications/ApplicationsPage.tsx";
 import AuthorizePage from "@/pages/oauth/AuthorizePage.tsx";
+import UsersPage from "@/pages/users/UsersPage.tsx";
 
 const router = createBrowserRouter([
   {
@@ -29,6 +30,10 @@ const router = createBrowserRouter([
   {
     path: "/oauth/authorize",
     element: <AuthorizePage />,
+  },
+  {
+    path: "/users",
+    element: <UsersPage />,
   },
   {
     path: "/users/:id/edit",
