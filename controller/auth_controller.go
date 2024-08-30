@@ -15,7 +15,7 @@ func GetJWKS(c *gin.Context) {
 }
 
 func RegisterAccountPassword(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	var input model.UserAuth
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -27,7 +27,8 @@ func RegisterAccountPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "No account with this email exists. Make sure to verify your account on the discord server first!"})
 		return
 	}
-	RequireAny(c, RequestUserHasID(c, user.ID), RequestUserHasRole(c, "d_admin"))
+
+	Require(c, Any(RequestUserHasID(c, user.ID), RequestUserHasRole(c, "d_admin")))
 
 	token, err := service.RegisterEmailPassword(input.Email, input.Password)
 	if err != nil {
@@ -55,7 +56,7 @@ func RegisterAccountPassword(c *gin.Context) {
 }
 
 func ResetAccountPassword(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)
@@ -64,7 +65,7 @@ func ResetAccountPassword(c *gin.Context) {
 		return
 	}
 
-	RequireAny(c, RequestUserHasID(c, user.ID), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(RequestUserHasID(c, user.ID), RequestUserHasRole(c, "d_admin")))
 
 	auth := service.GetUserAuthByID(userID)
 	if auth.ID == "" {
@@ -154,8 +155,10 @@ func LoginDiscord(c *gin.Context) {
 }
 
 func GetAuthForUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, All(
+		RequestTokenHasScope(c, "sentinel:all"),
+		Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+	))
 
 	userID := c.Param("userID")
 	user := service.GetUserByID(userID)

@@ -9,15 +9,26 @@ import (
 )
 
 func GetAllUsers(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "user:read"),
+			RequestUserHasRole(c, "d_admin"),
+		),
+	))
 
 	result := service.GetAllUsers()
 	c.JSON(http.StatusOK, result)
 }
 
 func GetUserByID(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:read"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		All(
+			RequestTokenHasScope(c, "user:read"),
+			Any(RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin")),
+		),
+	))
 
 	result := service.GetUserByID(c.Param("userID"))
 	if result.ID == "" {
@@ -28,7 +39,10 @@ func GetUserByID(c *gin.Context) {
 }
 
 func GetCurrentUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:read"))
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasScope(c, "user:read"),
+	))
 
 	user := service.GetUserByID(GetRequestUserID(c))
 	if user.ID == "" {
@@ -39,8 +53,16 @@ func GetCurrentUser(c *gin.Context) {
 }
 
 func CreateUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"), RequestTokenHasScope(c, "user:write"))
-	RequireAny(c, RequestUserHasID(c, c.Param("userID")), RequestUserHasRole(c, "d_admin"))
+	Require(c, All(
+		Any(
+			RequestTokenHasScope(c, "sentinel:all"),
+			RequestTokenHasScope(c, "user:write"),
+		),
+		Any(
+			RequestUserHasID(c, c.Param("userID")),
+			RequestUserHasRole(c, "d_admin"),
+		),
+	))
 
 	var user model.User
 	if err := c.ShouldBindJSON(&user); err != nil {
@@ -57,8 +79,10 @@ func CreateUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	RequireAny(c, RequestTokenHasScope(c, "sentinel:all"))
-	RequireAny(c, RequestUserHasRole(c, "d_admin"))
+	Require(c, All(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestUserHasRole(c, "d_admin"),
+	))
 
 	id := c.Param("id")
 	err := service.DeleteUser(id)
