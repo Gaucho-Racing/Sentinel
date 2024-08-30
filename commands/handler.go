@@ -42,6 +42,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Verify(args, s, m)
 	case "subteam":
 		Subteam(args, s, m)
+	case "rs":
+		RemoveSubteam(args, s, m)
 	case "github":
 		Github(args, s, m)
 	case "drive":

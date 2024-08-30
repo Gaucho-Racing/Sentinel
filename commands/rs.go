@@ -11,7 +11,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
+func RemoveSubteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	defer s.ChannelMessageDelete(m.ChannelID, m.ID)
 	if m.GuildID != config.DiscordGuild {
 		m.GuildID = config.DiscordGuild
@@ -46,7 +46,7 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			arg = string(a)
 			role := service.GetSubteamByName(arg)
 			if role.ID != "" {
-				err = s.GuildMemberRoleAdd(m.GuildID, user.ID, role.ID)
+				err = s.GuildMemberRoleRemove(m.GuildID, user.ID, role.ID)
 				if err != nil {
 					go service.SendDisappearingMessage(m.ChannelID, "Unexpected error occurred, please try again later!", 5*time.Second)
 					utils.SugarLogger.Errorln(err)
@@ -58,7 +58,7 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 		}
 		if counter == 0 {
-			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!subteam <aero | business | chassis | data | electronics | powertrain | suspension>`", 5*time.Second)
+			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!rs <aero | business | chassis | data | electronics | powertrain | suspension>`", 5*time.Second)
 		} else {
 			go service.SendDisappearingMessage(m.ChannelID, "Added "+strconv.Itoa(counter)+" subteam roles!", 5*time.Second)
 		}
