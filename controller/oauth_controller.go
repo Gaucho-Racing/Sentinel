@@ -15,6 +15,10 @@ func GetValidOauthScopes(c *gin.Context) {
 	c.JSON(http.StatusOK, model.ValidOauthScopes)
 }
 
+func GetOpenIDConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, model.OpenIDConfig)
+}
+
 func GetAllClientApplications(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasScope(c, "sentinel:all"),

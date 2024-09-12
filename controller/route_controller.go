@@ -31,7 +31,8 @@ func SetupRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
-	router.GET("/auth/keys.json", GetJWKS)
+	router.GET("/jwks.json", GetJWKS)
+	router.GET("/openid-configuration", GetOpenIDConfig)
 	router.POST("/auth/register", RegisterAccountPassword)
 	router.POST("/auth/login", LoginAccount)
 	router.POST("/auth/login/discord", LoginDiscord)

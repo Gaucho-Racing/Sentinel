@@ -6,6 +6,15 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+type TokenResponse struct {
+	IDToken      string `json:"id_token,omitempty"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	TokenType    string `json:"token_type,omitempty"`
+	ExpiresIn    int    `json:"expires_in,omitempty"`
+	Scope        string `json:"scope,omitempty"`
+}
+
 type AuthClaims struct {
 	Email string `json:"email"`
 	Scope string `json:"scope"`

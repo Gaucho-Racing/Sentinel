@@ -19,6 +19,17 @@ var ValidOauthScopes = map[string]string{
 	"sentinel:all":      "Internal scope for Sentinel, client applications should not request this scope.",
 }
 
+var OpenIDConfig = map[string]interface{}{
+	"issuer":                                "https://sso.gauchoracing.com",
+	"authorization_endpoint":                "https://sso.gauchoracing.com/oauth/authorize",
+	"token_endpoint":                        "https://sso.gauchoracing.com/api/oauth/token",
+	"userinfo_endpoint":                     "https://sso.gauchoracing.com/api/users/@me",
+	"jwks_uri":                              "https://sso.gauchoracing.com/api/auth/keys.json",
+	"response_types_supported":              []string{"code", "id_token", "id_token token"},
+	"subject_types_supported":               []string{"public"},
+	"id_token_signing_alg_values_supported": []string{"RS256"},
+}
+
 type ClientApplication struct {
 	ID           string    `gorm:"primaryKey" json:"id"`
 	UserID       string    `json:"user_id"`
@@ -53,12 +64,4 @@ type AuthorizationCode struct {
 
 func (AuthorizationCode) TableName() string {
 	return "authorization_code"
-}
-
-type TokenResponse struct {
-	AccessToken  string `json:"access_token,omitempty"`
-	RefreshToken string `json:"refresh_token,omitempty"`
-	TokenType    string `json:"token_type,omitempty"`
-	ExpiresIn    int    `json:"expires_in,omitempty"`
-	Scope        string `json:"scope,omitempty"`
 }

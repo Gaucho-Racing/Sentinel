@@ -127,13 +127,13 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func GenerateJWT(id string, email string, scope string, client_id string) (string, error) {
+func GenerateJWT(userID string, email string, scope string, client_id string) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &model.AuthClaims{
 		Email: email,
 		Scope: scope,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        id,
+			ID:        userID,
 			Issuer:    "https://sso.gauchoracing.com/",
 			Audience:  jwt.ClaimStrings{client_id},
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
