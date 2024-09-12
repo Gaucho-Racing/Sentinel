@@ -163,6 +163,11 @@ func OauthAuthorize(c *gin.Context) {
 	} else {
 		prompt = "consent"
 	}
+	reponseType := c.Query("response_type")
+	if reponseType == "" {
+		reponseType = "code"
+	}
+
 	// Handle Validate Request
 	if c.Request.Method == "GET" {
 		c.JSON(http.StatusOK, gin.H{
@@ -173,20 +178,24 @@ func OauthAuthorize(c *gin.Context) {
 		})
 		return
 	}
+
 	// Handle Authorize Request
-	code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scope)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-		return
-	}
-	go service.CreateLogin(model.UserLogin{
+	defer service.CreateLogin(model.UserLogin{
 		UserID:      GetRequestUserID(c),
 		Destination: clientID,
 		Scope:       scope,
 		IPAddress:   c.ClientIP(),
 		LoginType:   "oauth",
 	})
-	c.JSON(http.StatusOK, code)
+	if reponseType == "code" {
+		code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scope)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, code)
+		return
+	}
 }
 
 func OauthExchange(c *gin.Context) {
