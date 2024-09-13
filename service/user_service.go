@@ -7,6 +7,7 @@ import (
 	"sentinel/model"
 	"sentinel/utils"
 	"sort"
+	"strings"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 )
@@ -105,4 +106,13 @@ func IncompleteProfileReminder() {
 			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Sent incomplete profile reminder to %s", user))
 		}
 	}
+}
+
+func GauchoRacingEmailReplace(email string) string {
+	if strings.HasSuffix(email, "@ucsb.edu") {
+		return strings.TrimSuffix(email, "@ucsb.edu") + "@gauchoracing.com"
+	} else if email == "ucsantabarbarasae@gmail.com" {
+		return "team@gauchoracing.com"
+	}
+	return email
 }

@@ -177,6 +177,11 @@ func GenerateJWT(userID string, scope string, client_id string, expiresIn int) (
 		}
 	}
 
+	// insanely stupid override to make singlestore work
+	if client_id == "quZNfANBcdkW" {
+		claims.Email = GauchoRacingEmailReplace(claims.Email)
+	}
+
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	signedToken, err := token.SignedString(config.RsaPrivateKey)
 	if err != nil {

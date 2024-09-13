@@ -50,6 +50,10 @@ func GetCurrentUser(c *gin.Context) {
 		return
 	}
 	user.Sub = user.ID
+	// insanely stupid override to make singlestore work
+	if GetRequestTokenAudience(c) == "quZNfANBcdkW" {
+		user.Email = service.GauchoRacingEmailReplace(user.Email)
+	}
 	c.JSON(http.StatusOK, user)
 }
 
