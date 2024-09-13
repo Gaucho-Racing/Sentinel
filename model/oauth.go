@@ -28,6 +28,7 @@ var OpenIDConfig = map[string]interface{}{
 	"response_types_supported":              []string{"code", "id_token", "id_token token"},
 	"subject_types_supported":               []string{"public"},
 	"id_token_signing_alg_values_supported": []string{"RS256"},
+	"claims_supported":                      []string{"name", "given_name", "family_name", "profile", "picture", "email", "email_verified"},
 }
 
 type ClientApplication struct {
