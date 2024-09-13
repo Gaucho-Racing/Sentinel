@@ -16,12 +16,15 @@ type TokenResponse struct {
 }
 
 type AuthClaims struct {
-	Name       string   `json:"name,omitempty"`
-	GivenName  string   `json:"given_name,omitempty"`
-	FamilyName string   `json:"family_name,omitempty"`
-	Email      string   `json:"email,omitempty"`
-	Bookstack  []string `json:"bookstack,omitempty"`
-	Scope      string   `json:"scope,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	GivenName      string   `json:"given_name,omitempty"`
+	FamilyName     string   `json:"family_name,omitempty"`
+	Profile        string   `json:"profile,omitempty"`
+	Picture        string   `json:"picture,omitempty"`
+	Email          string   `json:"email,omitempty"`
+	EmailVerified  bool     `json:"email_verified,omitempty"`
+	BookstackRoles []string `json:"bookstack_roles,omitempty"`
+	Scope          string   `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
 

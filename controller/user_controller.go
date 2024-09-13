@@ -74,13 +74,22 @@ func GetUserInfo(c *gin.Context) {
 	}
 	claims, _ := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
 	userInfo := model.UserInfo{
-		AuthClaims: *claims,
-		User:       user,
+		Sub:           claims.Subject,
+		Name:          user.FirstName + " " + user.LastName,
+		GivenName:     user.FirstName,
+		FamilyName:    user.LastName,
+		Profile:       "https://sso.gauchoracing.com/users/" + user.ID,
+		Picture:       user.AvatarURL,
+		EmailVerified: true,
+		User:          user,
 	}
-	userInfo.AuthClaims.Name = user.FirstName + " " + user.LastName
-	userInfo.AuthClaims.GivenName = user.FirstName
-	userInfo.AuthClaims.FamilyName = user.LastName
-	userInfo.AuthClaims.Email = user.Email
+	userInfo.BookstackRoles = append(userInfo.BookstackRoles, "Editor")
+	if user.IsInnerCircle() {
+		userInfo.BookstackRoles = append(userInfo.BookstackRoles, "Lead")
+	}
+	if user.IsAdmin() {
+		userInfo.BookstackRoles = append(userInfo.BookstackRoles, "Admin")
+	}
 	c.JSON(http.StatusOK, userInfo)
 }
 

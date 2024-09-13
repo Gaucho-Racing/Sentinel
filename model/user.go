@@ -3,7 +3,14 @@ package model
 import "time"
 
 type UserInfo struct {
-	AuthClaims
+	Sub            string   `json:"sub,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	GivenName      string   `json:"given_name,omitempty"`
+	FamilyName     string   `json:"family_name,omitempty"`
+	Profile        string   `json:"profile,omitempty"`
+	Picture        string   `json:"picture,omitempty"`
+	EmailVerified  bool     `json:"email_verified,omitempty"`
+	BookstackRoles []string `json:"bookstack_roles,omitempty"`
 	User
 }
 
