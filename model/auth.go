@@ -16,8 +16,13 @@ type TokenResponse struct {
 }
 
 type AuthClaims struct {
-	Email string `json:"email,omitempty"`
-	Scope string `json:"scope,omitempty"`
+	Name       string   `json:"name,omitempty"`
+	GivenName  string   `json:"given_name,omitempty"`
+	FamilyName string   `json:"family_name,omitempty"`
+	Email      string   `json:"email,omitempty"`
+	Roles      []string `json:"roles,omitempty"`
+	Bookstack  []string `json:"bookstack,omitempty"`
+	Scope      string   `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -36,7 +41,7 @@ func (c AuthClaims) Valid() error {
 		vErr.Errors |= jwt.ValidationErrorIssuedAt
 	}
 
-	if !c.VerifyIssuer("https://sso.gauchoracing.com/", true) {
+	if !c.VerifyIssuer("https://sso.gauchoracing.com", true) {
 		vErr.Inner = jwt.ErrTokenInvalidIssuer
 		vErr.Errors |= jwt.ValidationErrorIssuer
 	}

@@ -131,7 +131,7 @@ func LoginDiscord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "No account with this email exists. Make sure to verify your account on the discord server first!"})
 		return
 	}
-	token, err := service.GenerateJWT(user.ID, user.Email, "sentinel:all", "sentinel")
+	token, err := service.GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60*60)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return

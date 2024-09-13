@@ -203,9 +203,9 @@ func OauthExchange(c *gin.Context) {
 	clientID, clientSecret, hasAuth := c.Request.BasicAuth()
 	if hasAuth {
 		// Validate client credentials
-		println(clientID, clientSecret)
 		client := service.GetClientApplicationByID(clientID)
 		if client.ID == "" || client.Secret != clientSecret {
+			utils.SugarLogger.Errorf("invalid client credentials: %s %s", clientID, clientSecret)
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid client credentials"})
 			return
 		}
@@ -214,39 +214,34 @@ func OauthExchange(c *gin.Context) {
 		clientID = c.PostForm("client_id")
 		clientSecret = c.PostForm("client_secret")
 		if clientID == "" || clientSecret == "" {
+			utils.SugarLogger.Errorf("client_id and client_secret are required: %s %s", clientID, clientSecret)
 			c.JSON(http.StatusBadRequest, gin.H{"message": "client_id and client_secret are required"})
 			return
 		}
 		// Validate client credentials
 		client := service.GetClientApplicationByID(clientID)
 		if client.ID == "" || client.Secret != clientSecret {
+			utils.SugarLogger.Errorf("invalid client credentials: %s %s", clientID, clientSecret)
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid client credentials"})
 			return
 		}
 	}
 
-	clientID = c.PostForm("client_id")
-	if clientID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "client_id is required"})
-		return
-	}
-	client := service.GetClientApplicationByID(clientID)
-	if client.ID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "no client application found with id: " + clientID})
-		return
-	}
 	redirectUri := c.PostForm("redirect_uri")
 	if !service.ValidateRedirectURI(redirectUri, clientID) {
+		utils.SugarLogger.Errorf("redirect_uri is invalid: %s", redirectUri)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "redirect_uri is invalid"})
 		return
 	}
 	code := c.PostForm("code")
 	if code == "" {
+		utils.SugarLogger.Errorf("code is required")
 		c.JSON(http.StatusBadRequest, gin.H{"message": "code is required"})
 		return
 	}
 	grantType := c.PostForm("grant_type")
 	if grantType == "" {
+		utils.SugarLogger.Errorf("grant_type is required")
 		c.JSON(http.StatusBadRequest, gin.H{"message": "grant_type is required"})
 		return
 	}
@@ -254,6 +249,7 @@ func OauthExchange(c *gin.Context) {
 		handleAuthorizationCodeExchange(c)
 		return
 	} else {
+		utils.SugarLogger.Errorf("unsupported grant_type: %s", grantType)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "unsupported grant_type"})
 	}
 }
@@ -262,21 +258,32 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	code := c.PostForm("code")
 	authCode, err := service.VerifyAuthorizationCode(code)
 	if err != nil {
+		utils.SugarLogger.Errorf("error verifying authorization code: %s", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	token, err := service.GenerateJWT(authCode.UserID, service.GetUserByID(authCode.UserID).Email, authCode.Scope, authCode.ClientID)
+	token, err := service.GenerateAccessToken(authCode.UserID, authCode.Scope, authCode.ClientID, 24*60)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
+	idToken := ""
+	if strings.Contains(authCode.Scope, "openid") {
+		idToken, err = service.GenerateIDToken(authCode.UserID, authCode.Scope, authCode.ClientID, 24*60)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+	}
 	refreshToken := ""
 	response := model.TokenResponse{
+		IDToken:      idToken,
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60 * 60,
+		ExpiresIn:    24 * 60,
 		Scope:        authCode.Scope,
 	}
+	utils.SugarLogger.Infof("token response: %v", response)
 	c.JSON(http.StatusOK, response)
 }
