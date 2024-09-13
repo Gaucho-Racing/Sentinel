@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sentinel/model"
 	"sentinel/service"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,12 +50,47 @@ func GetCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "No user found with given id: " + GetRequestUserID(c)})
 		return
 	}
-	user.Sub = user.ID
 	// insanely stupid override to make singlestore work
 	if GetRequestTokenAudience(c) == "quZNfANBcdkW" {
 		user.Email = service.GauchoRacingEmailReplace(user.Email)
 	}
 	c.JSON(http.StatusOK, user)
+}
+
+func GetUserInfo(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasScope(c, "user:read"),
+	))
+
+	user := service.GetUserByID(GetRequestUserID(c))
+	if user.ID == "" {
+		c.JSON(http.StatusNotFound, gin.H{"message": "No user found with given id: " + GetRequestUserID(c)})
+		return
+	}
+	// insanely stupid override to make singlestore work
+	if GetRequestTokenAudience(c) == "quZNfANBcdkW" {
+		user.Email = service.GauchoRacingEmailReplace(user.Email)
+	}
+	claims, _ := service.ValidateJWT(strings.Split(c.GetHeader("Authorization"), "Bearer ")[1])
+	userInfo := model.UserInfo{
+		Sub:           claims.Subject,
+		Name:          user.FirstName + " " + user.LastName,
+		GivenName:     user.FirstName,
+		FamilyName:    user.LastName,
+		Profile:       "https://sso.gauchoracing.com/users/" + user.ID,
+		Picture:       user.AvatarURL,
+		EmailVerified: true,
+		User:          user,
+	}
+	userInfo.BookstackRoles = append(userInfo.BookstackRoles, "Editor")
+	if user.IsInnerCircle() {
+		userInfo.BookstackRoles = append(userInfo.BookstackRoles, "Lead")
+	}
+	if user.IsAdmin() {
+		userInfo.BookstackRoles = append(userInfo.BookstackRoles, "Admin")
+	}
+	c.JSON(http.StatusOK, userInfo)
 }
 
 func CreateUser(c *gin.Context) {

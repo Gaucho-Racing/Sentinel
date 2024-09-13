@@ -8,8 +8,6 @@ var ValidOauthScopes = map[string]string{
 	"openid":            "OpenID Connect scope",
 	"profile":           "OIDC profile scope",
 	"email":             "OIDC email scope",
-	"roles":             "OIDC roles scope",
-	"bookstack":         "OIDC bookstack roles scope",
 	"user:read":         "Read user account information",
 	"user:write":        "Edit user account information",
 	"drive:read":        "Read user's team drive access information",
@@ -25,11 +23,12 @@ var OpenIDConfig = map[string]interface{}{
 	"issuer":                                "https://sso.gauchoracing.com",
 	"authorization_endpoint":                "https://sso.gauchoracing.com/oauth/authorize",
 	"token_endpoint":                        "https://sso.gauchoracing.com/api/oauth/token",
-	"userinfo_endpoint":                     "https://sso.gauchoracing.com/api/users/@me",
+	"userinfo_endpoint":                     "https://sso.gauchoracing.com/api/oauth/userinfo",
 	"jwks_uri":                              "https://sso.gauchoracing.com/.well-known/jwks.json",
 	"response_types_supported":              []string{"code", "id_token", "id_token token"},
 	"subject_types_supported":               []string{"public"},
 	"id_token_signing_alg_values_supported": []string{"RS256"},
+	"claims_supported":                      []string{"name", "given_name", "family_name", "profile", "picture", "email", "email_verified"},
 }
 
 type ClientApplication struct {

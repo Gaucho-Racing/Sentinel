@@ -2,8 +2,19 @@ package model
 
 import "time"
 
+type UserInfo struct {
+	Sub            string   `json:"sub,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	GivenName      string   `json:"given_name,omitempty"`
+	FamilyName     string   `json:"family_name,omitempty"`
+	Profile        string   `json:"profile,omitempty"`
+	Picture        string   `json:"picture,omitempty"`
+	EmailVerified  bool     `json:"email_verified,omitempty"`
+	BookstackRoles []string `json:"bookstack_roles,omitempty"`
+	User
+}
+
 type User struct {
-	Sub                   string    `json:"sub,omitempty" gorm:"-"`
 	ID                    string    `gorm:"primaryKey" json:"id"`
 	Username              string    `json:"username"`
 	FirstName             string    `json:"first_name"`

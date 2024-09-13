@@ -162,18 +162,15 @@ func GenerateJWT(userID string, scope string, client_id string, expiresIn int) (
 		claims.Name = user.FirstName + " " + user.LastName
 		claims.GivenName = user.FirstName
 		claims.FamilyName = user.LastName
-	}
-	if strings.Contains(scope, "roles") {
-		claims.Roles = user.Roles
-	}
-	if strings.Contains(scope, "bookstack") {
-		claims.Bookstack = make([]string, 0)
-		claims.Bookstack = append(claims.Bookstack, "Editor")
+		claims.Profile = "https://sso.gauchoracing.com/users/" + user.ID
+		claims.Picture = user.AvatarURL
+		claims.EmailVerified = true
+		claims.BookstackRoles = append(claims.BookstackRoles, "Editor")
 		if user.IsInnerCircle() {
-			claims.Bookstack = append(claims.Bookstack, "Lead")
+			claims.BookstackRoles = append(claims.BookstackRoles, "Lead")
 		}
 		if user.IsAdmin() {
-			claims.Bookstack = append(claims.Bookstack, "Admin")
+			claims.BookstackRoles = append(claims.BookstackRoles, "Admin")
 		}
 	}
 
