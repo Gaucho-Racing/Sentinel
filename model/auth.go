@@ -20,7 +20,6 @@ type AuthClaims struct {
 	GivenName  string   `json:"given_name,omitempty"`
 	FamilyName string   `json:"family_name,omitempty"`
 	Email      string   `json:"email,omitempty"`
-	Roles      []string `json:"roles,omitempty"`
 	Bookstack  []string `json:"bookstack,omitempty"`
 	Scope      string   `json:"scope,omitempty"`
 	jwt.RegisteredClaims

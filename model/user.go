@@ -2,8 +2,12 @@ package model
 
 import "time"
 
+type UserInfo struct {
+	AuthClaims
+	User
+}
+
 type User struct {
-	Sub                   string    `json:"sub,omitempty" gorm:"-"`
 	ID                    string    `gorm:"primaryKey" json:"id"`
 	Username              string    `json:"username"`
 	FirstName             string    `json:"first_name"`

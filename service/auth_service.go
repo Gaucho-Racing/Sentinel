@@ -163,9 +163,6 @@ func GenerateJWT(userID string, scope string, client_id string, expiresIn int) (
 		claims.GivenName = user.FirstName
 		claims.FamilyName = user.LastName
 	}
-	if strings.Contains(scope, "roles") {
-		claims.Roles = user.Roles
-	}
 	if strings.Contains(scope, "bookstack") {
 		claims.Bookstack = make([]string, 0)
 		claims.Bookstack = append(claims.Bookstack, "Editor")
