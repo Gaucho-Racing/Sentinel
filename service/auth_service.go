@@ -14,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -73,7 +74,7 @@ func RegisterEmailPassword(email string, password string) (string, error) {
 		Email:    email,
 		Password: hash,
 	})
-	token, err := GenerateJWT(user.ID, email, "sentinel:all", "sentinel")
+	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60*60)
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +100,7 @@ func LoginEmailPassword(email string, password string) (string, error) {
 		utils.SugarLogger.Errorln(err.Error())
 		return "", err
 	}
-	token, err := GenerateJWT(user.ID, email, "sentinel:all", "sentinel")
+	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60*60)
 	if err != nil {
 		return "", err
 	}
@@ -127,18 +128,53 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-func GenerateJWT(id string, email string, scope string, client_id string) (string, error) {
-	expirationTime := time.Now().Add(24 * time.Hour)
+func GenerateAccessToken(userID string, scope string, client_id string, expiresIn int) (string, error) {
+	scopeList := strings.Split(scope, " ")
+	filteredScopes := make([]string, 0)
+	for _, s := range scopeList {
+		if !(strings.HasPrefix(s, "openid") || strings.HasPrefix(s, "profile") || strings.HasPrefix(s, "email") || strings.HasPrefix(s, "roles") || strings.HasPrefix(s, "bookstack")) {
+			filteredScopes = append(filteredScopes, s)
+		}
+	}
+	filteredScope := strings.Join(filteredScopes, " ")
+	return GenerateJWT(userID, filteredScope, client_id, expiresIn)
+}
+
+func GenerateJWT(userID string, scope string, client_id string, expiresIn int) (string, error) {
+	expirationTime := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	claims := &model.AuthClaims{
-		Email: email,
 		Scope: scope,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ID:        id,
-			Issuer:    "https://sso.gauchoracing.com/",
+			ID:        uuid.NewString(),
+			Subject:   userID,
+			Issuer:    "https://sso.gauchoracing.com",
 			Audience:  jwt.ClaimStrings{client_id},
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 		},
+	}
+
+	user := GetUserByID(userID)
+	if strings.Contains(scope, "email") {
+		claims.Email = user.Email
+	}
+	if strings.Contains(scope, "profile") {
+		claims.Name = user.FirstName + " " + user.LastName
+		claims.GivenName = user.FirstName
+		claims.FamilyName = user.LastName
+	}
+	if strings.Contains(scope, "roles") {
+		claims.Roles = user.Roles
+	}
+	if strings.Contains(scope, "bookstack") {
+		claims.Bookstack = make([]string, 0)
+		claims.Bookstack = append(claims.Bookstack, "Editor")
+		if user.IsInnerCircle() {
+			claims.Bookstack = append(claims.Bookstack, "Lead")
+		}
+		if user.IsAdmin() {
+			claims.Bookstack = append(claims.Bookstack, "Admin")
+		}
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)

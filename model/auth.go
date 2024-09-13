@@ -6,9 +6,23 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
+type TokenResponse struct {
+	IDToken      string `json:"id_token,omitempty"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	TokenType    string `json:"token_type,omitempty"`
+	ExpiresIn    int    `json:"expires_in,omitempty"`
+	Scope        string `json:"scope,omitempty"`
+}
+
 type AuthClaims struct {
-	Email string `json:"email"`
-	Scope string `json:"scope"`
+	Name       string   `json:"name,omitempty"`
+	GivenName  string   `json:"given_name,omitempty"`
+	FamilyName string   `json:"family_name,omitempty"`
+	Email      string   `json:"email,omitempty"`
+	Roles      []string `json:"roles,omitempty"`
+	Bookstack  []string `json:"bookstack,omitempty"`
+	Scope      string   `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -27,7 +41,7 @@ func (c AuthClaims) Valid() error {
 		vErr.Errors |= jwt.ValidationErrorIssuedAt
 	}
 
-	if !c.VerifyIssuer("https://sso.gauchoracing.com/", true) {
+	if !c.VerifyIssuer("https://sso.gauchoracing.com", true) {
 		vErr.Inner = jwt.ErrTokenInvalidIssuer
 		vErr.Errors |= jwt.ValidationErrorIssuer
 	}

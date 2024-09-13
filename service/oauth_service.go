@@ -171,3 +171,15 @@ func VerifyAuthorizationCode(code string) (model.AuthorizationCode, error) {
 	}
 	return authCode, nil
 }
+
+func GenerateIDToken(userID string, scope string, client_id string, expiresIn int) (string, error) {
+	scopeList := strings.Split(scope, " ")
+	filteredScopes := make([]string, 0)
+	for _, s := range scopeList {
+		if strings.HasPrefix(s, "openid") || strings.HasPrefix(s, "profile") || strings.HasPrefix(s, "email") || strings.HasPrefix(s, "roles") || strings.HasPrefix(s, "bookstack") {
+			filteredScopes = append(filteredScopes, s)
+		}
+	}
+	filteredScope := strings.Join(filteredScopes, " ")
+	return GenerateJWT(userID, filteredScope, client_id, expiresIn)
+}
