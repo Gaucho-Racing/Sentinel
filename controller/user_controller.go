@@ -49,6 +49,7 @@ func GetCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"message": "No user found with given id: " + GetRequestUserID(c)})
 		return
 	}
+	user.Sub = user.ID
 	c.JSON(http.StatusOK, user)
 }
 
