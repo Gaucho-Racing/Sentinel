@@ -24,6 +24,7 @@ func main() {
 	service.InitializeSubteams()
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
+
 	jobs.RegisterDriveCronJob()
 	jobs.RegisteGithubCronJob()
 	jobs.RegisterDiscordCronJob()

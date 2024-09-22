@@ -124,6 +124,17 @@ func RemoveUserFromGithub(userID string, username string) error {
 	return nil
 }
 
+func PopulateGithubMembers() {
+	users := GetAllUsers()
+	for _, user := range users {
+		ghUser := getGithubUsernameForUser(user.ID)
+		if ghUser != "" {
+			utils.SugarLogger.Infof("User %s has github username %s", user.ID, ghUser)
+			AddUserToGithub(user.ID, ghUser)
+		}
+	}
+}
+
 func CleanGithubMembers() {
 	keepUsers := []string{
 		"gauchoracing",

@@ -14,7 +14,7 @@ import (
 
 func GetAllUsers() []model.User {
 	var users []model.User
-	database.DB.Find(&users)
+	database.DB.Order("first_name").Find(&users)
 	for i := range users {
 		users[i].Subteams = GetSubteamsForUser(users[i].ID)
 		users[i].Roles = GetRolesForUser(users[i].ID)

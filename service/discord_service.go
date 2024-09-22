@@ -322,6 +322,58 @@ func FindAllNonVerifiedUsers() {
 	utils.SugarLogger.Infof("Verified Members: %d", verifiedMembers)
 }
 
+// PopulateDiscordMembers populates the discord roles for all users in the sentinel database
+// Can be used for disaster recovery if all user roles are removed from the discord server
+func PopulateDiscordMembers() {
+	users := GetAllUsers()
+	for _, user := range users {
+		utils.SugarLogger.Infof("Populating discord member for user %s %s (%s)", user.FirstName, user.LastName, user.Email)
+		member, err := Discord.GuildMember(config.DiscordGuild, user.ID)
+		if err != nil {
+			utils.SugarLogger.Errorf("Error getting discord member for user %s: %s", user.ID, err.Error())
+		}
+		if member != nil {
+			utils.SugarLogger.Infof("Found user in discord")
+			utils.SugarLogger.Infof("User has roles: %s", user.Roles)
+			err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.MemberRoleID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+			}
+			if user.HasRole("d_alumni") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.AlumniRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			} else if user.HasRole("d_officer") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.OfficerRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			} else if user.HasRole("d_lead") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.LeadRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			} else if user.HasRole("d_admin") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.AdminRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			}
+			utils.SugarLogger.Infof("Added main roles to user %s", user.Email)
+			for _, subteam := range user.Subteams {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, subteam.ID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			}
+			utils.SugarLogger.Infof("Added subteam roles to user %s", user.Email)
+		} else {
+			utils.SugarLogger.Infof("User not found in discord: %s", user.ID)
+		}
+	}
+}
+
 // CleanDiscordMembers removes users from the sentinel database if they are no longer in the discord server
 // It will also remove users from sentinel who no longer have the member role in discord
 // Lastly, it will remove all roles from users who are in the discord server but not in the sentinel database
