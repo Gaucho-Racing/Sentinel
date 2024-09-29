@@ -262,14 +262,14 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	token, err := service.GenerateAccessToken(authCode.UserID, authCode.Scope, authCode.ClientID, 24*60)
+	token, err := service.GenerateAccessToken(authCode.UserID, authCode.Scope, authCode.ClientID, 60*60)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
 	idToken := ""
 	if strings.Contains(authCode.Scope, "openid") {
-		idToken, err = service.GenerateIDToken(authCode.UserID, authCode.Scope, authCode.ClientID, 24*60)
+		idToken, err = service.GenerateIDToken(authCode.UserID, authCode.Scope, authCode.ClientID, 60*60)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 			return
