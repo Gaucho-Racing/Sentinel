@@ -54,6 +54,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Users(args, s, m)
 	case "alumni":
 		Alumni(args, s, m)
+	case "onboarding":
+		Onboarding(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
