@@ -47,7 +47,7 @@ export default function AppGrid() {
           className="flex-1 cursor-pointer p-4 transition-all hover:bg-neutral-800"
           onClick={() => {
             window.open(
-              "https://portal.singlestore.com/organizations/cacb1a27-44c3-4171-8714-2f1a0bc83e09/homepage",
+              "https://portal.singlestore.com?ssoHint=614fcbae-8669-4adb-8a10-3d902ecc4f38",
               "_blank",
             );
           }}
