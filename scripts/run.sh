@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # check if go.mod exists in current directory
 if [ ! -f go.mod ]; then
     echo "go.mod not found"
