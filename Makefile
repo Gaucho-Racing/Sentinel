@@ -9,3 +9,7 @@ clean:
 run:
 	chmod +x scripts/run.sh
 	./scripts/run.sh
+
+keygen:
+	chmod +x scripts/keygen.sh
+	./scripts/keygen.sh
