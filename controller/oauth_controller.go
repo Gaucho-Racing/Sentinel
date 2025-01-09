@@ -275,7 +275,11 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 			return
 		}
 	}
-	refreshToken := ""
+	refreshToken, err := service.GenerateRefreshToken(authCode.UserID, authCode.Scope, authCode.ClientID, 7*24*60*60)
+	if err != nil {
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
+	}
 	response := model.TokenResponse{
 		IDToken:      idToken,
 		AccessToken:  token,
