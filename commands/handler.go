@@ -105,9 +105,9 @@ func LogUserReaction(s *discordgo.Session, m *discordgo.MessageReactionAdd) {
 func ChannelMessageFilter(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var verificationChannel = "1215484329736671282"
 	var rolesChannel = "1215525696286232626"
-	var welcomeChannel = "756753996408029254"
+	//var welcomeChannel = "756753996408029254"
 
-	channels := []string{verificationChannel, rolesChannel, welcomeChannel}
+	channels := []string{verificationChannel, rolesChannel} //welcome channel
 
 	for _, channel := range channels {
 		if m.ChannelID == channel {
