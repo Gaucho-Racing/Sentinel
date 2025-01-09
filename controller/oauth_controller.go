@@ -307,7 +307,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	}
 	if !service.ValidateRefreshToken(refreshToken) {
 		utils.SugarLogger.Errorf("invalid refresh_token: %s", refreshToken)
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid or expired refresh_token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "invalid or expired refresh_token"})
 		return
 	}
 	claims := &model.AuthClaims{}
@@ -316,12 +316,12 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	})
 	if err != nil {
 		utils.SugarLogger.Errorln(err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid refresh token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "invalid refresh token"})
 		return
 	}
 	if !strings.Contains(claims.Scope, "refresh_token") {
 		utils.SugarLogger.Errorf("refresh token scope is required")
-		c.JSON(http.StatusBadRequest, gin.H{"message": "provided token is not a refresh token"})
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "provided token is not a refresh token"})
 		return
 	}
 	go service.RevokeRefreshToken(refreshToken)
