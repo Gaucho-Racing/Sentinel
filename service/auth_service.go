@@ -143,16 +143,18 @@ func GenerateAccessToken(userID string, scope string, client_id string, expiresI
 
 func GenerateRefreshToken(userID string, scope string, client_id string, expiresIn int) (string, error) {
 	scopeList := strings.Split(scope, " ")
-	filteredScopes := make([]string, 0)
-	// filter out openid scopes
-	for _, s := range scopeList {
-		if !(strings.HasPrefix(s, "openid") || strings.HasPrefix(s, "profile") || strings.HasPrefix(s, "email") || strings.HasPrefix(s, "roles") || strings.HasPrefix(s, "bookstack")) {
-			filteredScopes = append(filteredScopes, s)
-		}
+	// note: keep all scopes, but add refresh_token to the end
+	scopeList = append(scopeList, "refresh_token")
+	filteredScope := strings.Join(scopeList, " ")
+	token, err := GenerateJWT(userID, filteredScope, client_id, expiresIn)
+	if err != nil {
+		return "", err
 	}
-	filteredScopes = append(filteredScopes, "refresh_token")
-	filteredScope := strings.Join(filteredScopes, " ")
-	return GenerateJWT(userID, filteredScope, client_id, expiresIn)
+	err = SaveRefreshToken(token, userID, filteredScope, expiresIn)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func GenerateJWT(userID string, scope string, client_id string, expiresIn int) (string, error) {
