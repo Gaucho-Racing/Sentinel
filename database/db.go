@@ -40,6 +40,7 @@ func InitializeDB() error {
 			&model.ClientApplication{},
 			&model.ClientApplicationRedirectURI{},
 			&model.AuthorizationCode{},
+			&model.RefreshToken{},
 		)
 		utils.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
