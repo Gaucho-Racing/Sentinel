@@ -185,3 +185,39 @@ func GenerateIDToken(userID string, scope string, client_id string, expiresIn in
 	filteredScope := strings.Join(filteredScopes, " ")
 	return GenerateJWT(userID, filteredScope, client_id, expiresIn)
 }
+
+func SaveRefreshToken(token string, userID string, scope string, expiresIn int) error {
+	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Minute)
+	refreshToken := model.RefreshToken{
+		Token:     token,
+		UserID:    userID,
+		Scope:     scope,
+		Revoked:   false,
+		ExpiresAt: utils.WithPrecision(expiresAt),
+	}
+	result := database.DB.Create(&refreshToken)
+	if result.Error != nil {
+		return result.Error
+	}
+	return nil
+}
+
+func ValidateRefreshToken(token string) bool {
+	var refreshToken model.RefreshToken
+	database.DB.Where("token = ?", token).First(&refreshToken)
+	if refreshToken.Token == "" {
+		return false
+	}
+	if refreshToken.Revoked {
+		return false
+	}
+	if time.Now().After(refreshToken.ExpiresAt) {
+		return false
+	}
+	return true
+}
+
+func RevokeRefreshToken(token string) error {
+	database.DB.Model(&model.RefreshToken{}).Where("token = ?", token).Update("revoked", true)
+	return nil
+}
