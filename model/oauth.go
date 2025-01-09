@@ -68,7 +68,7 @@ func (AuthorizationCode) TableName() string {
 }
 
 type RefreshToken struct {
-	Token     string    `gorm:"primaryKey" json:"token"`
+	Token     string    `gorm:"primaryKey;type:longtext" json:"token"`
 	UserID    string    `json:"user_id"`
 	Scope     string    `json:"scope"`
 	Revoked   bool      `json:"revoked"`

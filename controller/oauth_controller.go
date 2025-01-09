@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 )
 
 func GetValidOauthScopes(c *gin.Context) {
@@ -199,6 +201,12 @@ func OauthAuthorize(c *gin.Context) {
 }
 
 func OauthExchange(c *gin.Context) {
+	// Check if refresh or authorization code
+	grantType := c.PostForm("grant_type")
+	if grantType == "refresh_token" {
+		handleRefreshTokenExchange(c)
+		return
+	}
 	// Check for Basic Auth
 	clientID, clientSecret, hasAuth := c.Request.BasicAuth()
 	if hasAuth {
@@ -233,7 +241,6 @@ func OauthExchange(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "redirect_uri is invalid"})
 		return
 	}
-	grantType := c.PostForm("grant_type")
 	if grantType == "" {
 		utils.SugarLogger.Errorf("grant_type is required")
 		c.JSON(http.StatusBadRequest, gin.H{"message": "grant_type is required"})
@@ -241,9 +248,6 @@ func OauthExchange(c *gin.Context) {
 	}
 	if grantType == "authorization_code" {
 		handleAuthorizationCodeExchange(c)
-		return
-	} else if grantType == "refresh_token" {
-		handleRefreshTokenExchange(c)
 		return
 	} else {
 		utils.SugarLogger.Errorf("unsupported grant_type: %s", grantType)
@@ -306,9 +310,12 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid or expired refresh_token"})
 		return
 	}
-	claims, err := service.ValidateJWT(refreshToken)
+	claims := &model.AuthClaims{}
+	_, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+		return config.RsaPublicKey, nil
+	})
 	if err != nil {
-		utils.SugarLogger.Errorf("error validating refresh token: %s", err.Error())
+		utils.SugarLogger.Errorln(err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"message": "invalid refresh token"})
 		return
 	}
