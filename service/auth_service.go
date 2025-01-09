@@ -74,7 +74,7 @@ func RegisterEmailPassword(email string, password string) (string, error) {
 		Email:    email,
 		Password: hash,
 	})
-	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60)
+	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 60*60)
 	if err != nil {
 		return "", err
 	}
@@ -100,7 +100,7 @@ func LoginEmailPassword(email string, password string) (string, error) {
 		utils.SugarLogger.Errorln(err.Error())
 		return "", err
 	}
-	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60)
+	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 60*60)
 	if err != nil {
 		return "", err
 	}

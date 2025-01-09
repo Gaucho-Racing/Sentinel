@@ -291,7 +291,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        authCode.Scope,
 	}
 	utils.SugarLogger.Infof("token response: %v", response)
@@ -358,7 +358,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        claims.Scope,
 	}
 	utils.SugarLogger.Infof("token response: %v", response)

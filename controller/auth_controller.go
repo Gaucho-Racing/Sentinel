@@ -35,12 +35,16 @@ func RegisterAccountPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	refreshToken := ""
+	refreshToken, err := service.GenerateRefreshToken(user.ID, "sentinel:all", "sentinel", 7*24*60*60)
+	if err != nil {
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
+	}
 	response := model.TokenResponse{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        "sentinel:all",
 	}
 	c.JSON(http.StatusOK, response)
@@ -104,7 +108,7 @@ func LoginAccount(c *gin.Context) {
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        "sentinel:all",
 	}
 	c.JSON(http.StatusOK, response)
@@ -147,7 +151,7 @@ func LoginDiscord(c *gin.Context) {
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        "sentinel:all",
 	}
 	c.JSON(http.StatusOK, response)
