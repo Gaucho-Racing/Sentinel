@@ -13,7 +13,11 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
-import { checkCredentials, saveAccessToken, saveRefreshToken } from "@/lib/auth";
+import {
+  checkCredentials,
+  saveAccessToken,
+  saveRefreshToken,
+} from "@/lib/auth";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { notify } from "@/lib/notify";
 

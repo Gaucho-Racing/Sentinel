@@ -19,7 +19,7 @@ export const checkCredentials = async (): Promise<number> => {
         return 0;
       }
     } catch (error) {
-      if (await refreshAccessToken() == 0) {
+      if ((await refreshAccessToken()) == 0) {
         return checkCredentials();
       }
       return 1;
