@@ -78,6 +78,9 @@ func AuthChecker() gin.HandlerFunc {
 				if err != nil {
 					utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
 					c.AbortWithStatusJSON(401, gin.H{"message": err.Error()})
+				} else if strings.Contains(claims.Scope, "refresh_token") {
+					utils.SugarLogger.Errorln("Received refresh token instead of access token")
+					c.AbortWithStatusJSON(401, gin.H{"message": "Received refresh token instead of access token"})
 				} else {
 					utils.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Email)
 					utils.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
