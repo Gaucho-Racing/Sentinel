@@ -21,7 +21,7 @@ import {
   faLock,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import { checkCredentials, logout, saveAccessToken } from "@/lib/auth";
+import { checkCredentials, logout, saveAccessToken, saveRefreshToken } from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -148,6 +148,7 @@ function App() {
       );
       if (response.status == 200) {
         saveAccessToken(response.data.access_token);
+        saveRefreshToken(response.data.refresh_token);
         checkCredentials();
       }
     } catch (error: any) {
