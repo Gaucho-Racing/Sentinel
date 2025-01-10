@@ -34,10 +34,17 @@ const refreshAccessToken = async (): Promise<number> => {
     return 1;
   }
   try {
-    const response = await axios.post(`${SENTINEL_API_URL}/oauth/token`, {
-      grant_type: "refresh_token",
-      refresh_token: refreshToken,
-    });
+    const response = await axios.post(`${SENTINEL_API_URL}/oauth/token`, 
+      new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken
+      }),
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      }
+    );
     if (response.status == 200) {
       saveAccessToken(response.data.access_token);
       saveRefreshToken(response.data.refresh_token);
