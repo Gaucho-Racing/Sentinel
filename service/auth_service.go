@@ -74,7 +74,7 @@ func RegisterEmailPassword(email string, password string) (string, error) {
 		Email:    email,
 		Password: hash,
 	})
-	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60*60)
+	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 60*60)
 	if err != nil {
 		return "", err
 	}
@@ -100,7 +100,7 @@ func LoginEmailPassword(email string, password string) (string, error) {
 		utils.SugarLogger.Errorln(err.Error())
 		return "", err
 	}
-	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60*60)
+	token, err := GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 60*60)
 	if err != nil {
 		return "", err
 	}
@@ -131,6 +131,7 @@ func HashPassword(password string) (string, error) {
 func GenerateAccessToken(userID string, scope string, client_id string, expiresIn int) (string, error) {
 	scopeList := strings.Split(scope, " ")
 	filteredScopes := make([]string, 0)
+	// filter out openid scopes
 	for _, s := range scopeList {
 		if !(strings.HasPrefix(s, "openid") || strings.HasPrefix(s, "profile") || strings.HasPrefix(s, "email") || strings.HasPrefix(s, "roles") || strings.HasPrefix(s, "bookstack")) {
 			filteredScopes = append(filteredScopes, s)
@@ -138,6 +139,22 @@ func GenerateAccessToken(userID string, scope string, client_id string, expiresI
 	}
 	filteredScope := strings.Join(filteredScopes, " ")
 	return GenerateJWT(userID, filteredScope, client_id, expiresIn)
+}
+
+func GenerateRefreshToken(userID string, scope string, client_id string, expiresIn int) (string, error) {
+	scopeList := strings.Split(scope, " ")
+	// note: keep all scopes, but add refresh_token to the end
+	scopeList = append(scopeList, "refresh_token")
+	filteredScope := strings.Join(scopeList, " ")
+	token, err := GenerateJWT(userID, filteredScope, client_id, expiresIn)
+	if err != nil {
+		return "", err
+	}
+	err = SaveRefreshToken(token, userID, filteredScope, expiresIn)
+	if err != nil {
+		return "", err
+	}
+	return token, nil
 }
 
 func GenerateJWT(userID string, scope string, client_id string, expiresIn int) (string, error) {

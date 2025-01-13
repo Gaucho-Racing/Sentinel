@@ -66,3 +66,16 @@ type AuthorizationCode struct {
 func (AuthorizationCode) TableName() string {
 	return "authorization_code"
 }
+
+type RefreshToken struct {
+	Token     string    `gorm:"primaryKey;type:longtext" json:"token"`
+	UserID    string    `json:"user_id"`
+	Scope     string    `json:"scope"`
+	Revoked   bool      `json:"revoked"`
+	ExpiresAt time.Time `json:"expires_at"`
+	CreatedAt time.Time `gorm:"autoCreateTime" json:"created_at"`
+}
+
+func (RefreshToken) TableName() string {
+	return "refresh_token"
+}
