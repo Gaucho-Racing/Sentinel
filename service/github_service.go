@@ -150,10 +150,11 @@ func CleanGithubMembers() {
 			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
 			RemoveUserFromGithub(user.ID, ghUser.Login)
 		} else if user.IsInnerCircle() {
-			// scuffed way to keep perms up to date
-			AddUserToGithub(user.ID, ghUser.Login)
+			// keep inner circle members for now, in the future update perms appropriately
+			continue
 		} else if user.IsMember() {
-			AddUserToGithub(user.ID, ghUser.Login)
+			// keep members for now, in the future update perms appropriately
+			continue
 		} else {
 			// User is not longer a member, remove from GitHub organization
 			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
