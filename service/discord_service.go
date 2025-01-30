@@ -379,7 +379,8 @@ func PopulateDiscordMembers() {
 
 // CleanDiscordMembers does the following:
 //  1. Remove all roles from users who are in the discord server but not in the sentinel database
-//  2. Remove all sentinel roles from users who are no longer a member of the discord server
+//  2. Remove all roles from users who no longer have the member role in the sentinel database
+//  3. Remove all sentinel roles from users who are no longer a member of the discord server
 //
 // NOTE: This will NOT kick anyone from the discord server nor DELETE any users from the sentinel database
 func CleanDiscordMembers() {
@@ -402,6 +403,19 @@ func CleanDiscordMembers() {
 				}
 				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s as they are not in the sentinel database", member.User.ID))
 			}
+		} else if !(user.IsMember() || user.IsAlumni()) {
+			// User is in the sentinel database but not a member or alumni
+			// Remove all roles from user
+			if len(member.Roles) > 0 {
+				utils.SugarLogger.Infof("Discord user not a member or alumni: %s", member.User.ID)
+				for _, role := range member.Roles {
+					err := Discord.GuildMemberRoleRemove(config.DiscordGuild, member.User.ID, role)
+					if err != nil {
+						utils.SugarLogger.Errorf("Error removing role %s from user %s: %s", role, member.User.ID, err.Error())
+					}
+				}
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s as they are not a member or alumni", member.User.ID))
+			}
 		}
 	}
 	for _, user := range GetAllUsers() {
@@ -411,9 +425,13 @@ func CleanDiscordMembers() {
 		}
 		if member == nil {
 			// User is in the sentinel database but no longer in the discord server
-			// Delete user roles from sentinel, other jobs will take care of the rest
+			// Delete user roles from sentinel (except if alumni), other jobs will take care of the rest
 			utils.SugarLogger.Infof("Removing sentinel roles from user %s as they are no longer in the discord server", user.ID)
-			SetRolesForUser(user.ID, []string{})
+			roles := []string{}
+			if user.IsAlumni() {
+				roles = append(roles, "d_alumni")
+			}
+			SetRolesForUser(user.ID, roles)
 			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed sentinel roles from user %s as they are no longer in the discord server", user.ID))
 		}
 	}

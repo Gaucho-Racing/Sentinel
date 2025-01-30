@@ -89,9 +89,14 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 	SetSubteamsForUser(userID, subteamRoles)
 	SetRolesForUser(userID, roles)
 
-	// For now, keep verified and member roles for alumni
+	// Remove all roles except alumni from user
 	if contains(roles, "d_alumni") {
-		RemoveAllSubteamDiscordRolesForUser(userID)
+		SetRolesForUser(userID, []string{"d_alumni"})
+	}
+
+	// If user is not member or alumni, remove all roles
+	if !contains(roles, "d_member") && !contains(roles, "d_alumni") {
+		SetRolesForUser(userID, []string{})
 	}
 }
 
