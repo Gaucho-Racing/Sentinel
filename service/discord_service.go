@@ -380,6 +380,8 @@ func PopulateDiscordMembers() {
 // CleanDiscordMembers does the following:
 //  1. Remove all roles from users who are in the discord server but not in the sentinel database
 //  2. Remove all sentinel roles from users who are no longer a member of the discord server
+//
+// NOTE: This will NOT kick anyone from the discord server nor DELETE any users from the sentinel database
 func CleanDiscordMembers() {
 	members, err := Discord.GuildMembers(config.DiscordGuild, "", 1000)
 	if err != nil {
