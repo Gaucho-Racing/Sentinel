@@ -23,7 +23,7 @@ func main() {
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
 
-	service.CleanDriveMembers()
+	service.PopulateMemberDirectorySheet()
 
 	// jobs.RegisterDriveCronJob()
 	// jobs.RegisteGithubCronJob()

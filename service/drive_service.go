@@ -217,6 +217,73 @@ func CleanDriveMembers() {
 	}
 }
 
+// CleanLeadsDriveMembers removes users from the leads drive that are not in the member directory.
+func CleanLeadsDriveMembers() {
+	keepEmails := []string{
+		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",
+		"ucsantabarbarasae@gmail.com",
+		"team@gauchoracing.com",
+	}
+
+	resp, err := DriveClient.Permissions.List(config.LeadsDriveID).
+		SupportsAllDrives(true).
+		Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+		Do()
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return
+	}
+	for _, perm := range resp.Permissions {
+		user := GetUserByEmail(perm.EmailAddress)
+		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+		} else if user.IsInnerCircle() {
+			if perm.Role != "organizer" {
+				// User needs organizer role but doesn't currently have it
+				utils.SugarLogger.Infof("Updating %s leads drive permission to organizer", perm.EmailAddress)
+				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+				AddMemberToDrive(config.LeadsDriveID, perm.EmailAddress, "organizer")
+			}
+		} else {
+			// User is not inner circle, remove from leads drive
+			utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+		}
+	}
+	nextPageToken := resp.NextPageToken
+	for nextPageToken != "" {
+		resp, err = DriveClient.Permissions.List(config.LeadsDriveID).
+			SupportsAllDrives(true).
+			Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+			PageToken(nextPageToken).
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorln(err)
+			return
+		}
+		for _, perm := range resp.Permissions {
+			user := GetUserByEmail(perm.EmailAddress)
+			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+			} else if user.IsInnerCircle() {
+				if perm.Role != "organizer" {
+					// User needs organizer role but doesn't currently have it
+					utils.SugarLogger.Infof("Updating %s leads drive permission to organizer", perm.EmailAddress)
+					RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+					AddMemberToDrive(config.LeadsDriveID, perm.EmailAddress, "organizer")
+				}
+			} else {
+				// User is not inner circle, remove from leads drive
+				utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+			}
+		}
+		nextPageToken = resp.NextPageToken
+	}
+}
+
 func PopulateMemberDirectorySheet() {
 	// Delete all rows after 5
 	clearRange := "A6:O"
