@@ -75,5 +75,5 @@ func (user User) IsMember() bool {
 }
 
 func (user User) IsVerifiedMember() bool {
-	return user.Verified
+	return user.HasRole("d_verified")
 }
