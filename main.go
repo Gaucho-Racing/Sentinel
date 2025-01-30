@@ -3,9 +3,7 @@ package main
 import (
 	"sentinel/commands"
 	"sentinel/config"
-	"sentinel/controller"
 	"sentinel/database"
-	"sentinel/jobs"
 	"sentinel/service"
 	"sentinel/utils"
 )
@@ -25,14 +23,16 @@ func main() {
 	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
 
-	jobs.RegisterDriveCronJob()
-	jobs.RegisteGithubCronJob()
-	jobs.RegisterDiscordCronJob()
+	service.CleanDriveMembers()
 
-	router := controller.SetupRouter()
-	controller.InitializeRoutes(router)
-	err := router.Run(":" + config.Port)
-	if err != nil {
-		utils.SugarLogger.Fatalln(err)
-	}
+	// jobs.RegisterDriveCronJob()
+	// jobs.RegisteGithubCronJob()
+	// jobs.RegisterDiscordCronJob()
+
+	// router := controller.SetupRouter()
+	// controller.InitializeRoutes(router)
+	// err := router.Run(":" + config.Port)
+	// if err != nil {
+	// 	utils.SugarLogger.Fatalln(err)
+	// }
 }

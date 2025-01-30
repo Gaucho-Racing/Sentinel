@@ -141,6 +141,7 @@ func CleanDriveMembers() {
 	keepEmails := []string{
 		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",
 		"ucsantabarbarasae@gmail.com",
+		"team@gauchoracing.com",
 	}
 
 	resp, err := DriveClient.Permissions.List(config.SharedDriveID).
@@ -154,6 +155,24 @@ func CleanDriveMembers() {
 	for _, perm := range resp.Permissions {
 		user := GetUserByEmail(perm.EmailAddress)
 		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+		} else if user.IsInnerCircle() {
+			if perm.Role != "organizer" {
+				// User needs organizer role but doesn't currently have it
+				utils.SugarLogger.Infof("Updating %s drive permission to organizer", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+				AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
+			}
+		} else if user.IsMember() {
+			if perm.Role != "writer" {
+				// User needs writer role but doesn't currently have it
+				utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+				AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "writer")
+			}
+		} else {
+			// User is not a member, remove from drive
 			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		}
@@ -171,7 +190,25 @@ func CleanDriveMembers() {
 		}
 		for _, perm := range resp.Permissions {
 			user := GetUserByEmail(perm.EmailAddress)
-			if user.ID == "" && perm.EmailAddress != "sentinel-drive@sentinel-416604.iam.gserviceaccount.com" {
+			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			} else if user.IsInnerCircle() {
+				if perm.Role != "organizer" {
+					// User needs organizer role but doesn't currently have it
+					utils.SugarLogger.Infof("Updating %s drive permission to organizer", perm.EmailAddress)
+					RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+					AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
+				}
+			} else if user.IsMember() {
+				if perm.Role != "writer" {
+					// User needs writer role but doesn't currently have it
+					utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
+					RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+					AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "writer")
+				}
+			} else {
+				// User is not a member, remove from drive
 				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 			}
