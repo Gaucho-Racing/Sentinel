@@ -7,13 +7,14 @@ import (
 	"sentinel/model"
 	"sentinel/utils"
 	"sort"
+	"strings"
 
 	"github.com/lithammer/fuzzysearch/fuzzy"
 )
 
 func GetAllUsers() []model.User {
 	var users []model.User
-	database.DB.Find(&users)
+	database.DB.Order("first_name").Find(&users)
 	for i := range users {
 		users[i].Subteams = GetSubteamsForUser(users[i].ID)
 		users[i].Roles = GetRolesForUser(users[i].ID)
@@ -105,4 +106,13 @@ func IncompleteProfileReminder() {
 			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Sent incomplete profile reminder to %s", user))
 		}
 	}
+}
+
+func GauchoRacingEmailReplace(email string) string {
+	if strings.HasSuffix(email, "@ucsb.edu") {
+		return strings.TrimSuffix(email, "@ucsb.edu") + "@gauchoracing.com"
+	} else if email == "ucsantabarbarasae@gmail.com" {
+		return "team@gauchoracing.com"
+	}
+	return email
 }

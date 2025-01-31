@@ -2,7 +2,6 @@
 
 [![build](https://github.com/Gaucho-Racing/Sentinel/actions/workflows/build.yml/badge.svg)](https://github.com/Gaucho-Racing/Sentinel/actions/workflows/build.yml)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/d64e59b0-b1eb-4668-a165-b4177a0fe6b6/deploy-status)](https://app.netlify.com/sites/gr-sentinel/deploys)
-[![codecov](https://codecov.io/gh/Gaucho-Racing/Sentinel/graph/badge.svg?token=3X1TIS1C3X)](https://codecov.io/gh/Gaucho-Racing/Sentinel)
 [![Docker Pulls](https://img.shields.io/docker/pulls/gauchoracing/sentinel?style=flat-square)](https://hub.docker.com/r/gauchoracing/sentinel)
 [![Release](https://img.shields.io/github/release/gaucho-racing/sentinel.svg?style=flat-square)](https://github.com/gaucho-racing/sentinel/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

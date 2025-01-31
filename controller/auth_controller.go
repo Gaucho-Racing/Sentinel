@@ -35,21 +35,16 @@ func RegisterAccountPassword(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	err = service.CreateWikiUserWithPassword(input.Password, user.ID)
+	refreshToken, err := service.GenerateRefreshToken(user.ID, "sentinel:all", "sentinel", 7*24*60*60)
 	if err != nil {
-		utils.SugarLogger.Errorf("Error creating wiki user: %v", err)
-		utils.SugarLogger.Infoln("Attempting to update wiki user")
-		err = service.UpdateWikiUserWithPassword(input.Password, user.ID)
-		if err != nil {
-			utils.SugarLogger.Errorf("Error updating wiki user: %v", err)
-		}
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
 	}
-	refreshToken := ""
 	response := model.TokenResponse{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        "sentinel:all",
 	}
 	c.JSON(http.StatusOK, response)
@@ -104,12 +99,16 @@ func LoginAccount(c *gin.Context) {
 		IPAddress:   c.ClientIP(),
 		LoginType:   "email",
 	})
-	refreshToken := ""
+	refreshToken, err := service.GenerateRefreshToken(user.ID, "sentinel:all", "sentinel", 7*24*60*60)
+	if err != nil {
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
+	}
 	response := model.TokenResponse{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        "sentinel:all",
 	}
 	c.JSON(http.StatusOK, response)
@@ -131,7 +130,7 @@ func LoginDiscord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "No account with this email exists. Make sure to verify your account on the discord server first!"})
 		return
 	}
-	token, err := service.GenerateJWT(user.ID, user.Email, "sentinel:all", "sentinel")
+	token, err := service.GenerateAccessToken(user.ID, "sentinel:all", "sentinel", 24*60*60)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
@@ -143,12 +142,16 @@ func LoginDiscord(c *gin.Context) {
 		IPAddress:   c.ClientIP(),
 		LoginType:   "discord",
 	})
-	refreshToken := ""
+	refreshToken, err := service.GenerateRefreshToken(user.ID, "sentinel:all", "sentinel", 7*24*60*60)
+	if err != nil {
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
+	}
 	response := model.TokenResponse{
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        "sentinel:all",
 	}
 	c.JSON(http.StatusOK, response)

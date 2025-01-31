@@ -12,7 +12,11 @@ import { getAxiosErrorMessage } from "@/lib/axios-error-handler";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faDiscord } from "@fortawesome/free-brands-svg-icons";
-import { checkCredentials, saveAccessToken } from "@/lib/auth";
+import {
+  checkCredentials,
+  saveAccessToken,
+  saveRefreshToken,
+} from "@/lib/auth";
 import { notify } from "@/lib/notify";
 
 function LoginDiscordPage() {
@@ -57,6 +61,7 @@ function LoginDiscordPage() {
       );
       if (response.status == 200) {
         saveAccessToken(response.data.access_token);
+        saveRefreshToken(response.data.refresh_token);
         checkAuth();
       }
     } catch (error: any) {

@@ -78,6 +78,8 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 			roles = append(roles, "d_officer")
 		} else if id == config.LeadRoleID {
 			roles = append(roles, "d_lead")
+		} else if id == config.VerifiedMemberRoleID {
+			roles = append(roles, "d_verified")
 		} else if id == config.MemberRoleID {
 			roles = append(roles, "d_member")
 		} else if id == config.AlumniRoleID {
@@ -87,8 +89,14 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 	SetSubteamsForUser(userID, subteamRoles)
 	SetRolesForUser(userID, roles)
 
+	// Remove all roles except alumni from user
 	if contains(roles, "d_alumni") {
-		RemoveAllSubteamDiscordRolesForUser(userID)
+		SetRolesForUser(userID, []string{"d_alumni"})
+	}
+
+	// If user is not member or alumni, remove all roles
+	if !contains(roles, "d_member") && !contains(roles, "d_alumni") {
+		SetRolesForUser(userID, []string{})
 	}
 }
 

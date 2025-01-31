@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
@@ -9,10 +10,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 )
 
 func GetValidOauthScopes(c *gin.Context) {
 	c.JSON(http.StatusOK, model.ValidOauthScopes)
+}
+
+func GetOpenIDConfig(c *gin.Context) {
+	c.JSON(http.StatusOK, model.OpenIDConfig)
 }
 
 func GetAllClientApplications(c *gin.Context) {
@@ -159,6 +165,11 @@ func OauthAuthorize(c *gin.Context) {
 	} else {
 		prompt = "consent"
 	}
+	reponseType := c.Query("response_type")
+	if reponseType == "" {
+		reponseType = "code"
+	}
+
 	// Handle Validate Request
 	if c.Request.Method == "GET" {
 		c.JSON(http.StatusOK, gin.H{
@@ -169,30 +180,40 @@ func OauthAuthorize(c *gin.Context) {
 		})
 		return
 	}
+
 	// Handle Authorize Request
-	code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scope)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
-		return
-	}
-	go service.CreateLogin(model.UserLogin{
+	defer service.CreateLogin(model.UserLogin{
 		UserID:      GetRequestUserID(c),
 		Destination: clientID,
 		Scope:       scope,
 		IPAddress:   c.ClientIP(),
 		LoginType:   "oauth",
 	})
-	c.JSON(http.StatusOK, code)
+	if reponseType == "code" {
+		code, err := service.GenerateAuthorizationCode(clientID, GetRequestUserID(c), scope)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, code)
+		return
+	}
 }
 
 func OauthExchange(c *gin.Context) {
+	// Check if refresh or authorization code
+	grantType := c.PostForm("grant_type")
+	if grantType == "refresh_token" {
+		handleRefreshTokenExchange(c)
+		return
+	}
 	// Check for Basic Auth
 	clientID, clientSecret, hasAuth := c.Request.BasicAuth()
 	if hasAuth {
 		// Validate client credentials
-		println(clientID, clientSecret)
 		client := service.GetClientApplicationByID(clientID)
 		if client.ID == "" || client.Secret != clientSecret {
+			utils.SugarLogger.Errorf("invalid client credentials: %s %s", clientID, clientSecret)
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid client credentials"})
 			return
 		}
@@ -201,39 +222,27 @@ func OauthExchange(c *gin.Context) {
 		clientID = c.PostForm("client_id")
 		clientSecret = c.PostForm("client_secret")
 		if clientID == "" || clientSecret == "" {
+			utils.SugarLogger.Errorf("client_id and client_secret are required: %s %s", clientID, clientSecret)
 			c.JSON(http.StatusBadRequest, gin.H{"message": "client_id and client_secret are required"})
 			return
 		}
 		// Validate client credentials
 		client := service.GetClientApplicationByID(clientID)
 		if client.ID == "" || client.Secret != clientSecret {
+			utils.SugarLogger.Errorf("invalid client credentials: %s %s", clientID, clientSecret)
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "Invalid client credentials"})
 			return
 		}
 	}
 
-	clientID = c.PostForm("client_id")
-	if clientID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "client_id is required"})
-		return
-	}
-	client := service.GetClientApplicationByID(clientID)
-	if client.ID == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "no client application found with id: " + clientID})
-		return
-	}
 	redirectUri := c.PostForm("redirect_uri")
 	if !service.ValidateRedirectURI(redirectUri, clientID) {
+		utils.SugarLogger.Errorf("redirect_uri is invalid: %s", redirectUri)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "redirect_uri is invalid"})
 		return
 	}
-	code := c.PostForm("code")
-	if code == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"message": "code is required"})
-		return
-	}
-	grantType := c.PostForm("grant_type")
 	if grantType == "" {
+		utils.SugarLogger.Errorf("grant_type is required")
 		c.JSON(http.StatusBadRequest, gin.H{"message": "grant_type is required"})
 		return
 	}
@@ -241,29 +250,117 @@ func OauthExchange(c *gin.Context) {
 		handleAuthorizationCodeExchange(c)
 		return
 	} else {
+		utils.SugarLogger.Errorf("unsupported grant_type: %s", grantType)
 		c.JSON(http.StatusBadRequest, gin.H{"message": "unsupported grant_type"})
 	}
 }
 
 func handleAuthorizationCodeExchange(c *gin.Context) {
 	code := c.PostForm("code")
+	if code == "" {
+		utils.SugarLogger.Errorf("code is required")
+		c.JSON(http.StatusBadRequest, gin.H{"message": "code is required"})
+		return
+	}
 	authCode, err := service.VerifyAuthorizationCode(code)
 	if err != nil {
+		utils.SugarLogger.Errorf("error verifying authorization code: %s", err.Error())
 		c.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	token, err := service.GenerateJWT(authCode.UserID, service.GetUserByID(authCode.UserID).Email, authCode.Scope, authCode.ClientID)
+	token, err := service.GenerateAccessToken(authCode.UserID, authCode.Scope, authCode.ClientID, 60*60)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	refreshToken := ""
+	idToken := ""
+	if strings.Contains(authCode.Scope, "openid") {
+		idToken, err = service.GenerateIDToken(authCode.UserID, authCode.Scope, authCode.ClientID, 60*60)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+	}
+	refreshToken, err := service.GenerateRefreshToken(authCode.UserID, authCode.Scope, authCode.ClientID, 7*24*60*60)
+	if err != nil {
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
+	}
 	response := model.TokenResponse{
+		IDToken:      idToken,
 		AccessToken:  token,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    24 * 60 * 60,
+		ExpiresIn:    60 * 60,
 		Scope:        authCode.Scope,
 	}
+	utils.SugarLogger.Infof("token response: %v", response)
+	c.JSON(http.StatusOK, response)
+}
+
+func handleRefreshTokenExchange(c *gin.Context) {
+	refreshToken := c.PostForm("refresh_token")
+	if refreshToken == "" {
+		utils.SugarLogger.Errorf("refresh_token is required")
+		c.JSON(http.StatusBadRequest, gin.H{"message": "refresh_token is required"})
+		return
+	}
+	if !service.ValidateRefreshToken(refreshToken) {
+		utils.SugarLogger.Errorf("invalid refresh_token: %s", refreshToken)
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "invalid or expired refresh_token"})
+		return
+	}
+	claims := &model.AuthClaims{}
+	_, err := jwt.ParseWithClaims(refreshToken, claims, func(token *jwt.Token) (interface{}, error) {
+		return config.RsaPublicKey, nil
+	})
+	if err != nil {
+		utils.SugarLogger.Errorln(err.Error())
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "invalid refresh token"})
+		return
+	}
+	if !strings.Contains(claims.Scope, "refresh_token") {
+		utils.SugarLogger.Errorf("refresh token scope is required")
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "provided token is not a refresh token"})
+		return
+	}
+	go service.RevokeRefreshToken(refreshToken)
+	// Remove refresh_token from scope
+	scopeList := strings.Split(claims.Scope, " ")
+	filteredScopes := make([]string, 0)
+	for _, s := range scopeList {
+		if s != "refresh_token" {
+			filteredScopes = append(filteredScopes, s)
+		}
+	}
+	claims.Scope = strings.Join(filteredScopes, " ")
+
+	token, err := service.GenerateAccessToken(claims.Subject, claims.Scope, claims.Audience[0], 60*60)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	idToken := ""
+	if strings.Contains(claims.Scope, "openid") {
+		idToken, err = service.GenerateIDToken(claims.Subject, claims.Scope, claims.Audience[0], 60*60)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+			return
+		}
+	}
+	refreshToken, err = service.GenerateRefreshToken(claims.Subject, claims.Scope, claims.Audience[0], 7*24*60*60)
+	if err != nil {
+		utils.SugarLogger.Errorln("error generating refresh token: " + err.Error())
+		refreshToken = ""
+	}
+	response := model.TokenResponse{
+		IDToken:      idToken,
+		AccessToken:  token,
+		RefreshToken: refreshToken,
+		TokenType:    "Bearer",
+		ExpiresIn:    60 * 60,
+		Scope:        claims.Scope,
+	}
+	utils.SugarLogger.Infof("token response: %v", response)
 	c.JSON(http.StatusOK, response)
 }

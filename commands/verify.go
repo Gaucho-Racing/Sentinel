@@ -45,14 +45,6 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	lastName := strings.Join(args[1:emailIndex], " ")
 	email := args[emailIndex]
 
-	if service.GetUserByID(id).ID != "" {
-		go service.SendDisappearingMessage(m.ChannelID, "You are already verified!", 5*time.Second)
-		return
-	} else if service.GetUserByEmail(email).ID != "" {
-		go service.SendDisappearingMessage(m.ChannelID, "This email is already registered!", 5*time.Second)
-		return
-	}
-
 	msg, _ := service.Discord.ChannelMessageSend(m.ChannelID, "we are checking...")
 	defer service.Discord.ChannelMessageDelete(m.ChannelID, msg.ID)
 
@@ -65,6 +57,22 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 	}
+
+	// check if user is already verified
+	if service.GetUserByID(id).ID != "" && service.GetUserByID(id).IsMember() {
+		go service.SendDisappearingMessage(m.ChannelID, "You are already verified!", 5*time.Second)
+		return
+	} else if service.GetUserByEmail(email).ID != "" && service.GetUserByEmail(email).IsMember() {
+		go service.SendDisappearingMessage(m.ChannelID, "This email is already registered!", 5*time.Second)
+		return
+	}
+
+	// verify name and email
+	if strings.Contains(firstName, "<") || strings.Contains(lastName, "<") || strings.Contains(email, "<") {
+		go service.SendDisappearingMessage(m.ChannelID, "Don't include the < > in your name and email!", 5*time.Second)
+		return
+	}
+
 	member, err := s.GuildMember(m.GuildID, id)
 	if err != nil {
 		utils.SugarLogger.Errorln(err)

@@ -2,6 +2,18 @@ package model
 
 import "time"
 
+type UserInfo struct {
+	Sub            string   `json:"sub,omitempty"`
+	Name           string   `json:"name,omitempty"`
+	GivenName      string   `json:"given_name,omitempty"`
+	FamilyName     string   `json:"family_name,omitempty"`
+	Profile        string   `json:"profile,omitempty"`
+	Picture        string   `json:"picture,omitempty"`
+	EmailVerified  bool     `json:"email_verified,omitempty"`
+	BookstackRoles []string `json:"bookstack_roles,omitempty"`
+	User
+}
+
 type User struct {
 	ID                    string    `gorm:"primaryKey" json:"id"`
 	Username              string    `json:"username"`
@@ -56,4 +68,16 @@ func (user User) IsLead() bool {
 
 func (user User) IsInnerCircle() bool {
 	return user.IsAdmin() || user.IsOfficer() || user.IsLead()
+}
+
+func (user User) IsMember() bool {
+	return user.HasRole("d_member")
+}
+
+func (user User) IsVerifiedMember() bool {
+	return user.HasRole("d_verified")
+}
+
+func (user User) IsAlumni() bool {
+	return user.HasRole("d_alumni")
 }

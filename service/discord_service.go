@@ -41,6 +41,9 @@ func InitializeRoles() {
 		if strings.Contains(strings.ToLower(r.Name), "member") {
 			utils.SugarLogger.Infof("Found Member Role: %s", r.ID)
 			config.MemberRoleID = r.ID
+		} else if strings.Contains(strings.ToLower(r.Name), "verified") {
+			utils.SugarLogger.Infof("Found Verified Member Role: %s", r.ID)
+			config.VerifiedMemberRoleID = r.ID
 		} else if strings.Contains(strings.ToLower(r.Name), "alumnus") {
 			utils.SugarLogger.Infof("Found Alumni Role: %s", r.ID)
 			config.AlumniRoleID = r.ID
@@ -285,7 +288,7 @@ func SendUserWelcomeMessage(userID string) {
 		utils.SugarLogger.Errorln("User not found")
 		return
 	}
-	message := fmt.Sprintf("Welcome to Gaucho Racing, %s! We're super excited to have you on board.\n\nPlease take a moment to complete your Sentinel profile at https://sso.gauchoracing.com/users/%s/edit. This is where you will be able to access all our internal tools and resources. The first time you login to Sentinel you will need to use your Discord account. Once you're in you can then set a password to be able to login with email/password in the future. You should have been added to our shared drive already and once you set a password, you'll be able to login to our wiki.\n\nHere are some important links:\n**Website:** <https://gauchoracing.com>\n**Wiki:** <https://wiki.gauchoracing.com>\n**GitHub:** <https://github.com/gaucho-racing>\n**Google Drive:** <https://drive.gauchoracing.com>\n\nIf you have any questions, feel free to ask in <#756738476887638111> or DM an officer or lead.", user.FirstName, user.ID)
+	message := fmt.Sprintf("Welcome to Gaucho Racing, %s! We're super excited to have you on board.\n\nPlease take a moment to complete your Sentinel profile at https://sso.gauchoracing.com/users/%s/edit. This is where you will be able to access all our internal tools and resources. The first time you login to Sentinel you will need to use your Discord account. Once you're in you can then set a password to be able to login with email/password in the future. You should have been added to our shared drive already and you can login to the wiki with your Sentinel account.\n\nHere are some important links:\n**Website:** <https://gauchoracing.com>\n**Wiki:** <https://wiki.gauchoracing.com>\n**GitHub:** <https://github.com/gaucho-racing>\n**Google Drive:** <https://drive.gauchoracing.com>\n\nIf you have any questions, feel free to ask in <#756738476887638111> or DM an officer or lead.", user.FirstName, user.ID)
 	SendDirectMessage(userID, message)
 }
 
@@ -322,10 +325,64 @@ func FindAllNonVerifiedUsers() {
 	utils.SugarLogger.Infof("Verified Members: %d", verifiedMembers)
 }
 
-// CleanDiscordMembers removes users from the sentinel database if they are no longer in the discord server
-// It will also remove users from sentinel who no longer have the member role in discord
-// Lastly, it will remove all roles from users who are in the discord server but not in the sentinel database
-// Note that this will NOT kick anyone from the discord server
+// PopulateDiscordMembers populates the discord roles for all users in the sentinel database
+// Can be used for disaster recovery if all user roles are removed from the discord server
+func PopulateDiscordMembers() {
+	users := GetAllUsers()
+	for _, user := range users {
+		utils.SugarLogger.Infof("Populating discord member for user %s %s (%s)", user.FirstName, user.LastName, user.Email)
+		member, err := Discord.GuildMember(config.DiscordGuild, user.ID)
+		if err != nil {
+			utils.SugarLogger.Errorf("Error getting discord member for user %s: %s", user.ID, err.Error())
+		}
+		if member != nil {
+			utils.SugarLogger.Infof("Found user in discord")
+			utils.SugarLogger.Infof("User has roles: %s", user.Roles)
+			err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.MemberRoleID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+			}
+			if user.HasRole("d_alumni") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.AlumniRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			} else if user.HasRole("d_officer") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.OfficerRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			} else if user.HasRole("d_lead") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.LeadRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			} else if user.HasRole("d_admin") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.AdminRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			}
+			utils.SugarLogger.Infof("Added main roles to user %s", user.Email)
+			for _, subteam := range user.Subteams {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, subteam.ID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
+			}
+			utils.SugarLogger.Infof("Added subteam roles to user %s", user.Email)
+		} else {
+			utils.SugarLogger.Infof("User not found in discord: %s", user.ID)
+		}
+	}
+}
+
+// CleanDiscordMembers does the following:
+//  1. Remove all roles from users who are in the discord server but not in the sentinel database
+//  2. Remove all roles from users who no longer have the member or alumni role in the sentinel database
+//  3. Remove all sentinel roles from users who are no longer a member of the discord server
+//
+// NOTE: This will NOT kick anyone from the discord server nor DELETE any users from the sentinel database
 func CleanDiscordMembers() {
 	members, err := Discord.GuildMembers(config.DiscordGuild, "", 1000)
 	if err != nil {
@@ -335,7 +392,7 @@ func CleanDiscordMembers() {
 		user := GetUserByID(member.User.ID)
 		if user.ID == "" {
 			// User is in the discord server but not in the sentinel database
-			// User could have any number of roles, so we will clear all roles.
+			// Remove all roles from user
 			if len(member.Roles) > 0 {
 				utils.SugarLogger.Infof("Discord user not verified: %s", member.User.ID)
 				for _, role := range member.Roles {
@@ -346,15 +403,18 @@ func CleanDiscordMembers() {
 				}
 				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s as they are not in the sentinel database", member.User.ID))
 			}
-		} else if !user.HasRole("d_member") {
-			// User is in the sentinel database but no longer has the member role in discord
-			// Delete user from sentinel, other jobs will take care of the rest
-			utils.SugarLogger.Infof("Removing user %s from sentinel as they are no longer have the member role", user.ID)
-			err := DeleteUser(user.ID)
-			if err != nil {
-				utils.SugarLogger.Errorf("Error deleting user %s from sentinel: %s", user.ID, err.Error())
-			} else {
-				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed user %s from sentinel as they are no longer have the member role", user.ID))
+		} else if !(user.IsMember() || user.IsAlumni()) {
+			// User is in the sentinel database but not a member or alumni
+			// Remove all roles from user
+			if len(member.Roles) > 0 {
+				utils.SugarLogger.Infof("Discord user not a member or alumni: %s", member.User.ID)
+				for _, role := range member.Roles {
+					err := Discord.GuildMemberRoleRemove(config.DiscordGuild, member.User.ID, role)
+					if err != nil {
+						utils.SugarLogger.Errorf("Error removing role %s from user %s: %s", role, member.User.ID, err.Error())
+					}
+				}
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s as they are not a member or alumni", member.User.ID))
 			}
 		}
 	}
@@ -365,14 +425,14 @@ func CleanDiscordMembers() {
 		}
 		if member == nil {
 			// User is in the sentinel database but no longer in the discord server
-			// Delete user from sentinel, other jobs will take care of the rest
-			utils.SugarLogger.Infof("Removing user %s from sentinel as they are no longer in the discord server", user.ID)
-			err := DeleteUser(user.ID)
-			if err != nil {
-				utils.SugarLogger.Errorf("Error deleting user %s from sentinel: %s", user.ID, err.Error())
-			} else {
-				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed user %s from sentinel as they are no longer in the discord server", user.ID))
+			// Delete user roles from sentinel (except if alumni), other jobs will take care of the rest
+			utils.SugarLogger.Infof("Removing sentinel roles from user %s as they are no longer in the discord server", user.ID)
+			roles := []string{}
+			if user.IsAlumni() {
+				roles = append(roles, "d_alumni")
 			}
+			SetRolesForUser(user.ID, roles)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed sentinel roles from user %s as they are no longer in the discord server", user.ID))
 		}
 	}
 }

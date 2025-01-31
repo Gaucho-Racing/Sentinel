@@ -5,6 +5,12 @@
   force = true
 
 [[redirects]]
+  from = "/.well-known/*"
+  to = "https://sentinel-api.gauchoracing.com/config/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

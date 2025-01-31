@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"bytes"
+	"encoding/json"
+	"io"
 	"net/http"
 	"sentinel/config"
 	"sentinel/service"
@@ -24,6 +27,7 @@ func SetupRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 		AllowCredentials: true,
 	}))
+	// r.Use(DebugRequestLogger())
 	r.Use(AuthChecker())
 	r.Use(UnauthorizedPanicHandler())
 	return r
@@ -31,7 +35,8 @@ func SetupRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/ping", Ping)
-	router.GET("/auth/keys.json", GetJWKS)
+	router.GET("/config/jwks.json", GetJWKS)
+	router.GET("/config/openid-configuration", GetOpenIDConfig)
 	router.POST("/auth/register", RegisterAccountPassword)
 	router.POST("/auth/login", LoginAccount)
 	router.POST("/auth/login/discord", LoginDiscord)
@@ -39,6 +44,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/oauth/authorize", OauthAuthorize)
 	router.POST("/oauth/token", OauthExchange)
 	router.GET("/oauth/scopes", GetValidOauthScopes)
+	router.GET("/oauth/userinfo", GetUserInfo)
 	router.GET("/oauth/proxy/validate", OauthProxyValidate)
 	router.GET("/applications", GetAllClientApplications)
 	router.GET("/applications/:appID", GetClientApplicationByID)
@@ -72,13 +78,16 @@ func AuthChecker() gin.HandlerFunc {
 				if err != nil {
 					utils.SugarLogger.Errorln("Failed to validate token: " + err.Error())
 					c.AbortWithStatusJSON(401, gin.H{"message": err.Error()})
+				} else if strings.Contains(claims.Scope, "refresh_token") {
+					utils.SugarLogger.Errorln("Received refresh token instead of access token")
+					c.AbortWithStatusJSON(401, gin.H{"message": "Received refresh token instead of access token"})
 				} else {
 					utils.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Email)
 					utils.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
 					utils.SugarLogger.Infof("↳ Scope: %s", claims.Scope)
 					utils.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
 					utils.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
-					c.Set("Auth-UserID", claims.ID)
+					c.Set("Auth-UserID", claims.Subject)
 					c.Set("Auth-Email", claims.Email)
 					c.Set("Auth-Audience", claims.Audience[0])
 					c.Set("Auth-Scope", claims.Scope)
@@ -190,4 +199,49 @@ func GetRequestTokenAudience(c *gin.Context) string {
 		return ""
 	}
 	return audience.(string)
+}
+
+func DebugRequestLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		startTime := time.Now()
+
+		var bodyBytes []byte
+		if c.Request.Body != nil {
+			bodyBytes, _ = io.ReadAll(c.Request.Body)
+			c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+		}
+
+		c.Next()
+
+		endTime := time.Now()
+
+		logData := map[string]interface{}{
+			"timestamp":     startTime.Format(time.RFC3339),
+			"duration":      endTime.Sub(startTime).String(),
+			"method":        c.Request.Method,
+			"path":          c.Request.URL.Path,
+			"query":         c.Request.URL.RawQuery,
+			"status":        c.Writer.Status(),
+			"remote_ip":     c.ClientIP(),
+			"user_agent":    c.Request.UserAgent(),
+			"referer":       c.Request.Referer(),
+			"request_id":    c.Writer.Header().Get("X-Request-ID"),
+			"headers":       c.Request.Header,
+			"body":          string(bodyBytes),
+			"response_size": c.Writer.Size(),
+			"auth": map[string]string{
+				"user_id":  GetRequestUserID(c),
+				"email":    GetRequestUserEmail(c),
+				"scopes":   GetRequestTokenScopes(c),
+				"audience": GetRequestTokenAudience(c),
+			},
+		}
+
+		logJSON, err := json.Marshal(logData)
+		if err != nil {
+			utils.SugarLogger.Error("Failed to marshal request log data: ", err)
+		} else {
+			utils.SugarLogger.Infof("Request Log: %s", string(logJSON))
+		}
+	}
 }

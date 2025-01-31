@@ -1,4 +1,4 @@
-.PHONY: clean run test
+.PHONY: clean run
 
 clean:
 	go clean
@@ -10,6 +10,6 @@ run:
 	chmod +x scripts/run.sh
 	./scripts/run.sh
 
-test:
-	chmod +x scripts/test.sh
-	./scripts/test.sh
+keygen:
+	chmod +x scripts/keygen.sh
+	./scripts/keygen.sh

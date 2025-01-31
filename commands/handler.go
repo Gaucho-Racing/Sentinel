@@ -26,6 +26,7 @@ func InitializeDiscordBot() {
 }
 
 func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
+	defer ChannelMessageFilter(s, m)
 	// Ignore all messages created by the bot itself
 	// or messages that don't start with the prefix
 	if m.Author.ID == s.State.User.ID || !strings.HasPrefix(m.Content, config.Prefix) {
@@ -54,6 +55,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Users(args, s, m)
 	case "alumni":
 		Alumni(args, s, m)
+	case "onboarding":
+		Onboarding(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
@@ -97,4 +100,18 @@ func LogUserReaction(s *discordgo.Session, m *discordgo.MessageReactionAdd) {
 		UserID: user.ID,
 		Action: "reaction",
 	})
+}
+
+func ChannelMessageFilter(s *discordgo.Session, m *discordgo.MessageCreate) {
+	var verificationChannel = "1215484329736671282"
+	var rolesChannel = "1215525696286232626"
+
+	channels := []string{verificationChannel, rolesChannel}
+
+	for _, channel := range channels {
+		if m.ChannelID == channel {
+			utils.SugarLogger.Infof("Deleting message from %s in %s: %s", m.Author.ID, m.ChannelID, m.Content)
+			s.ChannelMessageDelete(m.ChannelID, m.ID)
+		}
+	}
 }
