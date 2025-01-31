@@ -165,7 +165,7 @@ func CleanDriveMembers() {
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 				AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
 			}
-		} else if user.IsMember() {
+		} else if user.IsMember() || user.IsAlumni() {
 			if perm.Role != "writer" {
 				// User needs writer role but doesn't currently have it
 				utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
@@ -201,7 +201,7 @@ func CleanDriveMembers() {
 					RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 					AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
 				}
-			} else if user.IsMember() {
+			} else if user.IsMember() || user.IsAlumni() {
 				if perm.Role != "writer" {
 					// User needs writer role but doesn't currently have it
 					utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
