@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"sentinel/config"
+	"sentinel/model"
 	"sentinel/utils"
 	"sort"
 	"strings"
@@ -141,6 +142,7 @@ func CleanDriveMembers() {
 	keepEmails := []string{
 		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",
 		"ucsantabarbarasae@gmail.com",
+		"team@gauchoracing.com",
 	}
 
 	resp, err := DriveClient.Permissions.List(config.SharedDriveID).
@@ -154,6 +156,24 @@ func CleanDriveMembers() {
 	for _, perm := range resp.Permissions {
 		user := GetUserByEmail(perm.EmailAddress)
 		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+		} else if user.IsInnerCircle() {
+			if perm.Role != "organizer" {
+				// User needs organizer role but doesn't currently have it
+				utils.SugarLogger.Infof("Updating %s drive permission to organizer", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+				AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
+			}
+		} else if user.IsMember() || user.IsAlumni() {
+			if perm.Role != "writer" {
+				// User needs writer role but doesn't currently have it
+				utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+				AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "writer")
+			}
+		} else {
+			// User is not a member, remove from drive
 			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		}
@@ -171,7 +191,25 @@ func CleanDriveMembers() {
 		}
 		for _, perm := range resp.Permissions {
 			user := GetUserByEmail(perm.EmailAddress)
-			if user.ID == "" && perm.EmailAddress != "sentinel-drive@sentinel-416604.iam.gserviceaccount.com" {
+			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			} else if user.IsInnerCircle() {
+				if perm.Role != "organizer" {
+					// User needs organizer role but doesn't currently have it
+					utils.SugarLogger.Infof("Updating %s drive permission to organizer", perm.EmailAddress)
+					RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+					AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
+				}
+			} else if user.IsMember() || user.IsAlumni() {
+				if perm.Role != "writer" {
+					// User needs writer role but doesn't currently have it
+					utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
+					RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+					AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "writer")
+				}
+			} else {
+				// User is not a member, remove from drive
 				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 			}
@@ -180,58 +218,191 @@ func CleanDriveMembers() {
 	}
 }
 
-func PopulateMemberDirectorySheet() {
-	// Delete all rows after 5
-	clearRange := "A6:O"
-	clearRequest := &sheets.ClearValuesRequest{}
-	_, err := SheetClient.Spreadsheets.Values.Clear(config.MemberDirectorySheetID, clearRange, clearRequest).Do()
-	if err != nil {
-		utils.SugarLogger.Errorf("Unable to clear data from sheet: %v", err)
-		return
-	}
-	utils.SugarLogger.Infoln("Rows after 5 have been deleted successfully.")
-
-	users := GetAllUsers()
-	sort.Slice(users, func(i, j int) bool {
-		return users[i].FirstName < users[j].FirstName
-	})
-
-	values := make([][]interface{}, len(users))
-	for i, user := range users {
-		subteams := make([]string, len(user.Subteams))
-		for j, subteam := range user.Subteams {
-			subteams[j] = subteam.Name
-		}
-		subteamString := strings.Join(subteams, ", ")
-		roleString := strings.Join(user.Roles, ", ")
-		values[i] = []interface{}{
-			user.ID,
-			user.FirstName,
-			user.LastName,
-			user.Email,
-			user.PhoneNumber,
-			user.Gender,
-			user.Birthday,
-			user.GraduateLevel,
-			user.GraduationYear,
-			user.Major,
-			user.ShirtSize,
-			user.JacketSize,
-			user.SAERegistrationNumber,
-			subteamString,
-			roleString,
-		}
+// CleanLeadsDriveMembers removes users from the leads drive that are not in the member directory.
+func CleanLeadsDriveMembers() {
+	keepEmails := []string{
+		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",
+		"ucsantabarbarasae@gmail.com",
+		"team@gauchoracing.com",
 	}
 
-	writeRange := "A6:O"
-	writeRequest := &sheets.ValueRange{
-		Values: values,
-	}
-	_, err = SheetClient.Spreadsheets.Values.Update(config.MemberDirectorySheetID, writeRange, writeRequest).
-		ValueInputOption("RAW").
+	resp, err := DriveClient.Permissions.List(config.LeadsDriveID).
+		SupportsAllDrives(true).
+		Fields("nextPageToken,permissions(id, type, emailAddress, role)").
 		Do()
 	if err != nil {
-		utils.SugarLogger.Errorf("Unable to write data to sheet: %v", err)
+		utils.SugarLogger.Errorln(err)
 		return
 	}
+	for _, perm := range resp.Permissions {
+		user := GetUserByEmail(perm.EmailAddress)
+		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+		} else if user.IsInnerCircle() {
+			if perm.Role != "organizer" {
+				// User needs organizer role but doesn't currently have it
+				utils.SugarLogger.Infof("Updating %s leads drive permission to organizer", perm.EmailAddress)
+				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+				AddMemberToDrive(config.LeadsDriveID, perm.EmailAddress, "organizer")
+			}
+		} else {
+			// User is not inner circle, remove from leads drive
+			utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+		}
+	}
+	nextPageToken := resp.NextPageToken
+	for nextPageToken != "" {
+		resp, err = DriveClient.Permissions.List(config.LeadsDriveID).
+			SupportsAllDrives(true).
+			Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+			PageToken(nextPageToken).
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorln(err)
+			return
+		}
+		for _, perm := range resp.Permissions {
+			user := GetUserByEmail(perm.EmailAddress)
+			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+			} else if user.IsInnerCircle() {
+				if perm.Role != "organizer" {
+					// User needs organizer role but doesn't currently have it
+					utils.SugarLogger.Infof("Updating %s leads drive permission to organizer", perm.EmailAddress)
+					RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+					AddMemberToDrive(config.LeadsDriveID, perm.EmailAddress, "organizer")
+				}
+			} else {
+				// User is not inner circle, remove from leads drive
+				utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
+			}
+		}
+		nextPageToken = resp.NextPageToken
+	}
+}
+
+func PopulateMemberDirectorySheet() {
+	// Helper function to clear and populate a sheet
+	populateSheet := func(sheetName string, users []model.User) {
+		// Get sheet ID by name
+		spreadsheet, err := SheetClient.Spreadsheets.Get(config.MemberDirectorySheetID).Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to get spreadsheet: %v", err)
+			return
+		}
+
+		var sheetId int64
+		for _, sheet := range spreadsheet.Sheets {
+			if sheet.Properties.Title == sheetName {
+				sheetId = sheet.Properties.SheetId
+				break
+			}
+		}
+
+		// Clear existing data using sheet ID
+		clearRequest := &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: []*sheets.Request{
+				{
+					UpdateCells: &sheets.UpdateCellsRequest{
+						Range: &sheets.GridRange{
+							SheetId:          sheetId,
+							StartRowIndex:    5,  // A6 starts at index 5
+							StartColumnIndex: 0,  // A column
+							EndColumnIndex:   15, // O column
+						},
+						Fields: "userEnteredValue",
+					},
+				},
+			},
+		}
+
+		_, err = SheetClient.Spreadsheets.BatchUpdate(config.MemberDirectorySheetID, clearRequest).Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to clear data from sheet %s: %v", sheetName, err)
+			return
+		}
+
+		// Sort users by first name
+		sort.Slice(users, func(i, j int) bool {
+			return users[i].FirstName < users[j].FirstName
+		})
+
+		// Prepare values
+		values := make([][]interface{}, len(users))
+		for i, user := range users {
+			subteams := make([]string, len(user.Subteams))
+			for j, subteam := range user.Subteams {
+				subteams[j] = subteam.Name
+			}
+			subteamString := strings.Join(subteams, ", ")
+			roleString := strings.Join(user.Roles, ", ")
+			values[i] = []interface{}{
+				user.ID,
+				user.FirstName,
+				user.LastName,
+				user.Email,
+				user.PhoneNumber,
+				user.Gender,
+				user.Birthday,
+				user.GraduateLevel,
+				user.GraduationYear,
+				user.Major,
+				user.ShirtSize,
+				user.JacketSize,
+				user.SAERegistrationNumber,
+				subteamString,
+				roleString,
+			}
+		}
+
+		// Write data (can still use A1 notation for updates as it's more convenient)
+		writeRange := fmt.Sprintf("'%s'!A6:O", sheetName)
+		writeRequest := &sheets.ValueRange{
+			Values: values,
+		}
+		_, err = SheetClient.Spreadsheets.Values.Update(config.MemberDirectorySheetID, writeRange, writeRequest).
+			ValueInputOption("RAW").
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to write data to sheet %s: %v", sheetName, err)
+			return
+		}
+
+		utils.SugarLogger.Infof("Successfully populated %s sheet with %d users", sheetName, len(users))
+		SendMessage(config.DiscordLogChannel, fmt.Sprintf("Successfully populated `%s` sheet with %d users", sheetName, len(users)))
+	}
+
+	allUsers := GetAllUsers()
+
+	// Filter users for each sheet
+	var memberUsers []model.User
+	var verifiedUsers []model.User
+	var alumniUsers []model.User
+	var innerCircleUsers []model.User
+
+	for _, user := range allUsers {
+		if user.IsMember() {
+			memberUsers = append(memberUsers, user)
+		}
+		if user.IsVerifiedMember() {
+			verifiedUsers = append(verifiedUsers, user)
+		}
+		if user.HasRole("d_alumni") {
+			alumniUsers = append(alumniUsers, user)
+		}
+		if user.IsInnerCircle() {
+			innerCircleUsers = append(innerCircleUsers, user)
+		}
+	}
+
+	// Populate each sheet
+	populateSheet("All", allUsers)
+	populateSheet("Members", memberUsers)
+	populateSheet("Verified Members", verifiedUsers)
+	populateSheet("Alumni", alumniUsers)
+	populateSheet("Leads", innerCircleUsers)
 }

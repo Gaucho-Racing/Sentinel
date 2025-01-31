@@ -59,10 +59,10 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	// check if user is already verified
-	if service.GetUserByID(id).ID != "" {
+	if service.GetUserByID(id).ID != "" && service.GetUserByID(id).IsMember() {
 		go service.SendDisappearingMessage(m.ChannelID, "You are already verified!", 5*time.Second)
 		return
-	} else if service.GetUserByEmail(email).ID != "" {
+	} else if service.GetUserByEmail(email).ID != "" && service.GetUserByEmail(email).IsMember() {
 		go service.SendDisappearingMessage(m.ChannelID, "This email is already registered!", 5*time.Second)
 		return
 	}

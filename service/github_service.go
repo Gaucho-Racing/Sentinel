@@ -149,6 +149,16 @@ func CleanGithubMembers() {
 		if user.ID == "" && !contains(keepUsers, ghUser.Login) {
 			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
 			RemoveUserFromGithub(user.ID, ghUser.Login)
+		} else if user.IsInnerCircle() {
+			// keep inner circle members for now, in the future update perms appropriately
+			continue
+		} else if user.IsMember() || user.IsAlumni() {
+			// keep members and alumni for now, in the future update perms appropriately
+			continue
+		} else {
+			// User is not longer a member, remove from GitHub organization
+			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
+			RemoveUserFromGithub(user.ID, ghUser.Login)
 		}
 	}
 }
