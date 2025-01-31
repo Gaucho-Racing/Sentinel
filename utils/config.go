@@ -27,29 +27,29 @@ func VerifyConfig() {
 		SugarLogger.Infof("DATABASE_PASSWORD is not set, defaulting to %s", config.DatabasePassword)
 	}
 	if config.DiscordToken == "" {
-		SugarLogger.Errorf("DISCORD_TOKEN is not set")
+		SugarLogger.Fatalf("DISCORD_TOKEN is not set")
 	}
 	if config.DiscordGuild == "" {
-		SugarLogger.Errorf("DISCORD_GUILD is not set")
+		SugarLogger.Fatalf("DISCORD_GUILD is not set")
 	}
 	if config.DiscordLogChannel == "" {
-		SugarLogger.Errorf("DISCORD_LOG_CHANNEL is not set")
+		SugarLogger.Fatalf("DISCORD_LOG_CHANNEL is not set")
 	}
 	if config.GithubToken == "" {
-		SugarLogger.Errorf("GITHUB_PAT is not set")
+		SugarLogger.Fatalf("GITHUB_PAT is not set")
 	}
 	if config.DriveServiceAccount == "" {
-		SugarLogger.Errorf("DRIVE_SERVICE_ACCOUNT is not set")
+		SugarLogger.Fatalf("DRIVE_SERVICE_ACCOUNT is not set")
 	}
 	if config.WikiToken == "" {
-		SugarLogger.Errorf("WIKI_TOKEN is not set")
+		SugarLogger.Fatalf("WIKI_TOKEN is not set")
 	}
 	if config.RsaPublicKeyString == "" {
-		SugarLogger.Errorf("RSA_PUBLIC_KEY is not set")
+		SugarLogger.Fatalf("RSA_PUBLIC_KEY is not set")
 	}
 	config.RsaPublicKeyString = strings.ReplaceAll(config.RsaPublicKeyString, "\\n", "\n")
 	if config.RsaPrivateKeyString == "" {
-		SugarLogger.Errorf("RSA_PRIVATE_KEY is not set")
+		SugarLogger.Fatalf("RSA_PRIVATE_KEY is not set")
 	}
 	config.RsaPrivateKeyString = strings.ReplaceAll(config.RsaPrivateKeyString, "\\n", "\n")
 	if config.DriveCron == "" {
