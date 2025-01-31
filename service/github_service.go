@@ -152,8 +152,8 @@ func CleanGithubMembers() {
 		} else if user.IsInnerCircle() {
 			// keep inner circle members for now, in the future update perms appropriately
 			continue
-		} else if user.IsMember() {
-			// keep members for now, in the future update perms appropriately
+		} else if user.IsMember() || user.IsAlumni() {
+			// keep members and alumni for now, in the future update perms appropriately
 			continue
 		} else {
 			// User is not longer a member, remove from GitHub organization
