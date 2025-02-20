@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"fmt"
 	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
@@ -55,15 +56,17 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Users(args, s, m)
 	case "alumni":
 		Alumni(args, s, m)
-	case "onboarding":
-		Onboarding(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
 }
 
 func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
+	if m.GuildID != config.DiscordGuild {
+		return
+	}
 	utils.SugarLogger.Infof("Member update: (%s) %s", m.User.ID, m.Nick)
+	service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Member update: (%s) %s", m.User.ID, m.Nick))
 	newRoles := m.Roles
 	user := service.GetUserByID(m.User.ID)
 	if user.ID == "" {
