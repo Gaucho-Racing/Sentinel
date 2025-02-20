@@ -22,7 +22,7 @@ func Users(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	utils.SugarLogger.Infof("User: %s", guildMember.User.ID)
-	user := service.GetUserByID(m.Author.ID)
+	user := service.GetUserByID(guildMember.User.ID)
 	if user.ID == "" {
 		// User not found
 		go service.SendDisappearingMessage(m.ChannelID, "You must verify your account first! (`!verify <first name> <last name> <email>`)", 5*time.Second)
