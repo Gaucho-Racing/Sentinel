@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sentinel/config"
 	"sentinel/database"
 	"sentinel/model"
@@ -57,6 +58,9 @@ func SetRolesForUser(userID string, roles []string) []string {
 	return GetRolesForUser(userID)
 }
 
+// SyncDiscordRolesForUser syncs user's roles from Discord with Sentinel
+// This should NOT modify the user's Discord roles
+// Any role conflicts should be resolved by the OnGuildMemberUpdate callback
 func SyncDiscordRolesForUser(userID string, roleIds []string) {
 	subteamRoles := make([]model.UserSubteam, 0)
 	roles := GetRolesForUser(userID)
@@ -78,8 +82,6 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 			roles = append(roles, "d_officer")
 		} else if id == config.LeadRoleID {
 			roles = append(roles, "d_lead")
-		} else if id == config.VerifiedMemberRoleID {
-			roles = append(roles, "d_verified")
 		} else if id == config.MemberRoleID {
 			roles = append(roles, "d_member")
 		} else if id == config.AlumniRoleID {
@@ -89,15 +91,8 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 	SetSubteamsForUser(userID, subteamRoles)
 	SetRolesForUser(userID, roles)
 
-	// Remove all roles except alumni from user
-	if contains(roles, "d_alumni") {
-		SetRolesForUser(userID, []string{"d_alumni"})
-	}
-
-	// If user is not member or alumni, remove all roles
-	if !contains(roles, "d_member") && !contains(roles, "d_alumni") {
-		SetRolesForUser(userID, []string{})
-	}
+	finalRoles := GetRolesForUser(userID)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Synced roles for %s, roles: %v", userID, finalRoles))
 }
 
 func RemoveAllSubteamDiscordRolesForUser(userID string) {

@@ -41,9 +41,6 @@ func InitializeRoles() {
 		if strings.Contains(strings.ToLower(r.Name), "member") {
 			utils.SugarLogger.Infof("Found Member Role: %s", r.ID)
 			config.MemberRoleID = r.ID
-		} else if strings.Contains(strings.ToLower(r.Name), "verified") {
-			utils.SugarLogger.Infof("Found Verified Member Role: %s", r.ID)
-			config.VerifiedMemberRoleID = r.ID
 		} else if strings.Contains(strings.ToLower(r.Name), "alumnus") {
 			utils.SugarLogger.Infof("Found Alumni Role: %s", r.ID)
 			config.AlumniRoleID = r.ID
@@ -74,6 +71,40 @@ func SyncRolesForAllUsers() {
 		}
 	}
 	utils.SugarLogger.Infof("Synced roles for %d users", count)
+}
+
+func SetDiscordRolesForUser(userID string, roleIds []string) {
+	guildMember, err := Discord.GuildMember(config.DiscordGuild, userID)
+	if err != nil {
+		utils.SugarLogger.Errorln("Error getting guild member, ", err)
+		return
+	}
+	existingRoles := guildMember.Roles
+	rolesToAdd := []string{}
+	rolesToRemove := []string{}
+	for _, id := range roleIds {
+		if !contains(existingRoles, id) {
+			rolesToAdd = append(rolesToAdd, id)
+		}
+	}
+	for _, id := range existingRoles {
+		if !contains(roleIds, id) {
+			rolesToRemove = append(rolesToRemove, id)
+		}
+	}
+	utils.SugarLogger.Infof("Adding roles %v, removing roles %v to user %s", rolesToAdd, rolesToRemove, userID)
+	for _, id := range rolesToAdd {
+		err := Discord.GuildMemberRoleAdd(config.DiscordGuild, userID, id)
+		if err != nil {
+			utils.SugarLogger.Errorln("Error adding role, ", err)
+		}
+	}
+	for _, id := range rolesToRemove {
+		err := Discord.GuildMemberRoleRemove(config.DiscordGuild, userID, id)
+		if err != nil {
+			utils.SugarLogger.Errorln("Error removing role, ", err)
+		}
+	}
 }
 
 func SendMessage(channelID string, message string) {

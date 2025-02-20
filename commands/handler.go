@@ -6,6 +6,7 @@ import (
 	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
+	"slices"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -70,8 +71,32 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	newRoles := m.Roles
 	user := service.GetUserByID(m.User.ID)
 	if user.ID == "" {
+		// User is not in Sentinel, ensure they cannot have any roles
+		service.SetDiscordRolesForUser(m.User.ID, []string{})
 		return
 	}
+
+	// Verify discord specific role rules
+	// If user is alumni, they cannot have any other roles
+	if slices.Contains(newRoles, config.AlumniRoleID) {
+		// If user is admin, keep admin role
+		if slices.Contains(newRoles, config.AdminRoleID) {
+			service.SetDiscordRolesForUser(m.User.ID, []string{
+				config.AdminRoleID,
+				config.AlumniRoleID,
+			})
+		} else {
+			service.SetDiscordRolesForUser(m.User.ID, []string{
+				config.AlumniRoleID,
+			})
+		}
+	}
+
+	// If user is not alumni or member, remove all roles
+	if !slices.Contains(newRoles, config.AlumniRoleID) && !slices.Contains(newRoles, config.MemberRoleID) {
+		service.SetDiscordRolesForUser(m.User.ID, []string{})
+	}
+
 	service.SyncDiscordRolesForUser(user.ID, newRoles)
 }
 
