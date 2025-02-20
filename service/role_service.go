@@ -91,8 +91,9 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 	SetSubteamsForUser(userID, subteamRoles)
 	SetRolesForUser(userID, roles)
 
+	user := GetUserByID(userID)
 	finalRoles := GetRolesForUser(userID)
-	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Synced roles for %s, roles: %v", userID, finalRoles))
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Synced roles for %s (%s), roles: %v", userID, fmt.Sprintf("%s %s", user.FirstName, user.LastName), finalRoles))
 }
 
 func RemoveAllSubteamDiscordRolesForUser(userID string) {
