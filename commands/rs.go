@@ -25,7 +25,7 @@ func RemoveSubteam(args []string, s *discordgo.Session, m *discordgo.MessageCrea
 	}
 
 	user := service.GetUserByID(guildMember.User.ID)
-	if user.ID == "" || !user.IsMember() || !user.IsAlumni() {
+	if user.ID == "" || !(user.IsMember() || user.IsAlumni()) {
 		// User not found
 		go service.SendDisappearingMessage(m.ChannelID, "You must verify your account first! (`!verify <first name> <last name> <email>`)", 5*time.Second)
 		return
