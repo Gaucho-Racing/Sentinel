@@ -107,6 +107,27 @@ func SetDiscordRolesForUser(userID string, roleIds []string) {
 	}
 }
 
+func SetDiscordNicknameForAllUsers() {
+	users := GetAllUsers()
+	for _, user := range users {
+		SetDiscordNicknameForUser(user.ID)
+	}
+}
+
+func SetDiscordNicknameForUser(userID string) {
+	user := GetUserByID(userID)
+	if user.ID == "" {
+		utils.SugarLogger.Errorln("User not found")
+		return
+	}
+	nickname := user.FirstName
+	err := Discord.GuildMemberNickname(config.DiscordGuild, userID, nickname)
+	if err != nil {
+		utils.SugarLogger.Errorln("Error setting nickname, ", err)
+	}
+	utils.SugarLogger.Infof("Set nickname for user %s to %s", userID, nickname)
+}
+
 func SendMessage(channelID string, message string) {
 	_, err := Discord.ChannelMessageSend(channelID, message)
 	if err != nil {
