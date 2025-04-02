@@ -53,6 +53,9 @@ func InitializeRoles() {
 		} else if strings.Contains(strings.ToLower(r.Name), "lead") {
 			utils.SugarLogger.Infof("Found Lead Role: %s", r.ID)
 			config.LeadRoleID = r.ID
+		} else if strings.Contains(strings.ToLower(r.Name), "bot") {
+			utils.SugarLogger.Infof("Found Bot Role: %s", r.ID)
+			config.BotRoleID = r.ID
 		}
 	}
 }
@@ -441,6 +444,10 @@ func CleanDiscordMembers() {
 		utils.SugarLogger.Errorln(err.Error())
 	}
 	for _, member := range members {
+		// Check if member is a bot
+		if member.User.Bot {
+
+		}
 		user := GetUserByID(member.User.ID)
 		if user.ID == "" {
 			// User is in the discord server but not in the sentinel database
