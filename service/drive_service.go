@@ -124,14 +124,15 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	return nil
 }
 
-// PopulateDriveMembers adds all users to the shared drive with the appropriate role.
+// PopulateDriveMembers adds all users to the shared drive and the leads drive with the appropriate role.
 // Useful for when you accidentally remove everyone from the shared drive lmfao
 func PopulateDriveMembers() {
 	users := GetAllUsers()
 	for _, user := range users {
 		if user.IsInnerCircle() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "organizer")
-		} else {
+			AddMemberToDrive(config.LeadsDriveID, user.Email, "organizer")
+		} else if user.IsMember() || user.IsAlumni() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "writer")
 		}
 	}
@@ -154,8 +155,13 @@ func CleanDriveMembers() {
 		return
 	}
 	for _, perm := range resp.Permissions {
+		if contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+			continue
+		}
 		user := GetUserByEmail(perm.EmailAddress)
-		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+		if user.ID == "" {
 			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		} else if user.IsInnerCircle() {
@@ -190,8 +196,13 @@ func CleanDriveMembers() {
 			return
 		}
 		for _, perm := range resp.Permissions {
+			if contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+				continue
+			}
 			user := GetUserByEmail(perm.EmailAddress)
-			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			if user.ID == "" {
 				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 			} else if user.IsInnerCircle() {
@@ -235,8 +246,13 @@ func CleanLeadsDriveMembers() {
 		return
 	}
 	for _, perm := range resp.Permissions {
+		if contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Keeping %s in leads drive", perm.EmailAddress)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in leads drive", perm.EmailAddress))
+			continue
+		}
 		user := GetUserByEmail(perm.EmailAddress)
-		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+		if user.ID == "" {
 			utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
 		} else if user.IsInnerCircle() {
@@ -264,8 +280,13 @@ func CleanLeadsDriveMembers() {
 			return
 		}
 		for _, perm := range resp.Permissions {
+			if contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+				continue
+			}
 			user := GetUserByEmail(perm.EmailAddress)
-			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			if user.ID == "" {
 				utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
 				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
 			} else if user.IsInnerCircle() {
