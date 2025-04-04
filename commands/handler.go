@@ -69,8 +69,8 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 		return
 	}
 	if m.User.Bot {
-		utils.SugarLogger.Infof("Recieved member update event for bot %s, ignoring...", m.User.ID)
-		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Recieved member update event for bot %s, ignoring...", m.User.ID))
+		utils.SugarLogger.Infof("Recieved member update event for bot %s (%s), ignoring...", m.User.ID, m.Nick)
+		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Recieved member update event for bot %s (%s), ignoring...", m.User.ID, m.Nick))
 		return
 	}
 	utils.SugarLogger.Infof("Member update: (%s) %s", m.User.ID, m.Nick)
