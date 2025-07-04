@@ -84,8 +84,26 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	}
 
 	// Verify discord specific role rules
+	// Ensure member and alumni roles are mutually exclusive
+	hasAlumniRole := slices.Contains(newRoles, config.AlumniRoleID)
+	hasMemberRole := slices.Contains(newRoles, config.MemberRoleID)
+	
+	if hasAlumniRole && hasMemberRole {
+		// Determine which role was added more recently by checking the user's previous state
+		// For now, prioritize alumni role (remove member role)
+		// This could be enhanced with timestamp tracking if needed
+		err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, config.MemberRoleID)
+		if err != nil {
+			utils.SugarLogger.Errorf("Error removing member role from user %s (%s): %s", m.User.ID, m.Nick, err)
+			service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing member role from user %s (%s): %s", m.User.ID, m.Nick, err))
+		} else {
+			utils.SugarLogger.Infof("Removed member role from user %s (%s) to maintain alumni/member exclusivity", m.User.ID, m.Nick)
+			service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed member role from user %s (%s) to maintain alumni/member exclusivity", m.User.ID, m.Nick))
+		}
+	}
+	
 	// If user is alumni, only remove subteam roles defined in config.go
-	if slices.Contains(newRoles, config.AlumniRoleID) {
+	if hasAlumniRole {
 		// Get all subteam role IDs that should be removed
 		subteams := service.GetAllSubteams()
 		subteamRoleIDs := make([]string, len(subteams))
