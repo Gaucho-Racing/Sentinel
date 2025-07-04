@@ -394,16 +394,23 @@ func PopulateDiscordMembers() {
 		if member != nil {
 			utils.SugarLogger.Infof("Found user in discord")
 			utils.SugarLogger.Infof("User has roles: %s", user.Roles)
-			err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.MemberRoleID)
-			if err != nil {
-				utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
-			}
+			
+			// Add member or alumni role (mutually exclusive)
 			if user.HasRole("d_alumni") {
 				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.AlumniRoleID)
 				if err != nil {
-					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+					utils.SugarLogger.Errorf("Error adding alumni role to user %s: %s", user.Email, err.Error())
 				}
-			} else if user.HasRole("d_officer") {
+			} else {
+				// Only add member role if user is not alumni
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.MemberRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding member role to user %s: %s", user.Email, err.Error())
+				}
+			}
+			
+			// Add additional roles based on user permissions
+			if user.HasRole("d_officer") {
 				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.OfficerRoleID)
 				if err != nil {
 					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
