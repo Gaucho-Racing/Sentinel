@@ -84,26 +84,32 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	}
 
 	// Verify discord specific role rules
-	// If user is alumni, they cannot have any other roles, except for specific roles
-	allowedAlumniRoles := []string{
-		config.AdminRoleID,
-		config.AlumniRoleID,
-		"802651598954299444",  // server booster,
-		"1212400313135276074", // fantasy formula
-	}
+	// If user is alumni, only remove subteam roles defined in config.go
 	if slices.Contains(newRoles, config.AlumniRoleID) {
-		// remove all roles except for allowed alumni roles
+		// Get all subteam role IDs that should be removed
+		subteams := service.GetAllSubteams()
+		subteamRoleIDs := make([]string, len(subteams))
+		for i, subteam := range subteams {
+			subteamRoleIDs[i] = subteam.ID
+		}
+		
+		var removedRoles []string
+		// remove only subteam roles
 		for _, role := range newRoles {
-			if !slices.Contains(allowedAlumniRoles, role) {
+			if slices.Contains(subteamRoleIDs, role) {
 				err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role)
 				if err != nil {
-					utils.SugarLogger.Errorf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err)
-					service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err))
+					utils.SugarLogger.Errorf("Error removing subteam role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err)
+					service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing subteam role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err))
+				} else {
+					removedRoles = append(removedRoles, role)
 				}
 			}
 		}
-		utils.SugarLogger.Infof("Removed all roles from user %s (%s) as they are alumni", m.User.ID, m.Nick)
-		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s (%s) as they are alumni", m.User.ID, m.Nick))
+		if len(removedRoles) > 0 {
+			utils.SugarLogger.Infof("Removed subteam roles %v from user %s (%s) as they are alumni", removedRoles, m.User.ID, m.Nick)
+			service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed subteam roles %v from user %s (%s) as they are alumni", removedRoles, m.User.ID, m.Nick))
+		}
 	}
 
 	// If user is not alumni or member, remove all roles
