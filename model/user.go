@@ -78,10 +78,6 @@ func (user User) IsMember() bool {
 	return user.HasRole("d_member")
 }
 
-func (user User) IsVerifiedMember() bool {
-	return user.HasRole("d_verified")
-}
-
 func (user User) IsAlumni() bool {
 	return user.HasRole("d_alumni")
 }

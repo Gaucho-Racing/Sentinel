@@ -33,6 +33,10 @@ func RegisterDriveCronJob() {
 			defer wg.Done()
 			service.CleanLeadsDriveMembers()
 		}()
+		wg.Wait()
+		utils.SugarLogger.Infoln("Finished google drive cleanup, running PopulateDriveMembers...")
+		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, "Finished google drive cleanup, running PopulateDriveMembers...")
+		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			service.PopulateDriveMembers()
