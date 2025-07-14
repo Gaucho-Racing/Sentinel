@@ -21,6 +21,15 @@ export interface User {
   created_at: string;
 }
 
+export const isInnerCircle = (user: User): boolean => {
+  return (
+    user.roles.includes("d_admin") ||
+    user.roles.includes("d_officer") ||
+    user.roles.includes("d_lead") ||
+    user.roles.includes("d_special_advisor")
+  );
+};
+
 export interface Subteam {
   id: string;
   name: string;
