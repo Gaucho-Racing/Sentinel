@@ -82,6 +82,8 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 			roles = append(roles, "d_officer")
 		} else if id == config.LeadRoleID {
 			roles = append(roles, "d_lead")
+		} else if id == config.SpecialAdvisorRoleID {
+			roles = append(roles, "d_special_advisor")
 		} else if id == config.MemberRoleID {
 			roles = append(roles, "d_member")
 		} else if id == config.AlumniRoleID {
@@ -93,7 +95,12 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 
 	user := GetUserByID(userID)
 	finalRoles := GetRolesForUser(userID)
-	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Synced roles for %s (%s), roles: %v", userID, fmt.Sprintf("%s %s", user.FirstName, user.LastName), finalRoles))
+	finalSubteams := GetSubteamsForUser(userID)
+	subteamNames := make([]string, 0)
+	for _, s := range finalSubteams {
+		subteamNames = append(subteamNames, s.Name)
+	}
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Synced roles for %s (%s),\nroles: %v, \nsubteams: %v", userID, fmt.Sprintf("%s %s", user.FirstName, user.LastName), finalRoles, subteamNames))
 }
 
 func RemoveAllSubteamDiscordRolesForUser(userID string) {
