@@ -323,6 +323,10 @@ func PopulateMemberDirectorySheet() {
 				break
 			}
 		}
+		if sheetId == 0 {
+			utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
+			return
+		}
 
 		// Clear existing data using sheet ID
 		clearRequest := &sheets.BatchUpdateSpreadsheetRequest{
@@ -401,29 +405,29 @@ func PopulateMemberDirectorySheet() {
 
 	// Filter users for each sheet
 	var memberUsers []model.User
-	var verifiedUsers []model.User
 	var alumniUsers []model.User
-	var innerCircleUsers []model.User
+	var leadUsers []model.User
+	var specialAdvisorUsers []model.User
 
 	for _, user := range allUsers {
 		if user.IsMember() {
 			memberUsers = append(memberUsers, user)
 		}
-		if user.IsVerifiedMember() {
-			verifiedUsers = append(verifiedUsers, user)
-		}
 		if user.HasRole("d_alumni") {
 			alumniUsers = append(alumniUsers, user)
 		}
-		if user.IsInnerCircle() {
-			innerCircleUsers = append(innerCircleUsers, user)
+		if user.IsLead() || user.IsOfficer() {
+			leadUsers = append(leadUsers, user)
+		}
+		if user.IsSpecialAdvisor() {
+			specialAdvisorUsers = append(specialAdvisorUsers, user)
 		}
 	}
 
 	// Populate each sheet
 	populateSheet("All", allUsers)
 	populateSheet("Members", memberUsers)
-	populateSheet("Verified Members", verifiedUsers)
 	populateSheet("Alumni", alumniUsers)
-	populateSheet("Leads", innerCircleUsers)
+	populateSheet("Leads", leadUsers)
+	populateSheet("Special Advisors", specialAdvisorUsers)
 }

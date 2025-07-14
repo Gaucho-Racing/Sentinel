@@ -84,26 +84,28 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	}
 
 	// Verify discord specific role rules
-	// If user is alumni, they cannot have any other roles, except for specific roles
-	allowedAlumniRoles := []string{
-		config.AdminRoleID,
-		config.AlumniRoleID,
-		"802651598954299444",  // server booster,
-		"1212400313135276074", // fantasy formula
-	}
+	// If user is alumni, they cannot have any subteam roles
 	if slices.Contains(newRoles, config.AlumniRoleID) {
-		// remove all roles except for allowed alumni roles
-		for _, role := range newRoles {
-			if !slices.Contains(allowedAlumniRoles, role) {
-				err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role)
-				if err != nil {
-					utils.SugarLogger.Errorf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err)
-					service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err))
-				}
+		// Remove all subteam roles
+		for _, role := range service.GetAllSubteams() {
+			err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role.ID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error removing subteam role %s from user %s (%s): %s", role.ID, m.User.ID, m.Nick, err)
+				service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing subteam role %s from user %s (%s): %s", role.ID, m.User.ID, m.Nick, err))
 			}
 		}
-		utils.SugarLogger.Infof("Removed all roles from user %s (%s) as they are alumni", m.User.ID, m.Nick)
-		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all roles from user %s (%s) as they are alumni", m.User.ID, m.Nick))
+		utils.SugarLogger.Infof("Removed all subteam roles from user %s (%s) as they are alumni", m.User.ID, m.Nick)
+		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all subteam roles from user %s (%s) as they are alumni", m.User.ID, m.Nick))
+
+		// User cannot have member, lead, or officer roles if they are alumni (admin and special advisor ok)
+		removeRoles := []string{config.MemberRoleID, config.LeadRoleID, config.OfficerRoleID}
+		for _, role := range removeRoles {
+			err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err)
+				service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err))
+			}
+		}
 	}
 
 	// If user is not alumni or member, remove all roles

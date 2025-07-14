@@ -161,7 +161,7 @@ func CleanGithubMembers() {
 				utils.SugarLogger.Errorf("Error getting GitHub status for user %s: %s", user.ID, err.Error())
 				continue
 			}
-			if orgUser.Role == "member" {
+			if orgUser.Role != "admin" {
 				AddUserToGithub(user.ID, ghUser.Login)
 			}
 		} else if user.IsMember() || user.IsAlumni() {
@@ -171,7 +171,7 @@ func CleanGithubMembers() {
 				utils.SugarLogger.Errorf("Error getting GitHub status for user %s: %s", user.ID, err.Error())
 				continue
 			}
-			if orgUser.Role == "admin" {
+			if orgUser.Role != "member" {
 				AddUserToGithub(user.ID, ghUser.Login)
 			}
 		} else {
