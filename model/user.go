@@ -66,16 +66,16 @@ func (user User) IsLead() bool {
 	return user.HasRole("d_lead")
 }
 
+func (user User) IsSpecialAdvisor() bool {
+	return user.HasRole("d_special_advisor")
+}
+
 func (user User) IsInnerCircle() bool {
-	return user.IsAdmin() || user.IsOfficer() || user.IsLead()
+	return user.IsAdmin() || user.IsOfficer() || user.IsLead() || user.IsSpecialAdvisor()
 }
 
 func (user User) IsMember() bool {
 	return user.HasRole("d_member")
-}
-
-func (user User) IsVerifiedMember() bool {
-	return user.HasRole("d_verified")
 }
 
 func (user User) IsAlumni() bool {

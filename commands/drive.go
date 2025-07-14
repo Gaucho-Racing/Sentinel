@@ -24,7 +24,7 @@ func Drive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	user := service.GetUserByID(guildMember.User.ID)
-	if user.ID == "" {
+	if user.ID == "" || !(user.IsMember() || user.IsAlumni()) {
 		// User not found
 		go service.SendDisappearingMessage(m.ChannelID, "You must verify your account first! (`!verify <first name> <last name> <email>`)", 5*time.Second)
 	} else {
@@ -40,7 +40,7 @@ func Drive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			_ = service.AddMemberToDrive(config.SharedDriveID, user.Email, role)
 			perm, _ := service.GetDriveMemberPermission(config.SharedDriveID, user.Email)
 			service.Discord.ChannelMessageDelete(m.ChannelID, loadingMessage.ID)
-			go service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("You already have `%s` access to the shared drive!", perm.Role), 5*time.Second)
+			go service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("Refreshed shared drive access to `%s`", perm.Role), 5*time.Second)
 		} else {
 			err = service.AddMemberToDrive(config.SharedDriveID, user.Email, role)
 			if err != nil {
@@ -50,6 +50,28 @@ func Drive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			} else {
 				service.Discord.ChannelMessageDelete(m.ChannelID, loadingMessage.ID)
 				go service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("You have been added to the shared drive with `%s` access!", role), 5*time.Second)
+			}
+		}
+
+		if user.IsInnerCircle() {
+			perm, _ := service.GetDriveMemberPermission(config.LeadsDriveID, user.Email)
+			if perm != nil {
+				// Remove and re-add user to update role
+				_ = service.RemoveMemberFromDrive(config.LeadsDriveID, user.Email)
+				_ = service.AddMemberToDrive(config.LeadsDriveID, user.Email, role)
+				perm, _ := service.GetDriveMemberPermission(config.LeadsDriveID, user.Email)
+				service.Discord.ChannelMessageDelete(m.ChannelID, loadingMessage.ID)
+				go service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("Refreshed leads drive access to `%s`", perm.Role), 5*time.Second)
+			} else {
+				err = service.AddMemberToDrive(config.LeadsDriveID, user.Email, role)
+				if err != nil {
+					utils.SugarLogger.Errorln(err)
+					service.Discord.ChannelMessageDelete(m.ChannelID, loadingMessage.ID)
+					go service.SendDisappearingMessage(m.ChannelID, "Unexpected error occurred, please try again later!", 5*time.Second)
+				} else {
+					service.Discord.ChannelMessageDelete(m.ChannelID, loadingMessage.ID)
+					go service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("You have been added to the leads drive with `%s` access!", role), 5*time.Second)
+				}
 			}
 		}
 	}

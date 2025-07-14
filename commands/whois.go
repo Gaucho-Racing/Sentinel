@@ -22,7 +22,7 @@ func Whois(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	user := service.GetUserByID(m.Author.ID)
-	if user.ID == "" {
+	if user.ID == "" || !(user.IsMember() || user.IsAlumni()) {
 		// User not found
 		go service.SendDisappearingMessage(m.ChannelID, "You must verify your account first! (`!verify <first name> <last name> <email>`)", 5*time.Second)
 		return
@@ -41,7 +41,7 @@ func Whois(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			if user.ID == "" {
 				user = service.GetUserByEmail(args[0])
 				if user.ID == "" {
-					utils.SugarLogger.Infof("User not found: %s", args[0])
+					utils.SugarLogger.Infof("User not found: %s, attempting to search...", args[0])
 					searchedUsers := service.SearchUsers(args[0])
 					if len(searchedUsers) == 0 {
 						go service.SendMessage(m.ChannelID, "User not found!")

@@ -1,10 +1,12 @@
 package commands
 
 import (
+	"fmt"
 	"sentinel/config"
 	"sentinel/model"
 	"sentinel/service"
 	"sentinel/utils"
+	"slices"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
@@ -55,20 +57,62 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Users(args, s, m)
 	case "alumni":
 		Alumni(args, s, m)
-	case "onboarding":
-		Onboarding(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
 }
 
 func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
+	if m.GuildID != config.DiscordGuild {
+		utils.SugarLogger.Infof("Recieved member update event for guild %s, ignoring...", m.GuildID)
+		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Recieved member update event for guild %s, ignoring...", m.GuildID))
+		return
+	}
+	if m.User.Bot {
+		utils.SugarLogger.Infof("Recieved member update event for bot %s (%s), ignoring...", m.User.ID, m.Nick)
+		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Recieved member update event for bot %s (%s), ignoring...", m.User.ID, m.Nick))
+		return
+	}
 	utils.SugarLogger.Infof("Member update: (%s) %s", m.User.ID, m.Nick)
+	service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Member update: (%s) %s", m.User.ID, m.Nick))
 	newRoles := m.Roles
 	user := service.GetUserByID(m.User.ID)
 	if user.ID == "" {
+		// User is not in Sentinel, ensure they cannot have any roles
+		service.SetDiscordRolesForUser(m.User.ID, []string{})
 		return
 	}
+
+	// Verify discord specific role rules
+	// If user is alumni, they cannot have any subteam roles
+	if slices.Contains(newRoles, config.AlumniRoleID) {
+		// Remove all subteam roles
+		for _, role := range service.GetAllSubteams() {
+			err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role.ID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error removing subteam role %s from user %s (%s): %s", role.ID, m.User.ID, m.Nick, err)
+				service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing subteam role %s from user %s (%s): %s", role.ID, m.User.ID, m.Nick, err))
+			}
+		}
+		utils.SugarLogger.Infof("Removed all subteam roles from user %s (%s) as they are alumni", m.User.ID, m.Nick)
+		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all subteam roles from user %s (%s) as they are alumni", m.User.ID, m.Nick))
+
+		// User cannot have member, lead, or officer roles if they are alumni (admin and special advisor ok)
+		removeRoles := []string{config.MemberRoleID, config.LeadRoleID, config.OfficerRoleID}
+		for _, role := range removeRoles {
+			err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err)
+				service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Error removing role %s from user %s (%s): %s", role, m.User.ID, m.Nick, err))
+			}
+		}
+	}
+
+	// If user is not alumni or member, remove all roles
+	if !slices.Contains(newRoles, config.AlumniRoleID) && !slices.Contains(newRoles, config.MemberRoleID) {
+		service.SetDiscordRolesForUser(m.User.ID, []string{})
+	}
+
 	service.SyncDiscordRolesForUser(user.ID, newRoles)
 }
 

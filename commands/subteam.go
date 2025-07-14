@@ -23,17 +23,9 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		go service.SendDisappearingMessage(m.ChannelID, "Unexpected error occurred, please try again later!", 5*time.Second)
 		return
 	}
-	isOfficer := false
-	for _, role := range guildMember.Roles {
-		if role == "812948550819905546" {
-			isOfficer = true
-			break
-		}
-	}
-	utils.SugarLogger.Infof("User %s is officer: %t", m.Author.ID, isOfficer)
 
-	user := service.GetUserByID(m.Author.ID)
-	if user.ID == "" {
+	user := service.GetUserByID(guildMember.User.ID)
+	if user.ID == "" || !(user.IsMember() || user.IsAlumni()) {
 		// User not found
 		go service.SendDisappearingMessage(m.ChannelID, "You must verify your account first! (`!verify <first name> <last name> <email>`)", 5*time.Second)
 		return
@@ -58,7 +50,7 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 		}
 		if counter == 0 {
-			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!subteam <aero | business | chassis | data | electronics | powertrain | suspension>`", 5*time.Second)
+			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!subteam <aero | business | chassis | data | electronics | firmware | powertrain | suspension>`", 5*time.Second)
 		} else {
 			go service.SendDisappearingMessage(m.ChannelID, "Added "+strconv.Itoa(counter)+" subteam roles!", 5*time.Second)
 		}

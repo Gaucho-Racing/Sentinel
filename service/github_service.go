@@ -94,7 +94,7 @@ func AddUserToGithub(userID string, username string) error {
 		return fmt.Errorf("failed to add user to GitHub organization: %s", string(body))
 	}
 	addGithubUsernameToRoles(username, userID)
-	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Added %s (%s) to GitHub organization", username, user.Email))
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Added %s (%s) to GitHub organization: %s", username, user.Email, reqBody))
 	return nil
 }
 
@@ -145,16 +145,35 @@ func CleanGithubMembers() {
 		return
 	}
 	for _, ghUser := range githubUsers {
+		if contains(keepUsers, ghUser.Login) {
+			utils.SugarLogger.Infof("Keeping user %s in GitHub organization", ghUser.Login)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping user %s in GitHub organization", ghUser.Login))
+			continue
+		}
 		user := getUserForGithubUsername(ghUser.Login)
-		if user.ID == "" && !contains(keepUsers, ghUser.Login) {
+		if user.ID == "" {
 			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
 			RemoveUserFromGithub(user.ID, ghUser.Login)
 		} else if user.IsInnerCircle() {
-			// keep inner circle members for now, in the future update perms appropriately
-			continue
+			// if inner circle, make sure they are admin instead of member
+			orgUser, err := GetGithubStatusForUser(user.ID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error getting GitHub status for user %s: %s", user.ID, err.Error())
+				continue
+			}
+			if orgUser.Role != "admin" {
+				AddUserToGithub(user.ID, ghUser.Login)
+			}
 		} else if user.IsMember() || user.IsAlumni() {
-			// keep members and alumni for now, in the future update perms appropriately
-			continue
+			// if member or alumni, make sure they are member instead of admin
+			orgUser, err := GetGithubStatusForUser(user.ID)
+			if err != nil {
+				utils.SugarLogger.Errorf("Error getting GitHub status for user %s: %s", user.ID, err.Error())
+				continue
+			}
+			if orgUser.Role != "member" {
+				AddUserToGithub(user.ID, ghUser.Login)
+			}
 		} else {
 			// User is not longer a member, remove from GitHub organization
 			utils.SugarLogger.Infof("Removing user %s from GitHub organization", ghUser.Login)
@@ -165,6 +184,11 @@ func CleanGithubMembers() {
 
 func addGithubUsernameToRoles(ghUsername string, userID string) {
 	roles := GetRolesForUser(userID)
+	for _, role := range roles {
+		if strings.HasPrefix(role, "github_") {
+			roles = removeValue(roles, role)
+		}
+	}
 	roles = append(roles, "github_"+ghUsername)
 	SetRolesForUser(userID, roles)
 }

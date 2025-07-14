@@ -21,7 +21,12 @@ import {
   faLock,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import { checkCredentials, logout, saveAccessToken, saveRefreshToken } from "@/lib/auth";
+import {
+  checkCredentials,
+  logout,
+  saveAccessToken,
+  saveRefreshToken,
+} from "@/lib/auth";
 import Footer from "@/components/Footer";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {

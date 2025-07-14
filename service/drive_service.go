@@ -124,14 +124,15 @@ func AddMemberToDrive(driveID string, email string, role string) error {
 	return nil
 }
 
-// PopulateDriveMembers adds all users to the shared drive with the appropriate role.
+// PopulateDriveMembers adds all users to the shared drive and the leads drive with the appropriate role.
 // Useful for when you accidentally remove everyone from the shared drive lmfao
 func PopulateDriveMembers() {
 	users := GetAllUsers()
 	for _, user := range users {
 		if user.IsInnerCircle() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "organizer")
-		} else {
+			AddMemberToDrive(config.LeadsDriveID, user.Email, "organizer")
+		} else if user.IsMember() || user.IsAlumni() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "writer")
 		}
 	}
@@ -154,8 +155,13 @@ func CleanDriveMembers() {
 		return
 	}
 	for _, perm := range resp.Permissions {
+		if contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+			continue
+		}
 		user := GetUserByEmail(perm.EmailAddress)
-		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+		if user.ID == "" {
 			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		} else if user.IsInnerCircle() {
@@ -190,8 +196,13 @@ func CleanDriveMembers() {
 			return
 		}
 		for _, perm := range resp.Permissions {
+			if contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+				continue
+			}
 			user := GetUserByEmail(perm.EmailAddress)
-			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			if user.ID == "" {
 				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 			} else if user.IsInnerCircle() {
@@ -235,8 +246,13 @@ func CleanLeadsDriveMembers() {
 		return
 	}
 	for _, perm := range resp.Permissions {
+		if contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Keeping %s in leads drive", perm.EmailAddress)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in leads drive", perm.EmailAddress))
+			continue
+		}
 		user := GetUserByEmail(perm.EmailAddress)
-		if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+		if user.ID == "" {
 			utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
 		} else if user.IsInnerCircle() {
@@ -264,8 +280,13 @@ func CleanLeadsDriveMembers() {
 			return
 		}
 		for _, perm := range resp.Permissions {
+			if contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+				continue
+			}
 			user := GetUserByEmail(perm.EmailAddress)
-			if user.ID == "" && !contains(keepEmails, perm.EmailAddress) {
+			if user.ID == "" {
 				utils.SugarLogger.Infof("Removing %s from leads drive", perm.EmailAddress)
 				RemoveMemberFromDrive(config.LeadsDriveID, perm.EmailAddress)
 			} else if user.IsInnerCircle() {
@@ -301,6 +322,10 @@ func PopulateMemberDirectorySheet() {
 				sheetId = sheet.Properties.SheetId
 				break
 			}
+		}
+		if sheetId == 0 {
+			utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
+			return
 		}
 
 		// Clear existing data using sheet ID
@@ -380,29 +405,29 @@ func PopulateMemberDirectorySheet() {
 
 	// Filter users for each sheet
 	var memberUsers []model.User
-	var verifiedUsers []model.User
 	var alumniUsers []model.User
-	var innerCircleUsers []model.User
+	var leadUsers []model.User
+	var specialAdvisorUsers []model.User
 
 	for _, user := range allUsers {
 		if user.IsMember() {
 			memberUsers = append(memberUsers, user)
 		}
-		if user.IsVerifiedMember() {
-			verifiedUsers = append(verifiedUsers, user)
-		}
 		if user.HasRole("d_alumni") {
 			alumniUsers = append(alumniUsers, user)
 		}
-		if user.IsInnerCircle() {
-			innerCircleUsers = append(innerCircleUsers, user)
+		if user.IsLead() || user.IsOfficer() {
+			leadUsers = append(leadUsers, user)
+		}
+		if user.IsSpecialAdvisor() {
+			specialAdvisorUsers = append(specialAdvisorUsers, user)
 		}
 	}
 
 	// Populate each sheet
 	populateSheet("All", allUsers)
 	populateSheet("Members", memberUsers)
-	populateSheet("Verified Members", verifiedUsers)
 	populateSheet("Alumni", alumniUsers)
-	populateSheet("Leads", innerCircleUsers)
+	populateSheet("Leads", leadUsers)
+	populateSheet("Special Advisors", specialAdvisorUsers)
 }

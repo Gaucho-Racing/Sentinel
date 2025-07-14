@@ -12,7 +12,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ClientApplication, initClientApplication } from "@/models/application";
 import { OutlineButton } from "@/components/ui/outline-button";
 import { AuthLoading } from "@/components/AuthLoading";
-import { User, initUser } from "@/models/user";
+import { User, initUser, isInnerCircle } from "@/models/user";
 import { Input } from "@/components/ui/input";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faTrash } from "@fortawesome/free-solid-svg-icons";
@@ -117,7 +117,7 @@ function ApplicationsPage() {
       getUser(response.data.user_id);
       if (
         response.data.user_id == currentUser.id ||
-        currentUser.roles.includes("d_admin")
+        isInnerCircle(currentUser)
       ) {
         setCanEdit(true);
       } else {
