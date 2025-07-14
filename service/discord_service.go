@@ -215,9 +215,11 @@ func DiscordUserEmbed(user model.User, channelID string) {
 		}
 	}
 	if topRole == nil {
-		utils.SugarLogger.Errorln("User has no roles, how are they even here lmao, deleting...")
-		DeleteUser(user.ID)
-		return
+		utils.SugarLogger.Errorln("User has no roles, how are they even here lmao")
+		topRole = &discordgo.Role{
+			Name:  "No Role",
+			Color: 0x000000,
+		}
 	}
 	utils.SugarLogger.Infof("%s (%d) %d", topRole.Name, topRole.Position, topRole.Color)
 	color := topRole.Color
