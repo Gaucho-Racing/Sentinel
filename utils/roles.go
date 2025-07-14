@@ -35,8 +35,19 @@ func IsLead(roles []string) bool {
 	return false
 }
 
+// IsSpecialAdvisor checks if the user has the special advisor role.
+// The function takes in a list of role IDs and returns a boolean.
+func IsSpecialAdvisor(roles []string) bool {
+	for _, role := range roles {
+		if role == config.SpecialAdvisorRoleID {
+			return true
+		}
+	}
+	return false
+}
+
 // isInnerCircle checks if the user has any of the inner circle roles.
 // The function takes in a list of role IDs and returns a boolean.
 func IsInnerCircle(roles []string) bool {
-	return IsAdmin(roles) || IsOfficer(roles) || IsLead(roles)
+	return IsAdmin(roles) || IsOfficer(roles) || IsLead(roles) || IsSpecialAdvisor(roles)
 }
