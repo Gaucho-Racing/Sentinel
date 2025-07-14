@@ -34,11 +34,12 @@ var LeadsDriveID = "0AF4DbFL3cclkUk9PVA"
 var AdminRoleID = "1030681203864522823"
 var OfficerRoleID = "812948550819905546"
 var LeadRoleID = "970423652791246888"
+var SpecialAdvisorRoleID = "1386909324596609034"
 var MemberRoleID = "1334383074410237984"
 var AlumniRoleID = "817577502968512552"
 var BotRoleID = "1229611357259694132"
 
-var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Powertrain", "Suspension"}
+var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Firmware", "Powertrain", "Suspension"}
 
 var RsaPublicKey *rsa.PublicKey
 var RsaPrivateKey *rsa.PrivateKey
