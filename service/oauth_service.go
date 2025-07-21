@@ -187,7 +187,7 @@ func GenerateIDToken(userID string, scope string, client_id string, expiresIn in
 }
 
 func SaveRefreshToken(token string, userID string, scope string, expiresIn int) error {
-	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Minute)
+	expiresAt := time.Now().Add(time.Duration(expiresIn) * time.Second)
 	refreshToken := model.RefreshToken{
 		Token:     token,
 		UserID:    userID,
