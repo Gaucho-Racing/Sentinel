@@ -8,10 +8,14 @@ import (
 	"sentinel/utils"
 	"slices"
 	"strings"
+	"regexp"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/google/uuid"
 )
+
+var spoilerRegex = regexp.MustCompile(`(?s)\|\|.+?\|\|`)
 
 func InitializeDiscordBot() {
 	service.Discord.AddHandler(OnDiscordMessage)
@@ -156,6 +160,18 @@ func ChannelMessageFilter(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if m.ChannelID == channel {
 			utils.SugarLogger.Infof("Deleting message from %s in %s: %s", m.Author.ID, m.ChannelID, m.Content)
 			s.ChannelMessageDelete(m.ChannelID, m.ID)
+			return
 		}
+	}
+
+	// Spoiler filter: delete messages containing Discord spoiler syntax and warn
+	if m.Author != nil && m.Author.Bot {
+		return
+	}
+	content := m.Content
+	if spoilerRegex.MatchString(content) || strings.Contains(content, "||") {
+		utils.SugarLogger.Infof("Deleting spoiler message from %s in %s", m.Author.ID, m.ChannelID)
+		_ = s.ChannelMessageDelete(m.ChannelID, m.ID)
+		service.SendDisappearingMessage(m.ChannelID, "Spoilers are not allowed on this server.", 10*time.Second)
 	}
 }
