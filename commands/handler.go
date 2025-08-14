@@ -22,6 +22,7 @@ func InitializeDiscordBot() {
 	service.Discord.AddHandler(OnGuildMemberUpdate)
 	service.Discord.AddHandler(LogUserMessage)
 	service.Discord.AddHandler(LogUserReaction)
+	service.Discord.AddHandler(OnMessageUpdate)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
@@ -118,6 +119,56 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	}
 
 	service.SyncDiscordRolesForUser(user.ID, newRoles)
+}
+
+func OnMessageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
+	if m == nil {
+		return
+	}
+
+	var (
+		channelID  = m.ChannelID
+		messageID  = m.ID
+		content    string
+		authorID   string
+		authorIsBot bool
+	)
+
+	if m.Message != nil {
+		channelID = m.Message.ChannelID
+		messageID = m.Message.ID
+		content = m.Message.Content
+		if m.Message.Author != nil {
+			authorIsBot = m.Message.Author.Bot
+			authorID = m.Message.Author.ID
+		}
+	}
+
+	if content == "" {
+		// Fallback: fetch the full message content if not provided
+		msg, err := s.ChannelMessage(channelID, messageID)
+		if err == nil && msg != nil {
+			content = msg.Content
+			if msg.Author != nil {
+				authorIsBot = msg.Author.Bot
+				authorID = msg.Author.ID
+			}
+		}
+	}
+
+	// Ignore bot edits and empty content
+	if authorIsBot || content == "" {
+		return
+	}
+
+	if spoilerRegex.MatchString(content) || strings.Contains(content, "||") {
+		if authorID == "" {
+			authorID = "unknown"
+		}
+		utils.SugarLogger.Infof("Deleting spoiler message (edit) from %s in %s", authorID, channelID)
+		_ = s.ChannelMessageDelete(channelID, messageID)
+		service.SendDisappearingMessage(channelID, "Spoilers are not allowed on this server.", 10*time.Second)
+	}
 }
 
 func LogUserMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
