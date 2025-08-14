@@ -127,10 +127,10 @@ func OnMessageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
 	}
 
 	var (
-		channelID  = m.ChannelID
-		messageID  = m.ID
-		content    string
-		authorID   string
+		channelID   = m.ChannelID
+		messageID   = m.ID
+		content     string
+		authorID    string
 		authorIsBot bool
 	)
 
