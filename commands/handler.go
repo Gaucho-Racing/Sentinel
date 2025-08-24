@@ -17,11 +17,13 @@ import (
 
 var spoilerRegex = regexp.MustCompile(`(?s)\|\|.+?\|\|`)
 var codeBlockRegex = regexp.MustCompile("```[\\s\\S]*?```")
+var inlineCodeRegex = regexp.MustCompile("`[^`\n]*`")
 
-// hasSpoilersOutsideCodeBlocks checks if the content has spoilers that are not within code blocks
+// hasSpoilersOutsideCodeBlocks checks if the content has spoilers that are not within code blocks or inline code
 func hasSpoilersOutsideCodeBlocks(content string) bool {
-	// Find all code blocks
+	// Find all code blocks and inline code snippets
 	codeBlocks := codeBlockRegex.FindAllString(content, -1)
+	inlineCode := inlineCodeRegex.FindAllString(content, -1)
 
 	// Create a copy of content to work with
 	contentCopy := content
@@ -29,6 +31,11 @@ func hasSpoilersOutsideCodeBlocks(content string) bool {
 	// Remove all code blocks from the content
 	for _, codeBlock := range codeBlocks {
 		contentCopy = strings.Replace(contentCopy, codeBlock, "", 1)
+	}
+
+	// Remove all inline code snippets from the content
+	for _, inlineSnippet := range inlineCode {
+		contentCopy = strings.Replace(contentCopy, inlineSnippet, "", 1)
 	}
 
 	// Check if there are any spoilers in the remaining content
