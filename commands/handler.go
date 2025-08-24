@@ -39,7 +39,8 @@ func hasSpoilersOutsideCodeBlocks(content string) bool {
 	}
 
 	// Check if there are any spoilers in the remaining content
-	return spoilerRegex.MatchString(contentCopy) || strings.Contains(contentCopy, "||")
+	// Only match properly formed spoilers (||text||), not single ||
+	return spoilerRegex.MatchString(contentCopy)
 }
 
 func InitializeDiscordBot() {
