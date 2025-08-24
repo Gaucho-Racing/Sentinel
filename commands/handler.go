@@ -21,26 +21,57 @@ var inlineCodeRegex = regexp.MustCompile("`[^`\n]*`")
 
 // hasSpoilersOutsideCodeBlocks checks if the content has spoilers that are not within code blocks or inline code
 func hasSpoilersOutsideCodeBlocks(content string) bool {
-	// Find all code blocks and inline code snippets
-	codeBlocks := codeBlockRegex.FindAllString(content, -1)
-	inlineCode := inlineCodeRegex.FindAllString(content, -1)
+	// Get all code block and inline code ranges
+	codeRanges := getAllCodeRanges(content)
 
-	// Create a copy of content to work with
-	contentCopy := content
+	// Find all potential spoiler matches
+	spoilerMatches := spoilerRegex.FindAllStringIndex(content, -1)
 
-	// Remove all code blocks from the content
-	for _, codeBlock := range codeBlocks {
-		contentCopy = strings.Replace(contentCopy, codeBlock, "", 1)
+	// Check if any spoiler is completely outside of code ranges
+	for _, spoilerRange := range spoilerMatches {
+		if !isRangeInCode(spoilerRange, codeRanges) {
+			return true
+		}
 	}
 
-	// Remove all inline code snippets from the content
-	for _, inlineSnippet := range inlineCode {
-		contentCopy = strings.Replace(contentCopy, inlineSnippet, "", 1)
+	return false
+}
+
+// getAllCodeRanges returns all ranges where code blocks and inline code exist
+func getAllCodeRanges(content string) [][]int {
+	var ranges [][]int
+
+	// Add code block ranges
+	codeBlockMatches := codeBlockRegex.FindAllStringIndex(content, -1)
+	ranges = append(ranges, codeBlockMatches...)
+
+	// Add inline code ranges
+	inlineCodeMatches := inlineCodeRegex.FindAllStringIndex(content, -1)
+	ranges = append(ranges, inlineCodeMatches...)
+
+	return ranges
+}
+
+// isRangeInCode checks if a given range is completely contained within any code range
+func isRangeInCode(spoilerRange []int, codeRanges [][]int) bool {
+	if len(spoilerRange) < 2 {
+		return false
+	}
+	spoilerStart, spoilerEnd := spoilerRange[0], spoilerRange[1]
+
+	for _, codeRange := range codeRanges {
+		if len(codeRange) < 2 {
+			continue
+		}
+		codeStart, codeEnd := codeRange[0], codeRange[1]
+
+		// Check if the entire spoiler is within this code block
+		if spoilerStart >= codeStart && spoilerEnd <= codeEnd {
+			return true
+		}
 	}
 
-	// Check if there are any spoilers in the remaining content
-	// Only match properly formed spoilers (||text||), not single ||
-	return spoilerRegex.MatchString(contentCopy)
+	return false
 }
 
 func InitializeDiscordBot() {
