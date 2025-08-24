@@ -40,4 +40,4 @@ echo "Package released successfully for version $VERSION"
 
 
 echo "Restarting service on gr-hamilton ec2 instance"
-sudo ssh -i ~/.ssh/bharat-hamilton.pem ec2-user@hamilton-ec2.gauchoracing.com "cd hamilton-infra && git pull && docker compose -f sentinel.yml down && docker compose -f sentinel.yml pull && docker compose -f sentinel.yml up -d"
+sudo ssh ec2-user@gr-hamilton.internal "cd hamilton-infra && git pull && docker compose -f sentinel.yml down && docker compose -f sentinel.yml pull && docker compose -f sentinel.yml up -d"
