@@ -16,6 +16,24 @@ import (
 )
 
 var spoilerRegex = regexp.MustCompile(`(?s)\|\|.+?\|\|`)
+var codeBlockRegex = regexp.MustCompile("```[\\s\\S]*?```")
+
+// hasSpoilersOutsideCodeBlocks checks if the content has spoilers that are not within code blocks
+func hasSpoilersOutsideCodeBlocks(content string) bool {
+	// Find all code blocks
+	codeBlocks := codeBlockRegex.FindAllString(content, -1)
+
+	// Create a copy of content to work with
+	contentCopy := content
+
+	// Remove all code blocks from the content
+	for _, codeBlock := range codeBlocks {
+		contentCopy = strings.Replace(contentCopy, codeBlock, "", 1)
+	}
+
+	// Check if there are any spoilers in the remaining content
+	return spoilerRegex.MatchString(contentCopy) || strings.Contains(contentCopy, "||")
+}
 
 func InitializeDiscordBot() {
 	service.Discord.AddHandler(OnDiscordMessage)
@@ -161,7 +179,7 @@ func OnMessageUpdate(s *discordgo.Session, m *discordgo.MessageUpdate) {
 		return
 	}
 
-	if spoilerRegex.MatchString(content) || strings.Contains(content, "||") {
+	if hasSpoilersOutsideCodeBlocks(content) {
 		if authorID == "" {
 			authorID = "unknown"
 		}
@@ -220,7 +238,7 @@ func ChannelMessageFilter(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	content := m.Content
-	if spoilerRegex.MatchString(content) || strings.Contains(content, "||") {
+	if hasSpoilersOutsideCodeBlocks(content) {
 		utils.SugarLogger.Infof("Deleting spoiler message from %s in %s", m.Author.ID, m.ChannelID)
 		_ = s.ChannelMessageDelete(m.ChannelID, m.ID)
 		service.SendDisappearingMessage(m.ChannelID, "Spoilers are not allowed on this server.", 10*time.Second)
