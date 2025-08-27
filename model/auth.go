@@ -24,6 +24,8 @@ type AuthClaims struct {
 	Email          string   `json:"email,omitempty"`
 	EmailVerified  bool     `json:"email_verified,omitempty"`
 	BookstackRoles []string `json:"bookstack_roles,omitempty"`
+	Roles          []string `json:"roles,omitempty"`
+	Subteams       []string `json:"subteams,omitempty"`
 	Scope          string   `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
