@@ -67,6 +67,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/users/:userID/github", AddUserToGithub)
 	router.GET("/users/:userID/applications", GetClientApplicationsForUser)
 	router.GET("/users/:userID/logins", GetLoginsForUser)
+	router.POST("/mailing-list", AddEmailToMailingList)
 }
 
 func AuthChecker() gin.HandlerFunc {

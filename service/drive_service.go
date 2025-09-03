@@ -307,8 +307,8 @@ func CleanLeadsDriveMembers() {
 }
 
 func PopulateMemberDirectorySheet() {
-	// Helper function to clear and populate a sheet
-	populateSheet := func(sheetName string, users []model.User) {
+	// Helper functions to clear and populate a sheet
+	populateUserSheet := func(sheetName string, users []model.User) {
 		// Get sheet ID by name
 		spreadsheet, err := SheetClient.Spreadsheets.Get(config.MemberDirectorySheetID).Do()
 		if err != nil {
@@ -401,7 +401,76 @@ func PopulateMemberDirectorySheet() {
 		SendMessage(config.DiscordLogChannel, fmt.Sprintf("Successfully populated `%s` sheet with %d users", sheetName, len(users)))
 	}
 
+	populateMailingListSheet := func(sheetName string, entries []model.MailingList) {
+		// Get sheet ID by name
+		spreadsheet, err := SheetClient.Spreadsheets.Get(config.MemberDirectorySheetID).Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to get spreadsheet: %v", err)
+			return
+		}
+
+		var sheetId int64
+		for _, sheet := range spreadsheet.Sheets {
+			if sheet.Properties.Title == sheetName {
+				sheetId = sheet.Properties.SheetId
+				break
+			}
+		}
+		if sheetId == 0 {
+			utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
+			return
+		}
+
+		// Clear existing data using sheet ID
+		clearRequest := &sheets.BatchUpdateSpreadsheetRequest{
+			Requests: []*sheets.Request{
+				{
+					UpdateCells: &sheets.UpdateCellsRequest{
+						Range: &sheets.GridRange{
+							SheetId:          sheetId,
+							StartRowIndex:    5, // A6 starts at index 5
+							StartColumnIndex: 0, // A column
+							EndColumnIndex:   1, // B column
+						},
+						Fields: "userEnteredValue",
+					},
+				},
+			},
+		}
+
+		_, err = SheetClient.Spreadsheets.BatchUpdate(config.MemberDirectorySheetID, clearRequest).Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to clear data from sheet %s: %v", sheetName, err)
+			return
+		}
+
+		// Prepare values
+		values := make([][]interface{}, len(entries))
+		for i, entry := range entries {
+			values[i] = []interface{}{
+				entry.Email,
+			}
+		}
+
+		// Write data (can still use A1 notation for updates as it's more convenient)
+		writeRange := fmt.Sprintf("'%s'!A6:O", sheetName)
+		writeRequest := &sheets.ValueRange{
+			Values: values,
+		}
+		_, err = SheetClient.Spreadsheets.Values.Update(config.MemberDirectorySheetID, writeRange, writeRequest).
+			ValueInputOption("RAW").
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorf("Unable to write data to sheet %s: %v", sheetName, err)
+			return
+		}
+
+		utils.SugarLogger.Infof("Successfully populated %s sheet with %d emails", sheetName, len(entries))
+		SendMessage(config.DiscordLogChannel, fmt.Sprintf("Successfully populated `%s` sheet with %d emails", sheetName, len(entries)))
+	}
+
 	allUsers := GetAllUsers()
+	allMailingListEntries := GetAllMailingListEntries()
 
 	// Filter users for each sheet
 	var memberUsers []model.User
@@ -425,9 +494,10 @@ func PopulateMemberDirectorySheet() {
 	}
 
 	// Populate each sheet
-	populateSheet("All", allUsers)
-	populateSheet("Members", memberUsers)
-	populateSheet("Alumni", alumniUsers)
-	populateSheet("Leads", leadUsers)
-	populateSheet("Special Advisors", specialAdvisorUsers)
+	populateUserSheet("All", allUsers)
+	populateUserSheet("Members", memberUsers)
+	populateUserSheet("Alumni", alumniUsers)
+	populateUserSheet("Leads", leadUsers)
+	populateUserSheet("Special Advisors", specialAdvisorUsers)
+	populateMailingListSheet("Mailing List", allMailingListEntries)
 }
