@@ -8,25 +8,25 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func AddEmailToMailingList(c *gin.Context) {
-	var email model.MailingList
+func CreateMailingListEntry(c *gin.Context) {
+	var entry model.MailingList
 
-	if err := c.ShouldBindJSON(&email); err != nil {
+	if err := c.ShouldBindJSON(&entry); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: a valid email is required."})
 		return
 	}
 
-	email, err := service.AddEmailToMailingList(email)
+	entry, err := service.CreateMailingListEntry(entry)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, email)
+	c.JSON(http.StatusOK, entry)
 
 }
 
-func GetAllMailingListEmails(c *gin.Context) {
+func GetAllMailingListEntries(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasScope(c, "sentinel:all"),
 		All(
@@ -34,7 +34,7 @@ func GetAllMailingListEmails(c *gin.Context) {
 			RequestUserHasRole(c, "d_admin"),
 		),
 	))
-	emails := service.GetAllMailingListEmails()
-	c.JSON(http.StatusOK, emails)
+	entries := service.GetAllMailingListEntries()
+	c.JSON(http.StatusOK, entries)
 
 }
