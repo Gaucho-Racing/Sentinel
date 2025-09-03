@@ -49,6 +49,7 @@ var RsaPublicKeyString = os.Getenv("RSA_PUBLIC_KEY")
 var RsaPrivateKeyString = os.Getenv("RSA_PRIVATE_KEY")
 
 var MemberDirectorySheetID = "1reuLZox2daj8r2H-lZrwB4oFPYlJ6oC7983UUaZd6AY"
+var MailingListSheetID = "1O5KQzpOo9Ja4Vg55TGCyc3uUDZFvHjyhZqw4Eh1SKVY"
 
 var DriveCron = os.Getenv("DRIVE_CRON")
 var GithubCron = os.Getenv("GITHUB_CRON")
