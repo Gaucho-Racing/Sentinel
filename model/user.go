@@ -45,6 +45,28 @@ func (user User) String() string {
 	return "(" + user.ID + ")" + " " + user.FirstName + " " + user.LastName + " [" + user.Email + "]"
 }
 
+func (user User) GetHighestRole() string {
+	if user.IsAdmin() {
+		return "d_admin"
+	}
+	if user.IsOfficer() {
+		return "d_officer"
+	}
+	if user.IsLead() {
+		return "d_lead"
+	}
+	if user.IsSpecialAdvisor() {
+		return "d_special_advisor"
+	}
+	if user.IsMember() {
+		return "d_member"
+	}
+	if user.IsAlumni() {
+		return "d_alumni"
+	}
+	return ""
+}
+
 func (user User) HasRole(role string) bool {
 	for _, r := range user.Roles {
 		if r == role {

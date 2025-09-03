@@ -27,6 +27,10 @@ func RegisterDriveCronJob() {
 		}()
 		go func() {
 			defer wg.Done()
+			service.PopulateMailingListSheet()
+		}()
+		go func() {
+			defer wg.Done()
 			service.CleanDriveMembers()
 		}()
 		go func() {

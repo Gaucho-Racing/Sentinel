@@ -12,11 +12,11 @@ func CreateMailingListEntry(c *gin.Context) {
 	var entry model.MailingList
 
 	if err := c.ShouldBindJSON(&entry); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: a valid email is required."})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input."})
 		return
 	}
 
-	entry, err := service.CreateMailingListEntry(entry)
+	err := service.CreateMailingListEntry(entry)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
