@@ -38,3 +38,10 @@ func GetAllMailingListEntries() []model.MailingList {
 
 	return entries
 }
+
+func GetExternalMailingListEntries() []model.MailingList {
+	var entries []model.MailingList
+	database.DB.Where("organization != ?", "Gaucho Racing").Find(&entries)
+
+	return entries
+}

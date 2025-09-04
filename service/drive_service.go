@@ -281,8 +281,8 @@ func CleanLeadsDriveMembers() {
 		}
 		for _, perm := range resp.Permissions {
 			if contains(keepEmails, perm.EmailAddress) {
-				utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
-				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+				utils.SugarLogger.Infof("Keeping %s in leads drive", perm.EmailAddress)
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in leads drive", perm.EmailAddress))
 				continue
 			}
 			user := GetUserByEmail(perm.EmailAddress)
@@ -316,14 +316,15 @@ func PopulateMemberDirectorySheet() {
 			return
 		}
 
-		var sheetId int64
+		sheetId := -1
 		for _, sheet := range spreadsheet.Sheets {
 			if sheet.Properties.Title == sheetName {
-				sheetId = sheet.Properties.SheetId
+				utils.SugarLogger.Infof("Found sheet %s: %v", sheet.Properties.Title, sheet.Properties.SheetId)
+				sheetId = int(sheet.Properties.SheetId)
 				break
 			}
 		}
-		if sheetId == 0 {
+		if sheetId == -1 {
 			utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
 			return
 		}
@@ -334,7 +335,7 @@ func PopulateMemberDirectorySheet() {
 				{
 					UpdateCells: &sheets.UpdateCellsRequest{
 						Range: &sheets.GridRange{
-							SheetId:          sheetId,
+							SheetId:          int64(sheetId),
 							StartRowIndex:    5,  // A6 starts at index 5
 							StartColumnIndex: 0,  // A column
 							EndColumnIndex:   15, // O column
@@ -443,14 +444,15 @@ func PopulateMailingListSheet() {
 			return
 		}
 
-		var sheetId int64
+		sheetId := -1
 		for _, sheet := range spreadsheet.Sheets {
 			if sheet.Properties.Title == sheetName {
-				sheetId = sheet.Properties.SheetId
+				utils.SugarLogger.Infof("Found sheet %s: %v", sheet.Properties.Title, sheet.Properties.SheetId)
+				sheetId = int(sheet.Properties.SheetId)
 				break
 			}
 		}
-		if sheetId == 0 {
+		if sheetId == -1 {
 			utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
 			return
 		}
@@ -461,7 +463,7 @@ func PopulateMailingListSheet() {
 				{
 					UpdateCells: &sheets.UpdateCellsRequest{
 						Range: &sheets.GridRange{
-							SheetId:          sheetId,
+							SheetId:          int64(sheetId),
 							StartRowIndex:    5, // A6 starts at index 5
 							StartColumnIndex: 0, // A column
 							EndColumnIndex:   5, // F column
@@ -508,6 +510,8 @@ func PopulateMailingListSheet() {
 	}
 
 	allMailingListEntries := GetAllMailingListEntries()
-
 	populateMailingListSheet("All", allMailingListEntries)
+
+	externalMailingListEntries := GetExternalMailingListEntries()
+	populateMailingListSheet("External", externalMailingListEntries)
 }
