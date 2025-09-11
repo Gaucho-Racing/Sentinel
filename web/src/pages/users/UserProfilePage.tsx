@@ -37,13 +37,6 @@ type UserLogin = {
   created_at: string;
 };
 
-type Activity = {
-  id: string;
-  user_id: string;
-  action: string; // message | reaction
-  created_at: string;
-};
-
 type ActivityCount = {
   date: string;
   action: string;
