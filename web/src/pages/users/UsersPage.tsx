@@ -146,7 +146,7 @@ function UsersPage() {
   const UserCard = ({ user }: { user: User }) => {
     return (
       <Card
-        className={`w-full px-4 transition-all hover:cursor-pointer hover:bg-neutral-800 md:w-2/5 py-4`}
+        className={`w-full px-4 py-4 transition-all hover:cursor-pointer hover:bg-neutral-800 md:w-2/5`}
         onClick={() => navigate(`/users/${user.id}`)}
       >
         <div className="flex items-center justify-between">
@@ -400,7 +400,11 @@ const SearchAndFilterComponent: React.FC<SearchAndFilterComponentProps> = ({
         </SelectContent>
       </Select>
       <div className="flex items-center space-x-2">
-        <Switch id="table-view" checked={tableView} onCheckedChange={setTableView} />
+        <Switch
+          id="table-view"
+          checked={tableView}
+          onCheckedChange={setTableView}
+        />
         <Label htmlFor="table-view">Table View</Label>
       </div>
     </div>

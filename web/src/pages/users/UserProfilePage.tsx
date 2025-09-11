@@ -16,7 +16,14 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faChartLine, faClockRotateLeft, faUser, faMessage, faFaceSmile } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowLeft,
+  faChartLine,
+  faClockRotateLeft,
+  faUser,
+  faMessage,
+  faFaceSmile,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   LineChart,
   Line,
@@ -78,11 +85,14 @@ function UserProfilePage() {
   const getActivityStats = async () => {
     setActivitiesLoading(true);
     try {
-      const response = await axios.get(`${SENTINEL_API_URL}/users/${id}/activity-stats`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/users/${id}/activity-stats`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+          },
         },
-      });
+      );
       if (response.status == 200) setActivityStats(response.data);
     } catch (error: any) {
       notify.error(getAxiosErrorMessage(error));
@@ -94,7 +104,7 @@ function UserProfilePage() {
   const getUser = async () => {
     setUserLoading(true);
     try {
-      const response = await axios.get(`${SENTINEL_API_URL}/users/${id}` ,{
+      const response = await axios.get(`${SENTINEL_API_URL}/users/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
         },
@@ -112,11 +122,14 @@ function UserProfilePage() {
   const getLogins = async () => {
     setLoginsLoading(true);
     try {
-      const response = await axios.get(`${SENTINEL_API_URL}/users/${id}/logins`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+      const response = await axios.get(
+        `${SENTINEL_API_URL}/users/${id}/logins`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+          },
         },
-      });
+      );
       if (response.status == 200) {
         setLogins(response.data);
       }
@@ -136,7 +149,10 @@ function UserProfilePage() {
 
   const lastLogin = React.useMemo(() => {
     if (logins.length === 0) return undefined;
-    return [...logins].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    return [...logins].sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    )[0];
   }, [logins]);
 
   const loginSeries = React.useMemo(() => {
@@ -157,13 +173,17 @@ function UserProfilePage() {
 
   const messageSeries = React.useMemo(() => {
     const map: Record<string, number> = {};
-    activityStats.filter((a) => a.action === "message").forEach((a) => (map[a.date] = a.count));
+    activityStats
+      .filter((a) => a.action === "message")
+      .forEach((a) => (map[a.date] = a.count));
     return Object.entries(map).map(([date, count]) => ({ date, count }));
   }, [activityStats]);
 
   const reactionSeries = React.useMemo(() => {
     const map: Record<string, number> = {};
-    activityStats.filter((a) => a.action === "reaction").forEach((a) => (map[a.date] = a.count));
+    activityStats
+      .filter((a) => a.action === "reaction")
+      .forEach((a) => (map[a.date] = a.count));
     return Object.entries(map).map(([date, count]) => ({ date, count }));
   }, [activityStats]);
 
@@ -171,7 +191,9 @@ function UserProfilePage() {
     return (
       <div className="mx-2 mt-2 flex">
         <div className="mr-2 font-semibold">{props.label}:</div>
-        <div className="text-gray-400">{props.value != "" ? props.value : "Not set"}</div>
+        <div className="text-gray-400">
+          {props.value != "" ? props.value : "Not set"}
+        </div>
       </div>
     );
   };
@@ -184,8 +206,15 @@ function UserProfilePage() {
         <div className="flex h-screen flex-col justify-between">
           <div className="p-4 lg:p-32 lg:pt-16">
             <div className="mb-4">
-              <Button variant={"ghost"} onClick={() => navigate("/users")} className="flex items-center">
-                <FontAwesomeIcon icon={faArrowLeft} className="mr-2 h-4 w-4 text-gray-400" />
+              <Button
+                variant={"ghost"}
+                onClick={() => navigate("/users")}
+                className="flex items-center"
+              >
+                <FontAwesomeIcon
+                  icon={faArrowLeft}
+                  className="mr-2 h-4 w-4 text-gray-400"
+                />
                 Back to users
               </Button>
             </div>
@@ -200,7 +229,11 @@ function UserProfilePage() {
                     <h3 className="ml-4">Profile</h3>
                   </div>
                   {canEdit && (
-                    <OutlineButton onClick={() => navigate(`/users/${user.id}/edit`)}>Edit</OutlineButton>
+                    <OutlineButton
+                      onClick={() => navigate(`/users/${user.id}/edit`)}
+                    >
+                      Edit
+                    </OutlineButton>
                   )}
                 </div>
                 <Separator className="my-2" />
@@ -223,16 +256,38 @@ function UserProfilePage() {
                       </div>
                     </div>
                     <ProfileField label="ID" value={user.id} />
-                    <ProfileField label="Phone Number" value={user.phone_number} />
+                    <ProfileField
+                      label="Phone Number"
+                      value={user.phone_number}
+                    />
                     <ProfileField label="Gender" value={user.gender} />
                     <ProfileField label="Birthday" value={user.birthday} />
-                    <ProfileField label="Graduate Level" value={user.graduate_level} />
-                    <ProfileField label="Graduation Year" value={user.graduation_year ? user.graduation_year.toString() : ""} />
+                    <ProfileField
+                      label="Graduate Level"
+                      value={user.graduate_level}
+                    />
+                    <ProfileField
+                      label="Graduation Year"
+                      value={
+                        user.graduation_year
+                          ? user.graduation_year.toString()
+                          : ""
+                      }
+                    />
                     <ProfileField label="Major" value={user.major} />
                     <ProfileField label="Shirt Size" value={user.shirt_size} />
-                    <ProfileField label="Jacket Size" value={user.jacket_size} />
-                    <ProfileField label="SAE Member Number" value={user.sae_registration_number} />
-                    <ProfileField label="Subteams" value={user.subteams.map((s) => s.name).join(", ")} />
+                    <ProfileField
+                      label="Jacket Size"
+                      value={user.jacket_size}
+                    />
+                    <ProfileField
+                      label="SAE Member Number"
+                      value={user.sae_registration_number}
+                    />
+                    <ProfileField
+                      label="Subteams"
+                      value={user.subteams.map((s) => s.name).join(", ")}
+                    />
                     <div className="mx-2 mt-2 flex">
                       <div className="mr-2 font-semibold">Roles:</div>
                       <div className="flex flex-wrap">
@@ -245,8 +300,22 @@ function UserProfilePage() {
                         ))}
                       </div>
                     </div>
-                    <ProfileField label="Updated At" value={user.updated_at ? new Date(user.updated_at).toLocaleString() : ""} />
-                    <ProfileField label="Created At" value={user.created_at ? new Date(user.created_at).toLocaleString() : ""} />
+                    <ProfileField
+                      label="Updated At"
+                      value={
+                        user.updated_at
+                          ? new Date(user.updated_at).toLocaleString()
+                          : ""
+                      }
+                    />
+                    <ProfileField
+                      label="Created At"
+                      value={
+                        user.created_at
+                          ? new Date(user.created_at).toLocaleString()
+                          : ""
+                      }
+                    />
                   </>
                 )}
               </Card>
@@ -255,7 +324,10 @@ function UserProfilePage() {
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      <FontAwesomeIcon icon={faClockRotateLeft} className="h-5 w-5" />
+                      <FontAwesomeIcon
+                        icon={faClockRotateLeft}
+                        className="h-5 w-5"
+                      />
                       <h3 className="ml-4">Login History</h3>
                     </div>
                   </div>
@@ -268,30 +340,67 @@ function UserProfilePage() {
                     <div>
                       <div className="mb-4 flex gap-8 text-sm text-gray-300">
                         <div>
-                          <span className="font-semibold">Total Logins:</span> {logins.length}
+                          <span className="font-semibold">Total Logins:</span>{" "}
+                          {logins.length}
                         </div>
                         <div>
-                          <span className="font-semibold">Last Login:</span> {lastLogin ? new Date(lastLogin.created_at).toLocaleString() : "—"}
+                          <span className="font-semibold">Last Login:</span>{" "}
+                          {lastLogin
+                            ? new Date(lastLogin.created_at).toLocaleString()
+                            : "—"}
                         </div>
                       </div>
                       <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={loginSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                            <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 12 }} hide={false} />
-                            <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                            <Tooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} labelStyle={{ color: "#eee" }} />
-                            <Line type="monotone" dataKey="count" stroke="#f472b6" strokeWidth={2} dot={false} />
+                          <LineChart
+                            data={loginSeries}
+                            margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#2a2a2a"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fill: "#9ca3af", fontSize: 12 }}
+                              hide={false}
+                            />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#111",
+                                border: "1px solid #333",
+                              }}
+                              labelStyle={{ color: "#eee" }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="count"
+                              stroke="#f472b6"
+                              strokeWidth={2}
+                              dot={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                       <div className="mt-4 max-h-56 overflow-y-auto">
                         {logins.slice(0, 50).map((l) => (
-                          <div key={l.id} className="flex items-center justify-between border-b border-neutral-800 py-2 text-sm">
+                          <div
+                            key={l.id}
+                            className="flex items-center justify-between border-b border-neutral-800 py-2 text-sm"
+                          >
                             <div className="text-gray-300">
-                              <span className="font-semibold">{l.destination}</span> • {l.login_type}
+                              <span className="font-semibold">
+                                {l.destination}
+                              </span>{" "}
+                              • {l.login_type}
                             </div>
-                            <div className="text-gray-400">{new Date(l.created_at).toLocaleString()}</div>
+                            <div className="text-gray-400">
+                              {new Date(l.created_at).toLocaleString()}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -315,29 +424,82 @@ function UserProfilePage() {
                     <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                       <div className="h-64 w-full">
                         <div className="mb-2 flex items-center text-sm text-gray-300">
-                          <FontAwesomeIcon icon={faMessage} className="mr-2" /> Messages per day
+                          <FontAwesomeIcon icon={faMessage} className="mr-2" />{" "}
+                          Messages per day
                         </div>
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={messageSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                            <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                            <Tooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} labelStyle={{ color: "#eee" }} />
-                            <Line type="monotone" dataKey="count" stroke="#60a5fa" strokeWidth={2} dot={false} />
+                          <LineChart
+                            data={messageSeries}
+                            margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#2a2a2a"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#111",
+                                border: "1px solid #333",
+                              }}
+                              labelStyle={{ color: "#eee" }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="count"
+                              stroke="#60a5fa"
+                              strokeWidth={2}
+                              dot={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
                       <div className="h-64 w-full">
                         <div className="mb-2 flex items-center text-sm text-gray-300">
-                          <FontAwesomeIcon icon={faFaceSmile} className="mr-2" /> Reactions per day
+                          <FontAwesomeIcon
+                            icon={faFaceSmile}
+                            className="mr-2"
+                          />{" "}
+                          Reactions per day
                         </div>
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={reactionSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                            <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                            <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                            <Tooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} labelStyle={{ color: "#eee" }} />
-                            <Line type="monotone" dataKey="count" stroke="#34d399" strokeWidth={2} dot={false} />
+                          <LineChart
+                            data={reactionSeries}
+                            margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                          >
+                            <CartesianGrid
+                              strokeDasharray="3 3"
+                              stroke="#2a2a2a"
+                            />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            />
+                            <YAxis
+                              allowDecimals={false}
+                              tick={{ fill: "#9ca3af", fontSize: 12 }}
+                            />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: "#111",
+                                border: "1px solid #333",
+                              }}
+                              labelStyle={{ color: "#eee" }}
+                            />
+                            <Line
+                              type="monotone"
+                              dataKey="count"
+                              stroke="#34d399"
+                              strokeWidth={2}
+                              dot={false}
+                            />
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -355,4 +517,3 @@ function UserProfilePage() {
 }
 
 export default UserProfilePage;
-

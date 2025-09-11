@@ -12,7 +12,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faChartBar, faChartLine, faChartPie } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowLeft,
+  faChartBar,
+  faChartLine,
+  faChartPie,
+} from "@fortawesome/free-solid-svg-icons";
 import { Loader2 } from "lucide-react";
 import {
   PieChart,
@@ -39,7 +44,16 @@ type UserLogin = {
   created_at: string;
 };
 
-const COLORS = ["#f472b6", "#60a5fa", "#34d399", "#f59e0b", "#a78bfa", "#f87171", "#22d3ee", "#e879f9"]; // on-brand
+const COLORS = [
+  "#f472b6",
+  "#60a5fa",
+  "#34d399",
+  "#f59e0b",
+  "#a78bfa",
+  "#f87171",
+  "#22d3ee",
+  "#e879f9",
+]; // on-brand
 
 function AnalyticsPage() {
   const navigate = useNavigate();
@@ -114,13 +128,21 @@ function AnalyticsPage() {
       map[y] = (map[y] || 0) + 1;
     });
     return Object.entries(map)
-      .sort((a, b) => (a[0] === "Unknown" ? 1 : b[0] === "Unknown" ? -1 : parseInt(a[0]) - parseInt(b[0])))
+      .sort((a, b) =>
+        a[0] === "Unknown"
+          ? 1
+          : b[0] === "Unknown"
+            ? -1
+            : parseInt(a[0]) - parseInt(b[0]),
+      )
       .map(([year, count]) => ({ year, count }));
   }, [users]);
 
   const subteamData = React.useMemo(() => {
     const map: Record<string, number> = {};
-    users.forEach((u) => u.subteams.forEach((s) => (map[s.name] = (map[s.name] || 0) + 1)));
+    users.forEach((u) =>
+      u.subteams.forEach((s) => (map[s.name] = (map[s.name] || 0) + 1)),
+    );
     return Object.entries(map)
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
@@ -160,8 +182,15 @@ function AnalyticsPage() {
         <div className="flex h-screen flex-col justify-between">
           <div className="p-4 lg:p-32 lg:pt-16">
             <div className="mb-4">
-              <Button variant={"ghost"} onClick={() => navigate("/")} className="flex items-center">
-                <FontAwesomeIcon icon={faArrowLeft} className="mr-2 h-4 w-4 text-gray-400" />
+              <Button
+                variant={"ghost"}
+                onClick={() => navigate("/")}
+                className="flex items-center"
+              >
+                <FontAwesomeIcon
+                  icon={faArrowLeft}
+                  className="mr-2 h-4 w-4 text-gray-400"
+                />
                 Back to home
               </Button>
             </div>
@@ -181,12 +210,25 @@ function AnalyticsPage() {
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={genderData} dataKey="value" nameKey="name" outerRadius={100}>
+                      <Pie
+                        data={genderData}
+                        dataKey="value"
+                        nameKey="name"
+                        outerRadius={100}
+                      >
                         {genderData.map((_, index) => (
-                          <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={index}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
-                      <ReTooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} />
+                      <ReTooltip
+                        contentStyle={{
+                          backgroundColor: "#111",
+                          border: "1px solid #333",
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -200,11 +242,25 @@ function AnalyticsPage() {
                 <Separator className="my-2" />
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={gradYearData} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                    <BarChart
+                      data={gradYearData}
+                      margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                      <XAxis dataKey="year" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                      <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                      <ReTooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} />
+                      <XAxis
+                        dataKey="year"
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      />
+                      <ReTooltip
+                        contentStyle={{
+                          backgroundColor: "#111",
+                          border: "1px solid #333",
+                        }}
+                      />
                       <Bar dataKey="count" fill="#60a5fa" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -219,11 +275,29 @@ function AnalyticsPage() {
                 <Separator className="my-2" />
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={subteamData} margin={{ left: 8, right: 16, top: 8, bottom: 80 }}>
+                    <BarChart
+                      data={subteamData}
+                      margin={{ left: 8, right: 16, top: 8, bottom: 80 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                      <XAxis dataKey="name" tick={{ fill: "#9ca3af", fontSize: 12 }} angle={-35} textAnchor="end" interval={0} height={60} />
-                      <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                      <ReTooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                        angle={-35}
+                        textAnchor="end"
+                        interval={0}
+                        height={60}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      />
+                      <ReTooltip
+                        contentStyle={{
+                          backgroundColor: "#111",
+                          border: "1px solid #333",
+                        }}
+                      />
                       <Bar dataKey="count" fill="#34d399" />
                     </BarChart>
                   </ResponsiveContainer>
@@ -238,12 +312,32 @@ function AnalyticsPage() {
                 <Separator className="my-2" />
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={loginSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                    <LineChart
+                      data={loginSeries}
+                      margin={{ left: 8, right: 16, top: 8, bottom: 8 }}
+                    >
                       <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
-                      <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                      <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
-                      <ReTooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} />
-                      <Line type="monotone" dataKey="count" stroke="#f472b6" strokeWidth={2} dot={false} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      />
+                      <YAxis
+                        allowDecimals={false}
+                        tick={{ fill: "#9ca3af", fontSize: 12 }}
+                      />
+                      <ReTooltip
+                        contentStyle={{
+                          backgroundColor: "#111",
+                          border: "1px solid #333",
+                        }}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#f472b6"
+                        strokeWidth={2}
+                        dot={false}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -258,12 +352,25 @@ function AnalyticsPage() {
                 <div className="h-64 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
-                      <Pie data={rolesData} dataKey="value" nameKey="name" outerRadius={100}>
+                      <Pie
+                        data={rolesData}
+                        dataKey="value"
+                        nameKey="name"
+                        outerRadius={100}
+                      >
                         {rolesData.map((_, index) => (
-                          <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                          <Cell
+                            key={index}
+                            fill={COLORS[index % COLORS.length]}
+                          />
                         ))}
                       </Pie>
-                      <ReTooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} />
+                      <ReTooltip
+                        contentStyle={{
+                          backgroundColor: "#111",
+                          border: "1px solid #333",
+                        }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -278,4 +385,3 @@ function AnalyticsPage() {
 }
 
 export default AnalyticsPage;
-
