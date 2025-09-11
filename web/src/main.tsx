@@ -13,6 +13,8 @@ import EditUserPage from "@/pages/users/EditUserPage.tsx";
 import ApplicationsPage from "@/pages/applications/ApplicationsPage.tsx";
 import AuthorizePage from "@/pages/oauth/AuthorizePage.tsx";
 import UsersPage from "@/pages/users/UsersPage.tsx";
+import UserProfilePage from "@/pages/users/UserProfilePage.tsx";
+import AnalyticsPage from "@/pages/analytics/AnalyticsPage.tsx";
 
 const router = createBrowserRouter([
   {
@@ -36,8 +38,16 @@ const router = createBrowserRouter([
     element: <UsersPage />,
   },
   {
+    path: "/users/:id",
+    element: <UserProfilePage />,
+  },
+  {
     path: "/users/:id/edit",
     element: <EditUserPage />,
+  },
+  {
+    path: "/analytics",
+    element: <AnalyticsPage />,
   },
   {
     path: "/applications",
