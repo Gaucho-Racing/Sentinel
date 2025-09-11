@@ -47,7 +47,7 @@ function UsersPage() {
   const [selectedSubteam, setSelectedSubteam] = React.useState("all");
   const [selectedRole, setSelectedRole] = React.useState("all");
 
-  const [compactView, setCompactView] = React.useState(false);
+  const [tableView, setTableView] = React.useState(false);
 
   React.useEffect(() => {
     checkAuth().then(() => {
@@ -146,9 +146,8 @@ function UsersPage() {
   const UserCard = ({ user }: { user: User }) => {
     return (
       <Card
-        className={`w-full px-4 transition-all hover:cursor-pointer hover:bg-neutral-800 md:w-2/5 ${
-          compactView ? "py-2" : "py-4"
-        }`}
+        className={`w-full px-4 py-4 transition-all hover:cursor-pointer hover:bg-neutral-800 md:w-2/5`}
+        onClick={() => navigate(`/users/${user.id}`)}
       >
         <div className="flex items-center justify-between">
           <div className="flex flex-col items-start justify-start">
@@ -160,62 +159,106 @@ function UsersPage() {
                   {user.last_name[0]}
                 </AvatarFallback>
               </Avatar>
-              {!compactView ? (
-                <h3>
-                  {user.first_name} {user.last_name}
-                </h3>
-              ) : (
-                <div className="flex flex-col items-start justify-center pl-2">
-                  <h4>
-                    {user.first_name} {user.last_name}
-                  </h4>
+              <h3>
+                {user.first_name} {user.last_name}
+              </h3>
+            </div>
+            <div>
+              <div className="mt-2 flex space-x-4">
+                <div className="flex items-center space-x-2">
+                  <FontAwesomeIcon icon={faEnvelope} className="" size="lg" />
                   <p className="text-gray-400">{user.email}</p>
                 </div>
-              )}
-            </div>
-            {!compactView && (
-              <div>
-                <div className="mt-2 flex space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <FontAwesomeIcon icon={faEnvelope} className="" size="lg" />
-                    <p className="text-gray-400">{user.email}</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <FontAwesomeIcon icon={faDiscord} className="" size="lg" />
-                    <p className="text-gray-400">{user.username}</p>
-                  </div>
+                <div className="flex items-center space-x-2">
+                  <FontAwesomeIcon icon={faDiscord} className="" size="lg" />
+                  <p className="text-gray-400">{user.username}</p>
                 </div>
-                <div className="mt-2 flex space-x-2">
-                  <div className="font-semibold">Subteams:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {user.subteams.map((subteam) => (
-                      <div key={subteam.id}>
+              </div>
+              <div className="mt-2 flex space-x-2">
+                <div className="font-semibold">Subteams:</div>
+                <div className="flex flex-wrap gap-2">
+                  {user.subteams.map((subteam) => (
+                    <div key={subteam.id}>
+                      <Card className="rounded-sm px-1 text-gray-400">
+                        <code className="">{subteam.name}</code>
+                      </Card>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-2 flex space-x-2">
+                <div className="font-semibold">Roles:</div>
+                <div className="flex flex-wrap gap-2">
+                  {user.roles
+                    .filter((role) => role.startsWith("d_"))
+                    .map((role) => (
+                      <div key={role}>
                         <Card className="rounded-sm px-1 text-gray-400">
-                          <code className="">{subteam.name}</code>
+                          <code className="">{formatRoleName(role)}</code>
                         </Card>
                       </div>
                     ))}
-                  </div>
-                </div>
-                <div className="mt-2 flex space-x-2">
-                  <div className="font-semibold">Roles:</div>
-                  <div className="flex flex-wrap gap-2">
-                    {user.roles
-                      .filter((role) => role.startsWith("d_"))
-                      .map((role) => (
-                        <div key={role}>
-                          <Card className="rounded-sm px-1 text-gray-400">
-                            <code className="">{formatRoleName(role)}</code>
-                          </Card>
-                        </div>
-                      ))}
-                  </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
           <FontAwesomeIcon icon={faChevronRight} className="text-gray-400" />
         </div>
+      </Card>
+    );
+  };
+
+  const UsersTable = ({ users }: { users: User[] }) => {
+    return (
+      <Card className="w-full overflow-x-auto p-4">
+        <table className="w-full table-auto text-left">
+          <thead>
+            <tr className="text-gray-400">
+              <th className="pb-2">Name</th>
+              <th className="pb-2">Email</th>
+              <th className="pb-2">Username</th>
+              <th className="pb-2">Subteams</th>
+              <th className="pb-2">Roles</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr
+                key={user.id}
+                className="cursor-pointer border-t border-neutral-800 hover:bg-neutral-800"
+                onClick={() => navigate(`/users/${user.id}`)}
+              >
+                <td className="py-3">
+                  <div className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarImage src={user.avatar_url} />
+                      <AvatarFallback>
+                        {user.first_name[0]}
+                        {user.last_name[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-semibold">
+                        {user.first_name} {user.last_name}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-3 text-gray-300">{user.email}</td>
+                <td className="py-3 text-gray-300">{user.username}</td>
+                <td className="py-3 text-gray-300">
+                  {user.subteams.map((s) => s.name).join(", ")}
+                </td>
+                <td className="py-3 text-gray-300">
+                  {user.roles
+                    .filter((r) => r.startsWith("d_"))
+                    .map((r) => formatRoleName(r))
+                    .join(", ")}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
     );
   };
@@ -243,8 +286,8 @@ function UsersPage() {
             <h1>Users</h1>
             <div className="mt-4 flex flex-col">
               <SearchAndFilterComponent
-                compactView={compactView}
-                setCompactView={setCompactView}
+                tableView={tableView}
+                setTableView={setTableView}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
                 selectedSubteam={selectedSubteam}
@@ -261,10 +304,16 @@ function UsersPage() {
                 <Loader2 className="mt-8 h-12 w-12 animate-spin" />
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2">
-                {displayUsers.map((user) => (
-                  <UserCard key={user.id} user={user} />
-                ))}
+              <div>
+                {tableView ? (
+                  <UsersTable users={displayUsers} />
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {displayUsers.map((user) => (
+                      <UserCard key={user.id} user={user} />
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -278,8 +327,8 @@ function UsersPage() {
 export default UsersPage;
 
 interface SearchAndFilterComponentProps {
-  compactView: boolean;
-  setCompactView: (value: boolean) => void;
+  tableView: boolean;
+  setTableView: (value: boolean) => void;
   searchTerm: string;
   setSearchTerm: (value: string) => void;
   selectedSubteam: string;
@@ -292,8 +341,8 @@ interface SearchAndFilterComponentProps {
 }
 
 const SearchAndFilterComponent: React.FC<SearchAndFilterComponentProps> = ({
-  compactView,
-  setCompactView,
+  tableView,
+  setTableView,
   searchTerm,
   setSearchTerm,
   selectedSubteam,
@@ -352,11 +401,11 @@ const SearchAndFilterComponent: React.FC<SearchAndFilterComponentProps> = ({
       </Select>
       <div className="flex items-center space-x-2">
         <Switch
-          id="compact-view"
-          checked={compactView}
-          onCheckedChange={setCompactView}
+          id="table-view"
+          checked={tableView}
+          onCheckedChange={setTableView}
         />
-        <Label htmlFor="compact-view">Compact View</Label>
+        <Label htmlFor="table-view">Table View</Label>
       </div>
     </div>
   );
