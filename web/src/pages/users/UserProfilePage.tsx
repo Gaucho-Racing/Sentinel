@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2 } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowLeft, faChartLine, faClockRotateLeft, faUser } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faChartLine, faClockRotateLeft, faUser, faMessage, faFaceSmile } from "@fortawesome/free-solid-svg-icons";
 import {
   LineChart,
   Line,
@@ -37,6 +37,19 @@ type UserLogin = {
   created_at: string;
 };
 
+type Activity = {
+  id: string;
+  user_id: string;
+  action: string; // message | reaction
+  created_at: string;
+};
+
+type ActivityCount = {
+  date: string;
+  action: string;
+  count: number;
+};
+
 function UserProfilePage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -47,11 +60,14 @@ function UserProfilePage() {
   const [user, setUser] = React.useState<User>(initUser);
   const [loginsLoading, setLoginsLoading] = React.useState(false);
   const [logins, setLogins] = React.useState<UserLogin[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = React.useState(false);
+  const [activityStats, setActivityStats] = React.useState<ActivityCount[]>([]);
 
   React.useEffect(() => {
     checkAuth().then(() => {
       getUser();
       getLogins();
+      getActivityStats();
     });
   }, [id]);
 
@@ -64,6 +80,22 @@ function UserProfilePage() {
     } else {
       setAuthCheckLoading(false);
     }
+  };
+
+  const getActivityStats = async () => {
+    setActivitiesLoading(true);
+    try {
+      const response = await axios.get(`${SENTINEL_API_URL}/users/${id}/activity-stats`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("sentinel_access_token")}`,
+        },
+      });
+      if (response.status == 200) setActivityStats(response.data);
+    } catch (error: any) {
+      notify.error(getAxiosErrorMessage(error));
+      setActivityStats([]);
+    }
+    setActivitiesLoading(false);
   };
 
   const getUser = async () => {
@@ -129,6 +161,18 @@ function UserProfilePage() {
     });
     return Object.entries(buckets).map(([date, count]) => ({ date, count }));
   }, [logins]);
+
+  const messageSeries = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    activityStats.filter((a) => a.action === "message").forEach((a) => (map[a.date] = a.count));
+    return Object.entries(map).map(([date, count]) => ({ date, count }));
+  }, [activityStats]);
+
+  const reactionSeries = React.useMemo(() => {
+    const map: Record<string, number> = {};
+    activityStats.filter((a) => a.action === "reaction").forEach((a) => (map[a.date] = a.count));
+    return Object.entries(map).map(([date, count]) => ({ date, count }));
+  }, [activityStats]);
 
   const ProfileField = (props: { label: string; value: string }) => {
     return (
@@ -263,12 +307,49 @@ function UserProfilePage() {
                 </Card>
 
                 <Card className="mt-4 p-4">
-                  <div className="flex items-center">
-                    <FontAwesomeIcon icon={faChartLine} className="h-5 w-5" />
-                    <h3 className="ml-4">Activity</h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <FontAwesomeIcon icon={faChartLine} className="h-5 w-5" />
+                      <h3 className="ml-4">Discord Activity (Last 90 Days)</h3>
+                    </div>
                   </div>
                   <Separator className="my-2" />
-                  <p className="text-gray-400">Activity derived from recent logins.</p>
+                  {activitiesLoading ? (
+                    <div className="flex w-full justify-center p-4">
+                      <Loader2 className="animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                      <div className="h-64 w-full">
+                        <div className="mb-2 flex items-center text-sm text-gray-300">
+                          <FontAwesomeIcon icon={faMessage} className="mr-2" /> Messages per day
+                        </div>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={messageSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                            <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                            <Tooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} labelStyle={{ color: "#eee" }} />
+                            <Line type="monotone" dataKey="count" stroke="#60a5fa" strokeWidth={2} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="h-64 w-full">
+                        <div className="mb-2 flex items-center text-sm text-gray-300">
+                          <FontAwesomeIcon icon={faFaceSmile} className="mr-2" /> Reactions per day
+                        </div>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={reactionSeries} margin={{ left: 8, right: 16, top: 8, bottom: 8 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
+                            <XAxis dataKey="date" tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                            <YAxis allowDecimals={false} tick={{ fill: "#9ca3af", fontSize: 12 }} />
+                            <Tooltip contentStyle={{ backgroundColor: "#111", border: "1px solid #333" }} labelStyle={{ color: "#eee" }} />
+                            <Line type="monotone" dataKey="count" stroke="#34d399" strokeWidth={2} dot={false} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  )}
                 </Card>
               </div>
             </div>
