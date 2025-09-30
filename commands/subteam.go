@@ -50,7 +50,7 @@ func Subteam(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 		}
 		if counter == 0 {
-			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!subteam <aero | business | chassis | data | electronics | firmware | powertrain | suspension>`", 5*time.Second)
+			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!subteam <aero | business | chassis | data | electronics | firmware | powertrain | suspension | systems>`", 5*time.Second)
 		} else {
 			go service.SendDisappearingMessage(m.ChannelID, "Added "+strconv.Itoa(counter)+" subteam roles!", 5*time.Second)
 		}

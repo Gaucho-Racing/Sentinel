@@ -39,8 +39,7 @@ var MemberRoleID = "1334383074410237984"
 var AlumniRoleID = "817577502968512552"
 var BotRoleID = "1229611357259694132"
 
-var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Firmware", "Powertrain", "Suspension"}
-
+var SubteamRoleNames = []string{"Aero", "Business", "Chassis", "Data", "Electronics", "Firmware", "Powertrain", "Suspension", "Systems"}
 var RsaPublicKey *rsa.PublicKey
 var RsaPrivateKey *rsa.PrivateKey
 var RsaPublicKeyJWKS map[string]interface{}
