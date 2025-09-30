@@ -259,6 +259,10 @@ func LogUserReaction(s *discordgo.Session, m *discordgo.MessageReactionAdd) {
 }
 
 func ChannelMessageFilter(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if m.Author != nil && m.Author.Bot {
+		return
+	}
+
 	var verificationChannel = "1215484329736671282"
 	var rolesChannel = "1215525696286232626"
 
@@ -273,9 +277,6 @@ func ChannelMessageFilter(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	// Spoiler filter: delete messages containing Discord spoiler syntax and warn
-	if m.Author != nil && m.Author.Bot {
-		return
-	}
 	content := m.Content
 	if hasSpoilersOutsideCodeBlocks(content) {
 		utils.SugarLogger.Infof("Deleting spoiler message from %s in %s", m.Author.ID, m.ChannelID)
