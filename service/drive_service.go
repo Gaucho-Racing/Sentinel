@@ -132,7 +132,7 @@ func PopulateDriveMembers() {
 		if user.IsInnerCircle() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "organizer")
 			AddMemberToDrive(config.LeadsDriveID, user.Email, "organizer")
-		} else if user.IsMember() || user.IsAlumni() {
+		} else if user.IsMember() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "writer")
 		}
 	}
@@ -171,7 +171,6 @@ func CleanDriveMembers() {
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 				AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
 			}
-			//} else if user.IsMember() || user.IsAlumni() {
 		} else if user.IsMember() {
 			if perm.Role != "writer" {
 				// User needs writer role but doesn't currently have it
@@ -181,7 +180,6 @@ func CleanDriveMembers() {
 			}
 		} else {
 			// User is not a member, remove from drive
-			// or user is an alumni, remove from drive
 			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		}
@@ -214,7 +212,7 @@ func CleanDriveMembers() {
 					RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 					AddMemberToDrive(config.SharedDriveID, perm.EmailAddress, "organizer")
 				}
-			} else if user.IsMember() || user.IsAlumni() {
+			} else if user.IsMember() {
 				if perm.Role != "writer" {
 					// User needs writer role but doesn't currently have it
 					utils.SugarLogger.Infof("Updating %s drive permission to writer", perm.EmailAddress)
