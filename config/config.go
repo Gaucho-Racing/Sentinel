@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var Version = "4.5.3"
+var Version = "4.5.4"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
