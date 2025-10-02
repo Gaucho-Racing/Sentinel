@@ -10,6 +10,7 @@ import (
 	"sentinel/utils"
 	"sort"
 	"strings"
+	"time"
 
 	"golang.org/x/oauth2/google"
 	"google.golang.org/api/drive/v3"
@@ -135,6 +136,93 @@ func PopulateDriveMembers() {
 		} else if user.IsMember() {
 			AddMemberToDrive(config.SharedDriveID, user.Email, "writer")
 		}
+	}
+}
+
+// RemoveInactiveMembersFromDrive removes inactive users from the shared drive.
+func RemoveInactiveMembersFromDrive() {
+	keepEmails := []string{
+		"sentinel-drive@sentinel-416604.iam.gserviceaccount.com",
+		"ucsantabarbarasae@gmail.com",
+		"team@gauchoracing.com",
+	}
+	resp, err := DriveClient.Permissions.List(config.SharedDriveID).
+		SupportsAllDrives(true).
+		Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+		Do()
+	if err != nil {
+		utils.SugarLogger.Errorln(err)
+		return
+	}
+	for _, perm := range resp.Permissions {
+		if contains(keepEmails, perm.EmailAddress) {
+			utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+			continue
+		}
+		user := GetUserByEmail(perm.EmailAddress)
+		if user.ID == "" {
+			utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+		} else {
+			inactivityThreshold := time.Now().AddDate(0, 0, -180)
+			newMemberThreshold := time.Now().AddDate(0, 0, -30)
+
+			if user.UpdatedAt.After(newMemberThreshold) { // temporarily remove new members access
+				utils.SugarLogger.Infof("Removing new user %s from drive.", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			}
+			lastActivity := GetLastActivityForUser(user.ID)
+			if lastActivity.ID != "" && lastActivity.CreatedAt.After(inactivityThreshold) {
+				continue
+			}
+			lastLogins := GetLastNLoginsForUser(user.ID, 1)
+			if len(lastLogins) > 0 && lastLogins[0].ID != "" && lastLogins[0].CreatedAt.After(inactivityThreshold) {
+				continue
+			}
+			utils.SugarLogger.Infof("Removing user %s from drive due to inactivity.", perm.EmailAddress)
+			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+		}
+	}
+	nextPageToken := resp.NextPageToken
+	for nextPageToken != "" {
+		resp, err = DriveClient.Permissions.List(config.SharedDriveID).
+			SupportsAllDrives(true).
+			Fields("nextPageToken,permissions(id, type, emailAddress, role)").
+			PageToken(nextPageToken).
+			Do()
+		if err != nil {
+			utils.SugarLogger.Errorln(err)
+			return
+		}
+		for _, perm := range resp.Permissions {
+			if contains(keepEmails, perm.EmailAddress) {
+				utils.SugarLogger.Infof("Keeping %s in drive", perm.EmailAddress)
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Keeping %s in drive", perm.EmailAddress))
+				continue
+			}
+			user := GetUserByEmail(perm.EmailAddress)
+			if user.ID == "" {
+				utils.SugarLogger.Infof("Removing %s from drive", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			} else {
+				inactivityThreshold := time.Now().AddDate(0, 0, -180)
+				if user.UpdatedAt.After(inactivityThreshold) {
+					continue
+				}
+				lastActivity := GetLastActivityForUser(user.ID)
+				if lastActivity.ID != "" && lastActivity.CreatedAt.After(inactivityThreshold) {
+					continue
+				}
+				lastLogins := GetLastNLoginsForUser(user.ID, 1)
+				if len(lastLogins) > 0 && lastLogins[0].ID != "" && lastLogins[0].CreatedAt.After(inactivityThreshold) {
+					continue
+				}
+				utils.SugarLogger.Infof("Removing user %s from drive due to inactivity.", perm.EmailAddress)
+				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			}
+		}
+		nextPageToken = resp.NextPageToken
 	}
 }
 

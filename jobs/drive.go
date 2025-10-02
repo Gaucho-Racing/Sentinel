@@ -20,7 +20,7 @@ func RegisterDriveCronJob() {
 		_, _ = service.Discord.ChannelMessageSend(config.DiscordLogChannel, ":alarm_clock: Starting google drive CRON Job")
 		utils.SugarLogger.Infoln("Starting google drive CRON Job...")
 		var wg sync.WaitGroup
-		wg.Add(4)
+		wg.Add(5)
 		go func() {
 			defer wg.Done()
 			service.PopulateMemberDirectorySheet()
@@ -28,6 +28,10 @@ func RegisterDriveCronJob() {
 		go func() {
 			defer wg.Done()
 			service.PopulateMailingListSheet()
+		}()
+		go func() {
+			defer wg.Done()
+			service.RemoveInactiveMembersFromDrive()
 		}()
 		go func() {
 			defer wg.Done()
