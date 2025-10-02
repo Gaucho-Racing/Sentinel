@@ -166,11 +166,8 @@ func RemoveInactiveMembersFromDrive() {
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
 		} else {
 			inactivityThreshold := time.Now().AddDate(0, 0, -180)
-			newMemberThreshold := time.Now().AddDate(0, 0, -30)
-
-			if user.UpdatedAt.After(newMemberThreshold) { // temporarily remove new members access
-				utils.SugarLogger.Infof("Removing new user %s from drive.", perm.EmailAddress)
-				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			if user.UpdatedAt.After(inactivityThreshold) {
+				continue
 			}
 			lastActivity := GetLastActivityForUser(user.ID)
 			if lastActivity.ID != "" && lastActivity.CreatedAt.After(inactivityThreshold) {
@@ -180,8 +177,10 @@ func RemoveInactiveMembersFromDrive() {
 			if len(lastLogins) > 0 && lastLogins[0].ID != "" && lastLogins[0].CreatedAt.After(inactivityThreshold) {
 				continue
 			}
-			utils.SugarLogger.Infof("Removing user %s from drive due to inactivity.", perm.EmailAddress)
+			utils.SugarLogger.Infof("Notifying user %s and removing them from drive due to inactivity.", perm.EmailAddress)
 			RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+			SendDirectMessage(user.ID, "You have been automatically removed from our shared Google Drive! Due to Google Drive's member limits, we periodically reset access after 180 days of Sentinel or Discord inactivity. **However, you can easily regain access by using the** `!drive` **command in our #roles channel!**")
+			SendMessage(config.DiscordLogChannel, fmt.Sprintf("Sent inactivity google drive removal notice to %s (%s %s)", user.ID, user.FirstName, user.LastName))
 		}
 	}
 	nextPageToken := resp.NextPageToken
@@ -218,8 +217,10 @@ func RemoveInactiveMembersFromDrive() {
 				if len(lastLogins) > 0 && lastLogins[0].ID != "" && lastLogins[0].CreatedAt.After(inactivityThreshold) {
 					continue
 				}
-				utils.SugarLogger.Infof("Removing user %s from drive due to inactivity.", perm.EmailAddress)
+				utils.SugarLogger.Infof("Notifying user %s and removing them from drive due to inactivity.", perm.EmailAddress)
 				RemoveMemberFromDrive(config.SharedDriveID, perm.EmailAddress)
+				SendDirectMessage(user.ID, "You have been automatically removed from our shared Google Drive! Due to Google Drive's member limits, we periodically reset access after 180 days of Sentinel or Discord inactivity. **However, you can easily regain access by using the** `!drive` **command in our #roles channel!**")
+				SendMessage(config.DiscordLogChannel, fmt.Sprintf("Sent inactivity google drive removal notice to %s (%s %s)", user.ID, user.FirstName, user.LastName))
 			}
 		}
 		nextPageToken = resp.NextPageToken
