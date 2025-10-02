@@ -55,6 +55,7 @@ type ActivityCount struct {
 func GetActivityCountsByDayForUser(userID string) []ActivityCount {
 	end := time.Now()
 	start := end.AddDate(0, 0, -89)
+	start = start.Truncate(time.Microsecond)
 
 	buckets := make(map[string]map[string]int)
 	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {

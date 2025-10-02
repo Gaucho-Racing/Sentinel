@@ -111,7 +111,6 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// google drive access
 	_ = service.RemoveMemberFromDrive(config.SharedDriveID, email)
-	_ = service.AddMemberToDrive(config.SharedDriveID, email, "writer")
 
 	// assign member role (if alumni, discord handler will remove)
 	err = s.GuildMemberRoleAdd(m.GuildID, id, config.MemberRoleID)
