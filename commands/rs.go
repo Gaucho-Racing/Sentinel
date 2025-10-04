@@ -50,7 +50,7 @@ func RemoveSubteam(args []string, s *discordgo.Session, m *discordgo.MessageCrea
 			}
 		}
 		if counter == 0 {
-			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!rs <aero | business | chassis | data | electronics | powertrain | suspension | systems>`", 5*time.Second)
+			go service.SendDisappearingMessage(m.ChannelID, "Command usage: `!rs <aero | business | chassis | data | drivetrain | electronics | firmware | suspension | systems>`", 5*time.Second)
 		} else {
 			go service.SendDisappearingMessage(m.ChannelID, "Removed "+strconv.Itoa(counter)+" subteam roles!", 5*time.Second)
 		}
