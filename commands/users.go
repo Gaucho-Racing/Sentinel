@@ -71,7 +71,7 @@ func Users(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		guildMembers++
 	}
-	messageText := fmt.Sprintf("Discord Members: %d\nMembers Role: %d\nAlumni Members: %d", guildMembers, memberMembers, alumniMembers)
+	messageText := fmt.Sprintf("Discord Members: %d\nMembers Role: %d\nAlumni Members: %d\n", guildMembers, memberMembers, alumniMembers)
 	utils.SugarLogger.Infof("Discord Members: %d", guildMembers)
 	utils.SugarLogger.Infof("Members Role: %d", memberMembers)
 	utils.SugarLogger.Infof("Alumni Members: %d", alumniMembers)
