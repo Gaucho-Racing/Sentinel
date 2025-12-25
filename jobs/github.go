@@ -9,7 +9,7 @@ import (
 	cron "github.com/robfig/cron/v3"
 )
 
-func RegisteGithubCronJob() {
+func RegisterGithubCronJob() {
 	if config.Env != "PROD" {
 		utils.SugarLogger.Infoln("Github CRON Job not registered because environment is not PROD")
 		return
