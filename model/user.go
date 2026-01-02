@@ -58,6 +58,9 @@ func (user User) GetHighestRole() string {
 	if user.IsSpecialAdvisor() {
 		return "d_special_advisor"
 	}
+	if user.IsTeamMember() {
+		return "d_team_member"
+	}
 	if user.IsMember() {
 		return "d_member"
 	}
@@ -94,6 +97,10 @@ func (user User) IsSpecialAdvisor() bool {
 
 func (user User) IsInnerCircle() bool {
 	return user.IsAdmin() || user.IsOfficer() || user.IsLead() || user.IsSpecialAdvisor()
+}
+
+func (user User) IsTeamMember() bool {
+	return user.HasRole("d_team_member")
 }
 
 func (user User) IsMember() bool {
