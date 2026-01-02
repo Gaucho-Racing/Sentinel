@@ -5,7 +5,7 @@ import (
 	"os"
 )
 
-var Version = "4.5.8"
+var Version = "4.5.9"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 var Prefix = os.Getenv("PREFIX")
@@ -35,7 +35,8 @@ var AdminRoleID = "1030681203864522823"
 var OfficerRoleID = "812948550819905546"
 var LeadRoleID = "970423652791246888"
 var SpecialAdvisorRoleID = "1386909324596609034"
-var MemberRoleID = "1334383074410237984"
+var TeamMemberRoleID = "1456575818460430522"
+var MemberRoleID = "1334383074410237984" // this is actually the Discord Role ID for "verified" role
 var AlumniRoleID = "817577502968512552"
 var BotRoleID = "1229611357259694132"
 
@@ -49,6 +50,7 @@ var RsaPrivateKeyString = os.Getenv("RSA_PRIVATE_KEY")
 
 var MemberDirectorySheetID = "1reuLZox2daj8r2H-lZrwB4oFPYlJ6oC7983UUaZd6AY"
 var MailingListSheetID = "1O5KQzpOo9Ja4Vg55TGCyc3uUDZFvHjyhZqw4Eh1SKVY"
+var TeamMemberMasterListSheetID = "1tKawKKq1jk-WN8WM8gGkwOeEc0IA6-pkKxHL1DcWzd0"
 
 var DriveCron = os.Getenv("DRIVE_CRON")
 var GithubCron = os.Getenv("GITHUB_CRON")

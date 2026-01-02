@@ -405,6 +405,11 @@ func PopulateDiscordMembers() {
 				if err != nil {
 					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
 				}
+			} else if user.HasRole("d_team_member") {
+				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.TeamMemberRoleID)
+				if err != nil {
+					utils.SugarLogger.Errorf("Error adding role to user %s: %s", user.Email, err.Error())
+				}
 			} else if user.HasRole("d_officer") {
 				err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.OfficerRoleID)
 				if err != nil {

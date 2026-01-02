@@ -84,6 +84,8 @@ func SyncDiscordRolesForUser(userID string, roleIds []string) {
 			roles = append(roles, "d_lead")
 		} else if id == config.SpecialAdvisorRoleID {
 			roles = append(roles, "d_special_advisor")
+		} else if id == config.TeamMemberRoleID {
+			roles = append(roles, "d_team_member")
 		} else if id == config.MemberRoleID {
 			roles = append(roles, "d_member")
 		} else if id == config.AlumniRoleID {

@@ -39,6 +39,7 @@ func Users(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	officerMembers := 0
 	specialAdvisorMembers := 0
 	alumniMembers := 0
+	teamMembers := 0
 
 	subteamMap := make(map[string]int)
 	subteams := service.GetAllSubteams()
@@ -63,6 +64,9 @@ func Users(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 			if role == config.AlumniRoleID {
 				alumniMembers++
 			}
+			if role == config.TeamMemberRoleID {
+				teamMembers++
+			}
 			for _, subteam := range subteams {
 				if role == subteam.ID {
 					subteamMap[subteam.Name]++
@@ -71,10 +75,11 @@ func Users(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 		guildMembers++
 	}
-	messageText := fmt.Sprintf("Discord Members: %d\nMembers Role: %d\nAlumni Members: %d\n", guildMembers, memberMembers, alumniMembers)
+	messageText := fmt.Sprintf("Discord Members: %d\nMembers Role: %d\nAlumni Members: %d\nTeam Members: %d\n\n", guildMembers, memberMembers, alumniMembers, teamMembers)
 	utils.SugarLogger.Infof("Discord Members: %d", guildMembers)
 	utils.SugarLogger.Infof("Members Role: %d", memberMembers)
 	utils.SugarLogger.Infof("Alumni Members: %d", alumniMembers)
+	utils.SugarLogger.Infof("Team Members: %d", teamMembers)
 	for subteam, count := range subteamMap {
 		utils.SugarLogger.Infof("%s: %d", subteam, count)
 		messageText += fmt.Sprintf("%s: %d\n", subteam, count)

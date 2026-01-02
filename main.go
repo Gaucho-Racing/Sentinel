@@ -26,7 +26,7 @@ func main() {
 	commands.InitializeDiscordBot()
 
 	jobs.RegisterDriveCronJob()
-	jobs.RegisteGithubCronJob()
+	jobs.RegisterGithubCronJob()
 	jobs.RegisterDiscordCronJob()
 
 	router := controller.SetupRouter()
