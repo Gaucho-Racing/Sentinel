@@ -159,8 +159,8 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 		utils.SugarLogger.Infof("Removed all subteam roles from user %s (%s) as they are alumni", m.User.ID, m.Nick)
 		service.SendMessage(config.DiscordLogChannel, fmt.Sprintf("Removed all subteam roles from user %s (%s) as they are alumni", m.User.ID, m.Nick))
 
-		// User cannot have member, lead, or officer roles if they are alumni (admin and special advisor ok)
-		removeRoles := []string{config.MemberRoleID, config.LeadRoleID, config.OfficerRoleID}
+		// User cannot have member, team member, lead, or officer roles if they are alumni (admin and special advisor ok)
+		removeRoles := []string{config.MemberRoleID, config.TeamMemberRoleID, config.LeadRoleID, config.OfficerRoleID}
 		for _, role := range removeRoles {
 			err := service.Discord.GuildMemberRoleRemove(config.DiscordGuild, m.User.ID, role)
 			if err != nil {
