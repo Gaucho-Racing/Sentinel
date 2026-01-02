@@ -36,7 +36,7 @@ var OfficerRoleID = "812948550819905546"
 var LeadRoleID = "970423652791246888"
 var SpecialAdvisorRoleID = "1386909324596609034"
 var TeamMemberRoleID = "1456575818460430522"
-var MemberRoleID = "1334383074410237984" // this is actually the Discord Role ID for "verified" role
+var MemberRoleID = "820467859477889034"
 var AlumniRoleID = "817577502968512552"
 var BotRoleID = "1229611357259694132"
 
