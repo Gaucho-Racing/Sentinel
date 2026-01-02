@@ -607,27 +607,7 @@ func PopulateMailingListSheet() {
 
 // UpdateTeamMembers checks the Team Members google sheet and gives the Team Member Discord role to all users with a TRUE cell
 func UpdateTeamMembers() {
-	spreadsheet, err := SheetClient.Spreadsheets.Get(config.TeamMemberMasterListSheetID).Do()
-
 	sheetName := "New Members"
-	if err != nil {
-		utils.SugarLogger.Errorf("Unable to get spreadsheet: %v", err)
-		return
-	}
-
-	sheetId := -1
-	for _, sheet := range spreadsheet.Sheets {
-		if sheet.Properties.Title == sheetName {
-			utils.SugarLogger.Infof("Found sheet %s with ID %v", sheet.Properties.Title, sheet.Properties.SheetId)
-			sheetId = int(sheet.Properties.SheetId)
-			break
-		}
-	}
-	if sheetId == -1 {
-		utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
-		return
-	}
-
 	readRange := fmt.Sprintf("'%s'!A:H", sheetName)
 	resp, err := SheetClient.Spreadsheets.Values.Get(config.TeamMemberMasterListSheetID, readRange).Do()
 	if err != nil {
