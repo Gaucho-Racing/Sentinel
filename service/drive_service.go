@@ -604,3 +604,74 @@ func PopulateMailingListSheet() {
 	externalMailingListEntries := GetExternalMailingListEntries()
 	populateMailingListSheet("External", externalMailingListEntries)
 }
+
+// UpdateTeamMembers checks the Team Members google sheet and gives the Team Member Discord role to all users with a TRUE cell
+func UpdateTeamMembers() {
+	spreadsheet, err := SheetClient.Spreadsheets.Get(config.TeamMemberMasterListSheetID).Do()
+
+	sheetName := "New Members"
+	if err != nil {
+		utils.SugarLogger.Errorf("Unable to get spreadsheet: %v", err)
+		return
+	}
+
+	sheetId := -1
+	for _, sheet := range spreadsheet.Sheets {
+		if sheet.Properties.Title == sheetName {
+			utils.SugarLogger.Infof("Found sheet %s with ID %v", sheet.Properties.Title, sheet.Properties.SheetId)
+			sheetId = int(sheet.Properties.SheetId)
+			break
+		}
+	}
+	if sheetId == -1 {
+		utils.SugarLogger.Errorf("Sheet %s not found", sheetName)
+		return
+	}
+
+	readRange := fmt.Sprintf("'%s'!A:H", sheetName)
+	resp, err := SheetClient.Spreadsheets.Values.Get(config.TeamMemberMasterListSheetID, readRange).Do()
+	if err != nil {
+		utils.SugarLogger.Errorf("Unable to read sheet: %v", err)
+		return
+	}
+
+	var emails []string
+	for i, row := range resp.Values {
+		// Skip column names
+		if i == 0 {
+			continue
+		}
+
+		// Skip rows that aren't filled until column H
+		if len(row) < 8 {
+			continue
+		}
+
+		// Check if column H is TRUE
+		if hValue, ok := row[7].(string); ok && hValue == "TRUE" {
+			if email, ok := row[1].(string); ok && email != "" {
+				emails = append(emails, email)
+			}
+		}
+	}
+	count := 0
+	for _, email := range emails {
+		user := GetUserByEmail(email)
+
+		if user.ID == "" {
+			continue
+		}
+		if user.IsAlumni() || user.IsTeamMember() || !user.IsMember() {
+			continue
+		}
+		utils.SugarLogger.Infof("Updating %s with Team Member role", email)
+		err := Discord.GuildMemberRoleAdd(config.DiscordGuild, user.ID, config.TeamMemberRoleID)
+		if err != nil {
+			utils.SugarLogger.Errorln("Error adding role, ", err)
+			continue
+		}
+		count++
+	}
+	utils.SugarLogger.Infof("Gave %d users the Team Member role", count)
+	SendMessage(config.DiscordLogChannel, fmt.Sprintf("Gave %d users the Team Member role", count))
+}
