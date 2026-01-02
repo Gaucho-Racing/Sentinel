@@ -40,9 +40,16 @@ func InitializeRoles() {
 	}
 	for _, r := range g.Roles {
 		if strings.Contains(strings.ToLower(r.Name), "member") {
-			utils.SugarLogger.Infof("Found Member Role: %s", r.ID)
-			config.MemberRoleID = r.ID
-		} else if strings.Contains(strings.ToLower(r.Name), "alumnus") {
+			if strings.Contains(strings.ToLower(r.Name), "team") {
+				// team member
+				utils.SugarLogger.Infof("Found Team Member Role: %s", r.ID)
+				config.TeamMemberRoleID = r.ID
+			} else {
+				// member
+				utils.SugarLogger.Infof("Found Member Role: %s", r.ID)
+				config.MemberRoleID = r.ID
+			}
+		} else if strings.Contains(strings.ToLower(r.Name), "alumni") {
 			utils.SugarLogger.Infof("Found Alumni Role: %s", r.ID)
 			config.AlumniRoleID = r.ID
 		} else if strings.Contains(strings.ToLower(r.Name), "admin") {
