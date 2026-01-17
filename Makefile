@@ -6,9 +6,9 @@ clean:
 	rm *.out
 	rm coverage.html
 
-run:
-	chmod +x scripts/run.sh
-	./scripts/run.sh
+run-core:
+	chmod +x scripts/run-core.sh
+	./scripts/run-core.sh
 
 keygen:
 	chmod +x scripts/keygen.sh
