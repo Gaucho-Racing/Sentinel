@@ -4,29 +4,10 @@ run-name: Triggered by ${{ github.event_name }} to ${{ github.ref }} by @${{ git
 on: [push]
 
 jobs:
-  web_build_job:
-    runs-on: ubuntu-latest
-    name: web
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.x'
-      - name: Web
-        run: |
-          cd web
-          npm ci
-          npm run build
 
-  go_build_job:
+  core_build_job:
     runs-on: ubuntu-latest
-    name: sentinel
+    name: core
     defaults:
       run:
         shell: bash
@@ -38,7 +19,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.22.0'
-      - name: Sentinel
+      - name: Build sentinel-core
         run: |
           go get .
           go build

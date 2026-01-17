@@ -3,49 +3,13 @@ name: sentinel
 services:
   db:
     container_name: db
-    image: ghcr.io/singlestore-labs/singlestoredb-dev:latest
-    platform: linux/amd64
-    restart: unless-stopped
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: sentinel
     volumes:
-      - s2data:/data
-      - ./init.sql:/init.sql
-    ports:
-      - "3306:3306"
-      - "8080:8080"
-      - "9000:9000"
-    environment:
-      ROOT_PASSWORD: "password"
-
-  sentinel:
-    container_name: sentinel
-    depends_on:
-      - db
-    image: gauchoracing/sentinel:latest
-    restart: unless-stopped
-    ports:
-      - "${PORT}:${PORT}"
-    environment:
-      ENV: $ENV
-      PORT: $PORT
-      PREFIX: $PREFIX
-      DATABASE_HOST: $DATABASE_HOST
-      DATABASE_PORT: $DATABASE_PORT
-      DATABASE_USER: $DATABASE_USER
-      DATABASE_PASSWORD: $DATABASE_PASSWORD
-      DATABASE_NAME: $DATABASE_NAME
-      DISCORD_TOKEN: $DISCORD_TOKEN
-      DISCORD_GUILD: $DISCORD_GUILD
-      DISCORD_LOG_CHANNEL: $DISCORD_LOG_CHANNEL
-      DISCORD_CLIENT_ID: $DISCORD_CLIENT_ID
-      DISCORD_CLIENT_SECRET: $DISCORD_CLIENT_SECRET
-      DISCORD_REDIRECT_URI: $DISCORD_REDIRECT_URI
-      DRIVE_SERVICE_ACCOUNT: $DRIVE_SERVICE_ACCOUNT
-      GITHUB_PAT: $GITHUB_PAT
-      WIKI_TOKEN: $WIKI_TOKEN
-      AUTH_SIGNING_KEY: $AUTH_SIGNING_KEY
-      DRIVE_CRON: $DRIVE_CRON
-      GITHUB_CRON: $GITHUB_CRON
-      WIKI_CRON: $WIKI_CRON
+      - pgdata:/var/lib/postgresql
 
 volumes:
-  s2data:
+  pgdata:

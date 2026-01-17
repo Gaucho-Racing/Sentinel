@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # check if go.mod exists in current directory
-if [ ! -f go.mod ]; then
-    echo "go.mod not found"
+if [ ! -f core/go.mod ]; then
+    echo "core/go.mod not found"
     echo "Please make sure you are in the root sentinel directory"
     exit 1
 fi
@@ -17,5 +17,6 @@ fi
 
 set -a
 . .env
+cd core
 go get .
 go run main.go
