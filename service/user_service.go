@@ -108,9 +108,12 @@ func IncompleteProfileReminder() {
 	}
 }
 
+// insanely stupid override to make singlestore work
 func GauchoRacingEmailReplace(email string) string {
 	if strings.HasSuffix(email, "@ucsb.edu") {
 		return strings.TrimSuffix(email, "@ucsb.edu") + "@gauchoracing.com"
+	} else if strings.HasSuffix(email, "@pipeline.sbcc.edu") {
+		return strings.TrimSuffix(email, "@pipeline.sbcc.edu") + "@gauchoracing.com"
 	} else if email == "ucsantabarbarasae@gmail.com" {
 		return "team@gauchoracing.com"
 	}
