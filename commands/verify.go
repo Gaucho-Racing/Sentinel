@@ -31,12 +31,12 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	emailIndex := -1
 	// find email, extract first name and last name from that
 	for i, arg := range args {
-		if strings.Contains(arg, "@ucsb.edu") || strings.Contains(arg, "@sbcc.edu") || utils.IsInnerCircle(guildMember.Roles) && strings.Contains(arg, "@") {
+		if strings.Contains(arg, "@ucsb.edu") || strings.Contains(arg, "@pipeline.sbcc.edu") || utils.IsInnerCircle(guildMember.Roles) && strings.Contains(arg, "@") {
 			emailIndex = i
 		}
 	}
 	if emailIndex == -1 {
-		go service.SendDisappearingMessage(m.ChannelID, "Email must be a valid UCSB or SBCC email", 5*time.Second)
+		go service.SendDisappearingMessage(m.ChannelID, "Email must be a valid UCSB or SBCC Pipeline email", 5*time.Second)
 		return
 	}
 
