@@ -1,15 +1,39 @@
 name: sentinel
 
 services:
+  core:
+    container_name: sentinel-core
+    image: golang:1.26-alpine
+    working_dir: /app
+    command: >
+      sh -c "go install github.com/air-verse/air@latest && air"
+    volumes:
+      - ./core:/app
+      - core_gopath:/go
+    ports:
+      - "9999:9999"
+    depends_on:
+      - db
+    environment:
+      ENV: DEV
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: sentinel
+
   db:
-    container_name: db
+    container_name: sentinel-db
     image: postgres:18-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: sentinel
+    ports:
+      - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
   pgdata:
+  core_gopath:

@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM golang:1.22-alpine3.19 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
 
 RUN apk --no-cache add ca-certificates
 RUN apk add --no-cache tzdata
@@ -12,7 +12,7 @@ RUN go mod download
 COPY . ./
 ARG TARGETOS
 ARG TARGETARCH
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /sentinel
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /app
 
 ##
 ## Deploy
@@ -21,9 +21,9 @@ FROM alpine:3.19
 
 WORKDIR /
 
-COPY --from=builder /sentinel /sentinel
+COPY --from=builder /app /app
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 ENV TZ=America/Los_Angeles
 
-ENTRYPOINT ["/sentinel"]
+ENTRYPOINT ["/app"]

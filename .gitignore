@@ -27,6 +27,9 @@ drive-service-account.json
 # Go workspace file
 go.work
 
+# Air hot reload
+tmp/
+
 coverage.html
 
 jwtRS256.key
