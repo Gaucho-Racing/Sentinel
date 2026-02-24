@@ -1,4 +1,4 @@
-name: core-publish
+name: core
 run-name: Triggered by ${{ github.event_name }} to ${{ github.ref }} by @${{ github.actor }}
 
 on:
