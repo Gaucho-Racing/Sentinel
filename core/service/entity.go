@@ -17,15 +17,6 @@ func GetEntityByID(id string) (model.Entity, error) {
 	return entity, nil
 }
 
-func GetEntityByEmail(email string) (model.Entity, error) {
-	var entity model.Entity
-	if err := database.DB.Where("email = ?", email).First(&entity).Error; err != nil {
-		return model.Entity{}, err
-	}
-	PopulateEntity(&entity)
-	return entity, nil
-}
-
 func CreateEntity(entity model.Entity) (model.Entity, error) {
 	if entity.ID == "" {
 		entity.ID = ulid.Make().Prefixed("ent")
@@ -71,6 +62,19 @@ func CreateEmailAuthForEntity(entityID string, email string, password string) (m
 		return model.EntityEmail{}, err
 	}
 	return auth, nil
+}
+
+func GetEntityByEmail(email string) (model.Entity, error) {
+	var entityEmail model.EntityEmail
+	if err := database.DB.Where("email = ?", email).First(&entityEmail).Error; err != nil {
+		return model.Entity{}, err
+	}
+	entity, err := GetEntityByID(entityEmail.EntityID)
+	if err != nil {
+		return model.Entity{}, err
+	}
+	PopulateEntity(&entity)
+	return entity, nil
 }
 
 func GetPhoneAuthForEntity(entityID string) (model.EntityPhone, error) {
