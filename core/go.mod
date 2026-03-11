@@ -5,8 +5,10 @@ go 1.26
 require (
 	github.com/bk1031/rincon-go/v2 v2.0.0
 	github.com/fatih/color v1.18.0
+	github.com/gaucho-racing/ulid-go v1.1.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	go.uber.org/zap v1.27.1
 	gorm.io/driver/postgres v1.6.0
 	gorm.io/gorm v1.31.1
