@@ -3,10 +3,12 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
+	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -39,11 +41,33 @@ func InitializeRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET(fmt.Sprintf("/%s/ping", config.Service.Name), Ping)
+	router.GET(fmt.Sprintf("/%s/keys", config.Service.Name), JWKS)
 }
 
 func AuthChecker() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.GetHeader("Authorization") != "" {
+			authHeader := c.GetHeader("Authorization")
+			if strings.HasPrefix(authHeader, "Bearer ") {
+				claims, err := service.ValidateAccessToken(strings.Split(authHeader, "Bearer ")[1])
+				if err != nil {
+					logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
+					c.AbortWithStatusJSON(401, gin.H{"error": err.Error()})
+				} else if strings.Contains(claims.Scope, "refresh_token") {
+					logger.SugarLogger.Errorln("Received refresh token instead of access token")
+					c.AbortWithStatusJSON(401, gin.H{"error": "Received refresh token instead of access token"})
+				} else {
+					logger.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Subject)
+					logger.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
+					logger.SugarLogger.Infof("↳ Scope: %s", claims.Scope)
+					logger.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
+					logger.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
+					c.Set("Auth-Token", strings.Split(authHeader, "Bearer ")[1])
+					c.Set("Auth-EntityID", claims.Subject)
+					c.Set("Auth-Audience", claims.Audience[0])
+					c.Set("Auth-Scope", claims.Scope)
+				}
+			}
 		}
 		c.Next()
 	}
