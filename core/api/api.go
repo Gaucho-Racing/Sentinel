@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -40,8 +39,13 @@ func InitializeRouter() *gin.Engine {
 }
 
 func InitializeRoutes(router *gin.Engine) {
-	router.GET(fmt.Sprintf("/%s/ping", config.Service.Name), Ping)
-	router.GET(fmt.Sprintf("/%s/keys", config.Service.Name), JWKS)
+	router.GET("/core/ping", Ping)
+	router.GET("/core/keys", JWKS)
+	router.POST("/core/token/access", GenerateAccessToken)
+	router.POST("/core/token/refresh", GenerateRefreshToken)
+	router.POST("/core/token/access/validate", ValidateAccessToken)
+	router.POST("/core/token/refresh/validate", ValidateRefreshToken)
+	router.DELETE("/core/token/refresh/:id", RevokeRefreshToken)
 }
 
 func AuthChecker() gin.HandlerFunc {
@@ -115,4 +119,34 @@ func All(conditions ...bool) bool {
 		}
 	}
 	return true
+}
+
+func RequestTokenHasScope(c *gin.Context, scope string) bool {
+	scopes := GetRequestTokenScopes(c)
+	for _, s := range strings.Split(scopes, " ") {
+		if s == scope {
+			return true
+		}
+	}
+	return false
+}
+
+func RequestTokenHasAudience(c *gin.Context, audience string) bool {
+	return GetRequestTokenAudience(c) == audience
+}
+
+func GetRequestTokenScopes(c *gin.Context) string {
+	scopes, exists := c.Get("Auth-Scope")
+	if !exists {
+		return ""
+	}
+	return scopes.(string)
+}
+
+func GetRequestTokenAudience(c *gin.Context) string {
+	audience, exists := c.Get("Auth-Audience")
+	if !exists {
+		return ""
+	}
+	return audience.(string)
 }

@@ -2,9 +2,19 @@ package model
 
 import "time"
 
+type EntityType string
+
 const (
-	EntityTypeUser           = "USER"
-	EntityTypeServiceAccount = "SERVICE_ACCOUNT"
+	EntityTypeUser           EntityType = "USER"
+	EntityTypeServiceAccount EntityType = "SERVICE_ACCOUNT"
+)
+
+type ExternalAuthProvider string
+
+const (
+	ExternalAuthProviderGoogle  ExternalAuthProvider = "GOOGLE"
+	ExternalAuthProviderGitHub  ExternalAuthProvider = "GITHUB"
+	ExternalAuthProviderDiscord ExternalAuthProvider = "DISCORD"
 )
 
 type Entity struct {
@@ -45,13 +55,13 @@ func (EntityPhone) TableName() string {
 }
 
 type EntityExternalAuth struct {
-	EntityID     string    `json:"entity_id" gorm:"primaryKey"`
-	ExternalID   string    `json:"external_id"`
-	Provider     string    `json:"provider" gorm:"primaryKey"`
-	AccessToken  string    `json:"access_token"`
-	RefreshToken string    `json:"refresh_token"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+	EntityID     string               `json:"entity_id" gorm:"primaryKey"`
+	ExternalID   string               `json:"external_id"`
+	Provider     ExternalAuthProvider `json:"provider" gorm:"primaryKey"`
+	AccessToken  string               `json:"access_token"`
+	RefreshToken string               `json:"refresh_token"`
+	ExpiresAt    time.Time            `json:"expires_at"`
+	CreatedAt    time.Time            `json:"created_at" gorm:"autoCreateTime"`
 }
 
 func (EntityExternalAuth) TableName() string {

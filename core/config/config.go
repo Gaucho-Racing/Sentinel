@@ -16,10 +16,6 @@ var Service rincon.Service = rincon.Service{
 
 var Routes = []rincon.Route{
 	{
-		Route:  "/core/ping",
-		Method: "GET",
-	},
-	{
 		Route:  "/core/**",
 		Method: "*",
 	},

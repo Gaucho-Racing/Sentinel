@@ -129,7 +129,7 @@ func ValidateAccessToken(token string) (*model.AccessTokenClaims, error) {
 	if len(claims.Audience) == 0 {
 		return nil, fmt.Errorf("token has invalid audience")
 	}
-	if claims.Audience[0] != "minipa" && strings.Contains(claims.Scope, "minipa:all") {
+	if claims.Audience[0] != "sentinel" && strings.Contains(claims.Scope, "sentinel:all") {
 		return nil, fmt.Errorf("token has unauthorized scope")
 	}
 
