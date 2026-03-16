@@ -41,11 +41,9 @@ func InitializeRouter() *gin.Engine {
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/core/ping", Ping)
 	router.GET("/core/keys", JWKS)
-	router.POST("/core/token/access", GenerateAccessToken)
-	router.POST("/core/token/refresh", GenerateRefreshToken)
-	router.POST("/core/token/access/validate", ValidateAccessToken)
-	router.POST("/core/token/refresh/validate", ValidateRefreshToken)
-	router.DELETE("/core/token/refresh/:id", RevokeRefreshToken)
+	router.POST("/core/token", GenerateToken)
+	router.POST("/core/token/validate", ValidateToken)
+	router.DELETE("/core/token/:id", RevokeToken)
 }
 
 func AuthChecker() gin.HandlerFunc {
@@ -53,23 +51,20 @@ func AuthChecker() gin.HandlerFunc {
 		if c.GetHeader("Authorization") != "" {
 			authHeader := c.GetHeader("Authorization")
 			if strings.HasPrefix(authHeader, "Bearer ") {
-				claims, err := service.ValidateAccessToken(strings.Split(authHeader, "Bearer ")[1])
+				claims, err := service.ValidateToken(strings.Split(authHeader, "Bearer ")[1])
 				if err != nil {
 					logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
 					c.AbortWithStatusJSON(401, gin.H{"error": err.Error()})
-				} else if strings.Contains(claims.Scope, "refresh_token") {
-					logger.SugarLogger.Errorln("Received refresh token instead of access token")
-					c.AbortWithStatusJSON(401, gin.H{"error": "Received refresh token instead of access token"})
 				} else {
 					logger.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Subject)
 					logger.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
-					logger.SugarLogger.Infof("↳ Scope: %s", claims.Scope)
 					logger.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
 					logger.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
 					c.Set("Auth-Token", strings.Split(authHeader, "Bearer ")[1])
 					c.Set("Auth-EntityID", claims.Subject)
 					c.Set("Auth-Audience", claims.Audience[0])
 					c.Set("Auth-Scope", claims.Scope)
+					c.Set("Auth-Claims", claims.CustomClaims)
 				}
 			}
 		}
@@ -149,4 +144,12 @@ func GetRequestTokenAudience(c *gin.Context) string {
 		return ""
 	}
 	return audience.(string)
+}
+
+func GetRequestTokenClaims(c *gin.Context) map[string]interface{} {
+	claims, exists := c.Get("Auth-Claims")
+	if !exists {
+		return nil
+	}
+	return claims.(map[string]interface{})
 }

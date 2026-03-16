@@ -13,50 +13,38 @@ func JWKS(c *gin.Context) {
 }
 
 type generateTokenRequest struct {
-	EntityID string `json:"entity_id" binding:"required"`
-	Scope    string `json:"scope" binding:"required"`
-	ClientID string `json:"client_id" binding:"required"`
+	EntityID  string                 `json:"entity_id" binding:"required"`
+	ClientID  string                 `json:"client_id" binding:"required"`
+	Scope     string                 `json:"scope" binding:"required"`
+	ExpiresIn int                    `json:"expires_in" binding:"required"`
+	Claims    map[string]interface{} `json:"claims"`
 }
 
-func GenerateAccessToken(c *gin.Context) {
+func GenerateToken(c *gin.Context) {
 	var req generateTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	token, err := service.GenerateAccessToken(req.EntityID, req.Scope, req.ClientID)
+	token, err := service.GenerateToken(req.EntityID, req.ClientID, req.Scope, req.ExpiresIn, req.Claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"access_token": token})
-}
-
-func GenerateRefreshToken(c *gin.Context) {
-	var req generateTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	token, err := service.GenerateRefreshToken(req.EntityID, req.Scope, req.ClientID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"refresh_token": token})
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
 type validateTokenRequest struct {
 	Token string `json:"token" binding:"required"`
 }
 
-func ValidateAccessToken(c *gin.Context) {
+func ValidateToken(c *gin.Context) {
 	var req validateTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	claims, err := service.ValidateAccessToken(req.Token)
+	claims, err := service.ValidateToken(req.Token)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 		return
@@ -64,25 +52,11 @@ func ValidateAccessToken(c *gin.Context) {
 	c.JSON(http.StatusOK, claims)
 }
 
-func ValidateRefreshToken(c *gin.Context) {
-	var req validateTokenRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	claims, err := service.ValidateRefreshToken(req.Token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, claims)
-}
-
-func RevokeRefreshToken(c *gin.Context) {
+func RevokeToken(c *gin.Context) {
 	id := c.Param("id")
-	if err := service.RevokeRefreshToken(id); err != nil {
+	if err := service.RevokeToken(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "refresh token revoked"})
+	c.JSON(http.StatusOK, gin.H{"message": "token revoked"})
 }
