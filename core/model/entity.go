@@ -20,8 +20,6 @@ const (
 type Entity struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
 	Type      string    `json:"type"`
-	OwnedBy   string    `json:"owned_by"`
-	CreatedBy string    `json:"created_by"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 
 	EmailAuth     EntityEmail          `json:"email_auth" gorm:"-"`
@@ -68,22 +66,3 @@ func (EntityExternalAuth) TableName() string {
 	return "auth_entity_external_auth"
 }
 
-type User struct {
-	ID                    string    `json:"id" gorm:"primaryKey"`
-	Username              string    `json:"username"`
-	FirstName             string    `json:"first_name"`
-	LastName              string    `json:"last_name"`
-	Email                 string    `json:"email"`
-	PhoneNumber           string    `json:"phone_number"`
-	Gender                string    `json:"gender"`
-	Birthday              string    `json:"birthday"`
-	GraduateLevel         string    `json:"graduate_level"`
-	GraduationYear        int       `json:"graduation_year"`
-	Major                 string    `json:"major"`
-	ShirtSize             string    `json:"shirt_size"`
-	JacketSize            string    `json:"jacket_size"`
-	SAERegistrationNumber string    `json:"sae_registration_number"`
-	AvatarURL             string    `json:"avatar_url"`
-	UpdatedAt             time.Time `json:"updated_at"`
-	CreatedAt             time.Time `json:"created_at"`
-}
