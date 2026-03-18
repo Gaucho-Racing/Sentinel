@@ -50,3 +50,14 @@ type GroupMember struct {
 func (GroupMember) TableName() string {
 	return "group_member"
 }
+
+type GroupOwner struct {
+	GroupID   string    `json:"group_id" gorm:"primaryKey"`
+	EntityID  string    `json:"entity_id" gorm:"primaryKey"`
+	AddedBy   string    `json:"added_by"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (GroupOwner) TableName() string {
+	return "group_owner"
+}
