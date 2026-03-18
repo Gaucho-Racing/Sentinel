@@ -67,9 +67,11 @@ type GroupJoinRequest struct {
 	GroupID    string                    `json:"group_id"`
 	EntityID   string                    `json:"entity_id"`
 	Status     string                    `json:"status"`
-	ReviewedBy string                    `json:"reviewed_by"`
-	ReviewedAt time.Time                 `json:"reviewed_at"`
-	CreatedAt  time.Time                 `json:"created_at" gorm:"autoCreateTime"`
+	ReviewedBy    string                    `json:"reviewed_by"`
+	ReviewedAt    time.Time                 `json:"reviewed_at"`
+	HasExpiration bool                      `json:"has_expiration"`
+	ExpiresAt     time.Time                 `json:"expires_at"`
+	CreatedAt     time.Time                 `json:"created_at" gorm:"autoCreateTime"`
 	Comments   []GroupJoinRequestComment `json:"comments" gorm:"-"`
 }
 
