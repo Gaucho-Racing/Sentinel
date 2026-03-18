@@ -61,3 +61,30 @@ type GroupOwner struct {
 func (GroupOwner) TableName() string {
 	return "group_owner"
 }
+
+type GroupJoinRequest struct {
+	ID         string                    `json:"id" gorm:"primaryKey"`
+	GroupID    string                    `json:"group_id"`
+	EntityID   string                    `json:"entity_id"`
+	Status     string                    `json:"status"`
+	ReviewedBy string                    `json:"reviewed_by"`
+	ReviewedAt time.Time                 `json:"reviewed_at"`
+	CreatedAt  time.Time                 `json:"created_at" gorm:"autoCreateTime"`
+	Comments   []GroupJoinRequestComment `json:"comments" gorm:"-"`
+}
+
+func (GroupJoinRequest) TableName() string {
+	return "group_join_request"
+}
+
+type GroupJoinRequestComment struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+	RequestID string    `json:"request_id"`
+	EntityID  string    `json:"entity_id"`
+	Comment   string    `json:"comment"`
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (GroupJoinRequestComment) TableName() string {
+	return "group_join_request_comment"
+}
