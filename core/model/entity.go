@@ -22,9 +22,11 @@ type Entity struct {
 	Type      string    `json:"type"`
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
 
-	EmailAuth     EntityEmail          `json:"email_auth" gorm:"-"`
-	PhoneAuth     EntityPhone          `json:"phone_auth" gorm:"-"`
-	ExternalAuths []EntityExternalAuth `json:"external_auths" gorm:"-"`
+	EmailAuth      EntityEmail          `json:"email_auth" gorm:"-"`
+	PhoneAuth      EntityPhone          `json:"phone_auth" gorm:"-"`
+	ExternalAuths  []EntityExternalAuth `json:"external_auths" gorm:"-"`
+	User           *User                `json:"user" gorm:"-"`
+	ServiceAccount *ServiceAccount      `json:"service_account" gorm:"-"`
 }
 
 func (Entity) TableName() string {
