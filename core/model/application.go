@@ -17,3 +17,13 @@ type Application struct {
 func (Application) TableName() string {
 	return "application"
 }
+
+type ApplicationGroup struct {
+	ApplicationID string    `json:"application_id" gorm:"primaryKey"`
+	GroupID       string    `json:"group_id" gorm:"primaryKey"`
+	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (ApplicationGroup) TableName() string {
+	return "application_group"
+}

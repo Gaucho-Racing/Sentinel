@@ -19,6 +19,7 @@ type User struct {
 	JacketSize            string    `json:"jacket_size"`
 	SAERegistrationNumber string    `json:"sae_registration_number"`
 	AvatarURL             string    `json:"avatar_url"`
+	Groups                []Group   `json:"groups" gorm:"-"`
 	UpdatedAt             time.Time `json:"updated_at"`
 	CreatedAt             time.Time `json:"created_at"`
 }
