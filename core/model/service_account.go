@@ -8,6 +8,7 @@ type ServiceAccount struct {
 	ApplicationID string    `json:"application_id" gorm:"index"`
 	Name          string    `json:"name"`
 	CreatedBy     string    `json:"created_by"`
+	Groups        []Group   `json:"groups" gorm:"-"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
