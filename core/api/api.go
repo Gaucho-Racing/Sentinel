@@ -44,6 +44,12 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/token", GenerateToken)
 	router.POST("/core/token/validate", ValidateToken)
 	router.DELETE("/core/token/:id", RevokeToken)
+
+	router.GET("/users", GetAllUsers)
+	router.GET("/users/:id", GetUserByID)
+	router.POST("/users", CreateOrUpdateUser)
+	router.DELETE("/users/:id", DeleteUser)
+	router.GET("/users/:id/groups", GetUserGroups)
 }
 
 func AuthChecker() gin.HandlerFunc {
