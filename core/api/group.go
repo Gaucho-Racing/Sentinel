@@ -202,10 +202,15 @@ func CreateGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	_, err := service.GetGroupMember(id, req.EntityID)
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "entity is already a member of this group"})
+		return
+	}
 	request, err := service.CreateJoinRequest(model.GroupJoinRequest{
 		GroupID:       id,
 		EntityID:      req.EntityID,
-		Status:        "PENDING",
+		Status:        string(model.GroupJoinRequestStatusPending),
 		HasExpiration: req.HasExpiration,
 		ExpiresAt:     req.ExpiresAt,
 	})
@@ -236,7 +241,7 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	request.Status = "APPROVED"
+	request.Status = string(model.GroupJoinRequestStatusApproved)
 	request.ReviewedBy = req.ReviewedBy
 	request.ReviewedAt = time.Now()
 	request, err = service.UpdateJoinRequest(request)
@@ -247,7 +252,7 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 	_, err = service.CreateGroupMember(model.GroupMember{
 		GroupID:       request.GroupID,
 		EntityID:      request.EntityID,
-		Source:        "JOIN_REQUEST",
+		Source:        string(model.GroupMemberSourceDirect),
 		AddedBy:       req.ReviewedBy,
 		HasExpiration: request.HasExpiration,
 		ExpiresAt:     request.ExpiresAt,
@@ -275,7 +280,7 @@ func RejectGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	request.Status = "REJECTED"
+	request.Status = string(model.GroupJoinRequestStatusRejected)
 	request.ReviewedBy = req.ReviewedBy
 	request.ReviewedAt = time.Now()
 	request, err = service.UpdateJoinRequest(request)

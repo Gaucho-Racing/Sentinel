@@ -25,6 +25,22 @@ func (s *StringSlice) Scan(value interface{}) error {
 	}
 }
 
+type GroupMemberSource string
+
+const (
+	GroupMemberSourceDirect      GroupMemberSource = "DIRECT"
+	GroupMemberSourceConditional GroupMemberSource = "CONDITIONAL"
+	GroupMemberSourceDiscord     GroupMemberSource = "DISCORD"
+)
+
+type GroupJoinRequestStatus string
+
+const (
+	GroupJoinRequestStatusPending  GroupJoinRequestStatus = "PENDING"
+	GroupJoinRequestStatusApproved GroupJoinRequestStatus = "APPROVED"
+	GroupJoinRequestStatusRejected GroupJoinRequestStatus = "REJECTED"
+)
+
 type Group struct {
 	ID             string      `json:"id" gorm:"primaryKey"`
 	Name           string      `json:"name"`
