@@ -10,6 +10,10 @@ run-core:
 	chmod +x scripts/run-core.sh
 	./scripts/run-core.sh
 
+run-discord:
+	chmod +x scripts/run-discord.sh
+	./scripts/run-discord.sh
+
 keygen:
 	chmod +x scripts/keygen.sh
 	./scripts/keygen.sh
