@@ -58,6 +58,29 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:id/groups", GetApplicationGroups)
 	router.POST("/applications/:id/groups", AddApplicationGroup)
 	router.DELETE("/applications/:id/groups/:groupID", RemoveApplicationGroup)
+
+	router.GET("/groups", GetAllGroups)
+	router.GET("/groups/:id", GetGroupByID)
+	router.POST("/groups", CreateOrUpdateGroup)
+	router.DELETE("/groups/:id", DeleteGroup)
+
+	router.GET("/groups/:id/members", GetGroupMembers)
+	router.POST("/groups/:id/members", AddGroupMember)
+	router.DELETE("/groups/:id/members/:entityID", RemoveGroupMember)
+
+	router.GET("/groups/:id/owners", GetGroupOwners)
+	router.POST("/groups/:id/owners", AddGroupOwner)
+	router.DELETE("/groups/:id/owners/:entityID", RemoveGroupOwner)
+
+	router.GET("/groups/:id/requests", GetGroupJoinRequests)
+	router.GET("/groups/:id/requests/:requestID", GetGroupJoinRequest)
+	router.POST("/groups/:id/requests", CreateGroupJoinRequest)
+	router.POST("/groups/:id/requests/:requestID/approve", ApproveGroupJoinRequest)
+	router.POST("/groups/:id/requests/:requestID/reject", RejectGroupJoinRequest)
+	router.DELETE("/groups/:id/requests/:requestID", DeleteGroupJoinRequest)
+
+	router.POST("/groups/:id/requests/:requestID/comments", CreateJoinRequestComment)
+	router.DELETE("/groups/:id/requests/:requestID/comments/:commentID", DeleteJoinRequestComment)
 }
 
 func AuthChecker() gin.HandlerFunc {
