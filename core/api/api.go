@@ -50,6 +50,14 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/users", CreateOrUpdateUser)
 	router.DELETE("/users/:id", DeleteUser)
 	router.GET("/users/:id/groups", GetUserGroups)
+
+	router.GET("/applications", GetAllApplications)
+	router.GET("/applications/:id", GetApplicationByID)
+	router.POST("/applications", CreateOrUpdateApplication)
+	router.DELETE("/applications/:id", DeleteApplication)
+	router.GET("/applications/:id/groups", GetApplicationGroups)
+	router.POST("/applications/:id/groups", AddApplicationGroup)
+	router.DELETE("/applications/:id/groups/:groupID", RemoveApplicationGroup)
 }
 
 func AuthChecker() gin.HandlerFunc {
