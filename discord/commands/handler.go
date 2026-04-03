@@ -27,6 +27,10 @@ func InitializeBot() {
 }
 
 func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
+	if m.Author.Bot {
+		return
+	}
+
 	channelName := service.GetChannelName(m.ChannelID)
 
 	logger.SugarLogger.Infof("Message from %s in #%s: %s", m.Author.ID, channelName, m.Content)
@@ -42,9 +46,6 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		logger.SugarLogger.Errorf("Failed to persist discord message: %v", err)
 	}
 
-	if m.Author.Bot {
-		return
-	}
 	if !strings.HasPrefix(m.Content, config.DiscordPrefix) {
 		return
 	}
@@ -63,6 +64,10 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 }
 
 func OnDiscordReaction(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+	if r.UserID == s.State.User.ID {
+		return
+	}
+
 	channelName := service.GetChannelName(r.ChannelID)
 
 	logger.SugarLogger.Infof("Reaction from %s in #%s: %s", r.UserID, channelName, r.Emoji.Name)
