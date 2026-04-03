@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gaucho-racing/sentinel/discord/api"
+	"github.com/gaucho-racing/sentinel/discord/commands"
 	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/database"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
@@ -18,7 +19,7 @@ func main() {
 	rincon.Init(&config.Service, &config.Routes)
 	database.Init()
 	service.ConnectDiscord()
-	service.InitializeBot()
+	commands.InitializeBot()
 
 	api.Run()
 }

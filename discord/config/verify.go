@@ -38,7 +38,7 @@ func Verify() {
 		logger.SugarLogger.Warnln("DISCORD_GUILD is not set")
 	}
 	if DiscordPrefix == "" {
-		DiscordPrefix = "s!"
+		DiscordPrefix = "d!"
 		logger.SugarLogger.Infof("DISCORD_PREFIX is not set, defaulting to %s", DiscordPrefix)
 	}
 }

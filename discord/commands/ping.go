@@ -1,4 +1,4 @@
-package service
+package commands
 
 import (
 	"strconv"
@@ -7,7 +7,7 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/config"
 )
 
-func Ping(s *discordgo.Session, m *discordgo.MessageCreate) {
+func Ping(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	message, err := s.ChannelMessageSend(m.ChannelID, "Pong from "+config.Service.FormattedNameWithVersion()+"!")
 	if err == nil {
 		delay := message.Timestamp.Sub(m.Timestamp).Milliseconds()

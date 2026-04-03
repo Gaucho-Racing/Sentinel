@@ -44,7 +44,7 @@ services:
       DATABASE_NAME: sentinel
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_GUILD: ${DISCORD_GUILD}
-      DISCORD_PREFIX: ${DISCORD_PREFIX:-s!}
+      DISCORD_PREFIX: d!
 
   db:
     container_name: sentinel-db
