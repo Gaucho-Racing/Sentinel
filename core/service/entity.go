@@ -42,6 +42,24 @@ func PopulateEntity(entity *model.Entity) {
 	if err != nil && err != gorm.ErrRecordNotFound {
 		logger.SugarLogger.Errorf("Failed to get external auths for entity %s: %v", entity.ID, err)
 	}
+	if entity.Type == string(model.EntityTypeUser) {
+		user, err := GetUserByEntityID(entity.ID)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			logger.SugarLogger.Errorf("Failed to get user for entity %s: %v", entity.ID, err)
+		}
+		if user.ID != "" {
+			entity.User = &user
+		}
+	}
+	if entity.Type == string(model.EntityTypeServiceAccount) {
+		sa, err := GetServiceAccountByEntityID(entity.ID)
+		if err != nil && err != gorm.ErrRecordNotFound {
+			logger.SugarLogger.Errorf("Failed to get service account for entity %s: %v", entity.ID, err)
+		}
+		if sa.ID != "" {
+			entity.ServiceAccount = &sa
+		}
+	}
 }
 
 func GetEmailAuthForEntity(entityID string) (model.EntityEmail, error) {
