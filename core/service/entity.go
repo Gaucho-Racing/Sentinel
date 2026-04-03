@@ -116,7 +116,7 @@ func CreatePhoneAuthForEntity(entityID string, phoneNumber string) (model.Entity
 
 func GetEntityByExternalAuth(provider string, externalID string) (model.Entity, error) {
 	var auth model.EntityExternalAuth
-	if err := database.DB.Where("provider = ? AND external_id = ?", provider, externalID).First(&auth).Error; err != nil {
+	if err := database.DB.Where("UPPER(provider) = UPPER(?) AND external_id = ?", provider, externalID).First(&auth).Error; err != nil {
 		return model.Entity{}, err
 	}
 	return GetEntityByID(auth.EntityID)
