@@ -17,3 +17,12 @@ func ConnectDiscord() {
 	Discord = dg
 	logger.SugarLogger.Infoln("Created Discord session")
 }
+
+func GetChannelName(channelID string) string {
+	channel, err := Discord.Channel(channelID)
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to get channel %s: %v", channelID, err)
+		return ""
+	}
+	return channel.Name
+}

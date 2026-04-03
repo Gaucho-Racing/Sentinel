@@ -7,6 +7,7 @@ type DiscordMessage struct {
 	EntityID      string    `json:"entity_id"`
 	DiscordUserID string    `json:"discord_user_id" gorm:"index"`
 	ChannelID     string    `json:"channel_id"`
+	ChannelName   string    `json:"channel_name"`
 	MessageID     string    `json:"message_id"`
 	Content       string    `json:"content"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
