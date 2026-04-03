@@ -5,6 +5,7 @@ import (
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
+	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
@@ -15,6 +16,7 @@ func InitializeBot() {
 		return
 	}
 	service.Discord.AddHandler(OnDiscordMessage)
+	service.Discord.AddHandler(OnDiscordReaction)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
@@ -25,9 +27,22 @@ func InitializeBot() {
 }
 
 func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
-	if m.Author.ID == s.State.User.ID {
+	if m.Author.Bot {
 		return
 	}
+
+	logger.SugarLogger.Infof("Message from %s in %s: %s", m.Author.ID, m.ChannelID, m.Content)
+
+	_, err := service.CreateDiscordMessage(model.DiscordMessage{
+		DiscordUserID: m.Author.ID,
+		ChannelID:     m.ChannelID,
+		MessageID:     m.ID,
+		Content:       m.Content,
+	})
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to persist discord message: %v", err)
+	}
+
 	if !strings.HasPrefix(m.Content, config.DiscordPrefix) {
 		return
 	}
@@ -42,5 +57,23 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Ping(args, s, m)
 	default:
 		logger.SugarLogger.Infof("Unknown command: %s", command)
+	}
+}
+
+func OnDiscordReaction(s *discordgo.Session, r *discordgo.MessageReactionAdd) {
+	if r.UserID == s.State.User.ID {
+		return
+	}
+
+	logger.SugarLogger.Infof("Reaction from %s in %s: %s", r.UserID, r.ChannelID, r.Emoji.Name)
+
+	_, err := service.CreateDiscordReaction(model.DiscordReaction{
+		DiscordUserID: r.UserID,
+		ChannelID:     r.ChannelID,
+		MessageID:     r.MessageID,
+		Emoji:         r.Emoji.Name,
+	})
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to persist discord reaction: %v", err)
 	}
 }
