@@ -45,6 +45,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/token/validate", ValidateToken)
 	router.DELETE("/core/token/:id", RevokeToken)
 
+	router.GET("/core/entity/external/:provider/:externalID", GetEntityByExternalAuth)
+
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/:id", GetUserByID)
 	router.POST("/users", CreateOrUpdateUser)
