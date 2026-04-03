@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gaucho-racing/sentinel/discord/config"
+	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,7 +29,7 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		db.AutoMigrate()
+		db.AutoMigrate(&model.DiscordMessage{}, &model.DiscordReaction{})
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}

@@ -6,6 +6,7 @@ require (
 	github.com/bk1031/rincon-go/v2 v2.0.0
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/fatih/color v1.19.0
+	github.com/gaucho-racing/ulid-go v1.1.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	go.uber.org/zap v1.27.1
