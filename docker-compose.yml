@@ -42,6 +42,9 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: sentinel
+      DISCORD_TOKEN: ${DISCORD_TOKEN}
+      DISCORD_GUILD: ${DISCORD_GUILD}
+      DISCORD_PREFIX: ${DISCORD_PREFIX:-s!}
 
   db:
     container_name: sentinel-db
