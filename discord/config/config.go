@@ -31,6 +31,7 @@ var DatabaseName = os.Getenv("DATABASE_NAME")
 
 var DiscordToken = os.Getenv("DISCORD_TOKEN")
 var DiscordGuild = os.Getenv("DISCORD_GUILD")
+var DiscordPrefix = os.Getenv("DISCORD_PREFIX")
 
 func IsProduction() bool {
 	return Env == "PROD"
