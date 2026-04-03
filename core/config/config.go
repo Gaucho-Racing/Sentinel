@@ -19,6 +19,18 @@ var Routes = []rincon.Route{
 		Route:  "/core/**",
 		Method: "*",
 	},
+	{
+		Route:  "/users/**",
+		Method: "*",
+	},
+	{
+		Route:  "/applications/**",
+		Method: "*",
+	},
+	{
+		Route:  "/groups/**",
+		Method: "*",
+	},
 }
 
 var Env = os.Getenv("ENV")

@@ -1,6 +1,23 @@
 name: sentinel
 
 services:
+  rincon:
+    container_name: sentinel-rincon
+    image: bk1031/rincon:latest
+    ports:
+      - "10311:10311"
+    depends_on:
+      - db
+    environment:
+      ENV: DEV
+      STORAGE_MODE: sql
+      DB_DRIVER: postgres
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: password
+      DB_NAME: sentinel
+
   core:
     container_name: sentinel-core
     image: golang:1.26-alpine
@@ -14,13 +31,20 @@ services:
       - "9999:9999"
     depends_on:
       - db
+      - rincon
     environment:
       ENV: DEV
+      PORT: 9999
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: sentinel
+      RINCON_ENDPOINT: http://rincon:10311
+      RINCON_USER: admin
+      RINCON_PASSWORD: admin
+      SERVICE_ENDPOINT: http://core:9999
+      SERVICE_HEALTH_CHECK: http://core:9999/core/ping
 
   discord:
     container_name: sentinel-discord
@@ -35,13 +59,20 @@ services:
       - "9998:9998"
     depends_on:
       - db
+      - rincon
     environment:
       ENV: DEV
+      PORT: 9998
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
       DATABASE_PASSWORD: password
       DATABASE_NAME: sentinel
+      RINCON_ENDPOINT: http://rincon:10311
+      RINCON_USER: admin
+      RINCON_PASSWORD: admin
+      SERVICE_ENDPOINT: http://discord:9998
+      SERVICE_HEALTH_CHECK: http://discord:9998/discord/ping
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_GUILD: ${DISCORD_GUILD}
       DISCORD_PREFIX: d!
