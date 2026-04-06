@@ -14,6 +14,10 @@ run-discord:
 	chmod +x scripts/run-discord.sh
 	./scripts/run-discord.sh
 
+run-oauth:
+	chmod +x scripts/run-oauth.sh
+	./scripts/run-oauth.sh
+
 keygen:
 	chmod +x scripts/keygen.sh
 	./scripts/keygen.sh

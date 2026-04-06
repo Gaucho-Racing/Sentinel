@@ -9,7 +9,6 @@ services:
     depends_on:
       - db
     environment:
-      ENV: DEV
       STORAGE_MODE: sql
       DB_DRIVER: postgres
       DB_HOST: db
@@ -77,6 +76,34 @@ services:
       DISCORD_GUILD: ${DISCORD_GUILD}
       DISCORD_PREFIX: d!
 
+  oauth:
+    container_name: sentinel-oauth
+    image: golang:1.26-alpine
+    working_dir: /app
+    command: >
+      sh -c "go install github.com/air-verse/air@latest && air"
+    volumes:
+      - ./oauth:/app
+      - oauth_gopath:/go
+    ports:
+      - "9997:9997"
+    depends_on:
+      - db
+      - rincon
+    environment:
+      ENV: DEV
+      PORT: 9997
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_NAME: sentinel
+      RINCON_ENDPOINT: http://rincon:10311
+      RINCON_USER: admin
+      RINCON_PASSWORD: admin
+      SERVICE_ENDPOINT: http://oauth:9997
+      SERVICE_HEALTH_CHECK: http://oauth:9997/oauth/ping
+
   db:
     container_name: sentinel-db
     image: postgres:18-alpine
@@ -93,3 +120,4 @@ volumes:
   pgdata:
   core_gopath:
   discord_gopath:
+  oauth_gopath:
