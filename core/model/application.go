@@ -18,6 +18,15 @@ func (Application) TableName() string {
 	return "application"
 }
 
+type ApplicationRedirectURI struct {
+	ApplicationID string `json:"application_id" gorm:"primaryKey"`
+	RedirectURI   string `json:"redirect_uri" gorm:"primaryKey"`
+}
+
+func (ApplicationRedirectURI) TableName() string {
+	return "application_redirect_uri"
+}
+
 type ApplicationGroup struct {
 	ApplicationID string    `json:"application_id" gorm:"primaryKey"`
 	GroupID       string    `json:"group_id" gorm:"primaryKey"`

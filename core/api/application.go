@@ -105,3 +105,46 @@ func RemoveApplicationGroup(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "group removed from application"})
 }
+
+func GetApplicationRedirectURIs(c *gin.Context) {
+	id := c.Param("id")
+	uris, err := service.GetRedirectURIsForApplication(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, uris)
+}
+
+type addRedirectURIRequest struct {
+	RedirectURI string `json:"redirect_uri" binding:"required"`
+}
+
+func AddApplicationRedirectURI(c *gin.Context) {
+	id := c.Param("id")
+	var req addRedirectURIRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	uri, err := service.CreateApplicationRedirectURI(id, req.RedirectURI)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, uri)
+}
+
+func RemoveApplicationRedirectURI(c *gin.Context) {
+	id := c.Param("id")
+	uri := c.Query("uri")
+	if uri == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "uri query parameter is required"})
+		return
+	}
+	if err := service.DeleteApplicationRedirectURI(id, uri); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "redirect uri removed from application"})
+}

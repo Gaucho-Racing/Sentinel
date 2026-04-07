@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gaucho-racing/sentinel/oauth/config"
+	"github.com/gaucho-racing/sentinel/oauth/model"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,7 +29,7 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		db.AutoMigrate()
+		db.AutoMigrate(&model.AuthorizationCode{})
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}

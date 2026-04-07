@@ -110,3 +110,46 @@ func DeleteApplicationGroup(applicationID string, groupID string) error {
 	}
 	return nil
 }
+
+func GetRedirectURIsForApplication(applicationID string) ([]string, error) {
+	var uris []model.ApplicationRedirectURI
+	if err := database.DB.Where("application_id = ?", applicationID).Find(&uris).Error; err != nil {
+		return []string{}, err
+	}
+	result := make([]string, len(uris))
+	for i, uri := range uris {
+		result[i] = uri.RedirectURI
+	}
+	return result, nil
+}
+
+func CreateApplicationRedirectURI(applicationID string, redirectURI string) (model.ApplicationRedirectURI, error) {
+	uri := model.ApplicationRedirectURI{
+		ApplicationID: applicationID,
+		RedirectURI:   redirectURI,
+	}
+	if err := database.DB.Create(&uri).Error; err != nil {
+		return model.ApplicationRedirectURI{}, err
+	}
+	return uri, nil
+}
+
+func DeleteApplicationRedirectURI(applicationID string, redirectURI string) error {
+	if err := database.DB.Where("application_id = ? AND redirect_uri = ?", applicationID, redirectURI).Delete(&model.ApplicationRedirectURI{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func ValidateRedirectURI(applicationID string, redirectURI string) (bool, error) {
+	uris, err := GetRedirectURIsForApplication(applicationID)
+	if err != nil {
+		return false, err
+	}
+	for _, uri := range uris {
+		if uri == redirectURI {
+			return true, nil
+		}
+	}
+	return false, nil
+}

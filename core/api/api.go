@@ -60,6 +60,9 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:id/groups", GetApplicationGroups)
 	router.POST("/applications/:id/groups", AddApplicationGroup)
 	router.DELETE("/applications/:id/groups/:groupID", RemoveApplicationGroup)
+	router.GET("/applications/:id/redirect-uris", GetApplicationRedirectURIs)
+	router.POST("/applications/:id/redirect-uris", AddApplicationRedirectURI)
+	router.DELETE("/applications/:id/redirect-uris", RemoveApplicationRedirectURI)
 
 	router.GET("/groups", GetAllGroups)
 	router.GET("/groups/:id", GetGroupByID)
