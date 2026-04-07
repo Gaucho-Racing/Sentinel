@@ -12,6 +12,9 @@ func GetAllApplications() ([]model.Application, error) {
 	if err := database.DB.Find(&applications).Error; err != nil {
 		return []model.Application{}, err
 	}
+	for i := range applications {
+		PopulateApplication(&applications[i])
+	}
 	return applications, nil
 }
 
@@ -20,6 +23,7 @@ func GetApplicationByID(id string) (model.Application, error) {
 	if err := database.DB.Where("id = ?", id).First(&app).Error; err != nil {
 		return model.Application{}, err
 	}
+	PopulateApplication(&app)
 	return app, nil
 }
 
@@ -28,6 +32,7 @@ func GetApplicationByClientID(clientID string) (model.Application, error) {
 	if err := database.DB.Where("client_id = ?", clientID).First(&app).Error; err != nil {
 		return model.Application{}, err
 	}
+	PopulateApplication(&app)
 	return app, nil
 }
 
@@ -35,6 +40,9 @@ func GetApplicationsByOwnerID(ownerID string) ([]model.Application, error) {
 	var applications []model.Application
 	if err := database.DB.Where("owner_id = ?", ownerID).Find(&applications).Error; err != nil {
 		return []model.Application{}, err
+	}
+	for i := range applications {
+		PopulateApplication(&applications[i])
 	}
 	return applications, nil
 }
@@ -46,6 +54,7 @@ func CreateApplication(app model.Application) (model.Application, error) {
 	if err := database.DB.Create(&app).Error; err != nil {
 		return model.Application{}, err
 	}
+	PopulateApplication(&app)
 	return app, nil
 }
 
@@ -53,7 +62,16 @@ func UpdateApplication(app model.Application) (model.Application, error) {
 	if err := database.DB.Save(&app).Error; err != nil {
 		return model.Application{}, err
 	}
+	PopulateApplication(&app)
 	return app, nil
+}
+
+func PopulateApplication(app *model.Application) {
+	uris, err := GetRedirectURIsForApplication(app.ID)
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to get redirect URIs for application %s: %v", app.ID, err)
+	}
+	app.RedirectURIs = uris
 }
 
 func DeleteApplication(id string) error {

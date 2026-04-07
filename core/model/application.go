@@ -10,6 +10,7 @@ type Application struct {
 	ClientID     string    `json:"client_id" gorm:"uniqueIndex"`
 	ClientSecret string    `json:"-"`
 	IconURL      string    `json:"icon_url"`
+	RedirectURIs []string  `json:"redirect_uris" gorm:"-"`
 	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
