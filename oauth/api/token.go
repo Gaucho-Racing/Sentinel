@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/gaucho-racing/sentinel/oauth/model"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 	"github.com/gaucho-racing/sentinel/oauth/service"
@@ -111,14 +110,14 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		refreshTokenID = ""
 	}
 
-	service.CreateEntityLogin(model.EntityLogin{
-		EntityID:       authCode.EntityID,
-		ClientID:       clientID,
-		Scope:          authCode.Scope,
-		AccessTokenID:  accessTokenID,
-		RefreshTokenID: refreshTokenID,
-		IPAddress:      c.ClientIP(),
-	})
+	sentinel.Post("/core/entity/logins", map[string]string{
+		"entity_id":        authCode.EntityID,
+		"client_id":        clientID,
+		"scope":            authCode.Scope,
+		"access_token_id":  accessTokenID,
+		"refresh_token_id": refreshTokenID,
+		"ip_address":       c.ClientIP(),
+	}, nil)
 
 	c.JSON(http.StatusOK, exchangeTokenResponse{
 		AccessToken:  accessToken,
@@ -190,14 +189,14 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		newRefreshTokenID = ""
 	}
 
-	service.CreateEntityLogin(model.EntityLogin{
-		EntityID:       entityID,
-		ClientID:       clientID,
-		Scope:          accessScope,
-		AccessTokenID:  accessTokenID,
-		RefreshTokenID: newRefreshTokenID,
-		IPAddress:      c.ClientIP(),
-	})
+	sentinel.Post("/core/entity/logins", map[string]string{
+		"entity_id":        entityID,
+		"client_id":        clientID,
+		"scope":            accessScope,
+		"access_token_id":  accessTokenID,
+		"refresh_token_id": newRefreshTokenID,
+		"ip_address":       c.ClientIP(),
+	}, nil)
 
 	c.JSON(http.StatusOK, exchangeTokenResponse{
 		AccessToken:  accessToken,

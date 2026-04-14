@@ -3,8 +3,8 @@ package service
 import (
 	"time"
 
-	"github.com/gaucho-racing/sentinel/oauth/database"
-	"github.com/gaucho-racing/sentinel/oauth/model"
+	"github.com/gaucho-racing/sentinel/core/database"
+	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/ulid-go"
 )
 
