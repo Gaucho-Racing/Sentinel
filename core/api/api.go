@@ -55,6 +55,8 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.GET("/applications", GetAllApplications)
 	router.GET("/applications/:id", GetApplicationByID)
+	router.GET("/applications/client/:clientID", GetApplicationByClientID)
+	router.POST("/applications/verify", VerifyClientCredentials)
 	router.POST("/applications", CreateOrUpdateApplication)
 	router.DELETE("/applications/:id", DeleteApplication)
 	router.GET("/applications/:id/groups", GetApplicationGroups)

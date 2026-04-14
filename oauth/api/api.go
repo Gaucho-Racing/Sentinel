@@ -35,4 +35,7 @@ func InitializeRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/oauth/ping", Ping)
+	router.GET("/oauth/authorize", ValidateAuthorize)
+	router.POST("/oauth/authorize", Authorize)
+	router.POST("/oauth/token", ExchangeToken)
 }

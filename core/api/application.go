@@ -32,6 +32,43 @@ func GetApplicationByID(c *gin.Context) {
 	c.JSON(http.StatusOK, app)
 }
 
+func GetApplicationByClientID(c *gin.Context) {
+	clientID := c.Param("clientID")
+	app, err := service.GetApplicationByClientID(clientID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, app)
+}
+
+type verifyClientRequest struct {
+	ClientID     string `json:"client_id" binding:"required"`
+	ClientSecret string `json:"client_secret" binding:"required"`
+}
+
+func VerifyClientCredentials(c *gin.Context) {
+	var req verifyClientRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	app, err := service.GetApplicationByClientID(req.ClientID)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid client credentials"})
+		return
+	}
+	if app.ClientSecret != req.ClientSecret {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid client credentials"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "valid"})
+}
+
 func CreateOrUpdateApplication(c *gin.Context) {
 	var app model.Application
 	if err := c.ShouldBindJSON(&app); err != nil {
