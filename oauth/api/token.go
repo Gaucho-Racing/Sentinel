@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/oauth/model"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 	"github.com/gaucho-racing/sentinel/oauth/service"
@@ -18,7 +19,8 @@ type tokenRequest struct {
 }
 
 type tokenResponse struct {
-	Token string `json:"token"`
+	Token   string `json:"token"`
+	TokenID string `json:"token_id"`
 }
 
 type exchangeTokenResponse struct {
@@ -95,18 +97,28 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	}
 
 	// Generate access token via core
-	accessToken, err := generateToken(authCode.EntityID, clientID, authCode.Scope, 3600)
+	accessToken, accessTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope, 3600)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate access token"})
 		return
 	}
 
 	// Generate refresh token via core
-	refreshToken, err := generateToken(authCode.EntityID, clientID, authCode.Scope+" refresh_token", 7*24*3600)
+	refreshToken, refreshTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope+" refresh_token", 7*24*3600)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
 		refreshToken = ""
+		refreshTokenID = ""
 	}
+
+	service.CreateEntityLogin(model.EntityLogin{
+		EntityID:       authCode.EntityID,
+		ClientID:       clientID,
+		Scope:          authCode.Scope,
+		AccessTokenID:  accessTokenID,
+		RefreshTokenID: refreshTokenID,
+		IPAddress:      c.ClientIP(),
+	})
 
 	c.JSON(http.StatusOK, exchangeTokenResponse{
 		AccessToken:  accessToken,
@@ -164,18 +176,28 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	accessScope := service.RemoveScope(scope, "refresh_token")
 
 	// Generate new access token
-	accessToken, err := generateToken(entityID, clientID, accessScope, 3600)
+	accessToken, accessTokenID, err := generateToken(entityID, clientID, accessScope, 3600)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate access token"})
 		return
 	}
 
 	// Generate new refresh token (keep refresh_token in scope)
-	newRefreshToken, err := generateToken(entityID, clientID, scope, 7*24*3600)
+	newRefreshToken, newRefreshTokenID, err := generateToken(entityID, clientID, scope, 7*24*3600)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
 		newRefreshToken = ""
+		newRefreshTokenID = ""
 	}
+
+	service.CreateEntityLogin(model.EntityLogin{
+		EntityID:       entityID,
+		ClientID:       clientID,
+		Scope:          accessScope,
+		AccessTokenID:  accessTokenID,
+		RefreshTokenID: newRefreshTokenID,
+		IPAddress:      c.ClientIP(),
+	})
 
 	c.JSON(http.StatusOK, exchangeTokenResponse{
 		AccessToken:  accessToken,
@@ -186,7 +208,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	})
 }
 
-func generateToken(entityID string, clientID string, scope string, expiresIn int) (string, error) {
+func generateToken(entityID string, clientID string, scope string, expiresIn int) (string, string, error) {
 	var result tokenResponse
 	err := sentinel.Post("/core/token", tokenRequest{
 		EntityID:  entityID,
@@ -195,9 +217,9 @@ func generateToken(entityID string, clientID string, scope string, expiresIn int
 		ExpiresIn: expiresIn,
 	}, &result)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return result.Token, nil
+	return result.Token, result.TokenID, nil
 }
 
 func validateClientSecret(clientID string, clientSecret string) bool {

@@ -26,12 +26,12 @@ func GenerateToken(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	token, err := service.GenerateToken(req.EntityID, req.ClientID, req.Scope, req.ExpiresIn, req.Claims)
+	token, tokenID, err := service.GenerateToken(req.EntityID, req.ClientID, req.Scope, req.ExpiresIn, req.Claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{"token": token, "token_id": tokenID})
 }
 
 type validateTokenRequest struct {

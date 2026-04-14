@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
@@ -22,6 +23,7 @@ type validateAuthorizeResponse struct {
 	ClientID    string `json:"client_id"`
 	RedirectURI string `json:"redirect_uri"`
 	Scope       string `json:"scope"`
+	Prompt      string `json:"prompt"`
 	AppName     string `json:"app_name"`
 	AppIconURL  string `json:"app_icon_url"`
 }
@@ -77,10 +79,23 @@ func ValidateAuthorize(c *gin.Context) {
 		return
 	}
 
+	prompt := c.Query("prompt")
+	entityID := c.Query("entity_id")
+	if prompt == "none" && entityID != "" {
+		if service.HasRecentLogin(entityID, clientID, scope, 7*24*time.Hour) {
+			prompt = "none"
+		} else {
+			prompt = "consent"
+		}
+	} else {
+		prompt = "consent"
+	}
+
 	c.JSON(http.StatusOK, validateAuthorizeResponse{
 		ClientID:    clientID,
 		RedirectURI: redirectURI,
 		Scope:       scope,
+		Prompt:      prompt,
 		AppName:     app.Name,
 		AppIconURL:  app.IconURL,
 	})

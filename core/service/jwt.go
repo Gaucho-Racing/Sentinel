@@ -50,7 +50,7 @@ func PublicKeyToJWKS(publicKey *rsa.PublicKey) map[string]interface{} {
 	}
 }
 
-func GenerateToken(entityID string, clientID string, scope string, expiresIn int, claims map[string]interface{}) (string, error) {
+func GenerateToken(entityID string, clientID string, scope string, expiresIn int, claims map[string]interface{}) (string, string, error) {
 	expirationTime := time.Now().Add(time.Duration(expiresIn) * time.Second)
 
 	tokenID := ulid.Make().Prefixed("jwt")
@@ -71,7 +71,7 @@ func GenerateToken(entityID string, clientID string, scope string, expiresIn int
 	signedToken, err := token.SignedString(config.RsaPrivateKey)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate token: %v", err)
-		return "", err
+		return "", "", err
 	}
 
 	dbToken := &model.Token{
@@ -83,10 +83,10 @@ func GenerateToken(entityID string, clientID string, scope string, expiresIn int
 	}
 	if err := database.DB.Create(dbToken).Error; err != nil {
 		logger.SugarLogger.Errorf("Failed to save token: %v", err)
-		return "", err
+		return "", "", err
 	}
 
-	return signedToken, nil
+	return signedToken, tokenID, nil
 }
 
 func ValidateToken(token string) (*model.TokenClaims, error) {
