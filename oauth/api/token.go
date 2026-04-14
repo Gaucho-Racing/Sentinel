@@ -102,7 +102,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	}
 
 	// Generate refresh token via core
-	refreshToken, err := generateToken(authCode.EntityID, clientID, authCode.Scope, 7*24*3600)
+	refreshToken, err := generateToken(authCode.EntityID, clientID, authCode.Scope+" refresh_token", 7*24*3600)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
 		refreshToken = ""
@@ -150,19 +150,27 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	entityID, _ := claims["sub"].(string)
 	scope, _ := claims["scope"].(string)
 
+	if !service.ScopesContain(scope, "refresh_token") {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "provided token is not a refresh token"})
+		return
+	}
+
 	// Revoke the old refresh token
 	if tokenID, ok := claims["jti"].(string); ok {
 		sentinel.Delete("/core/token/"+tokenID, nil)
 	}
 
+	// Strip refresh_token from scope for the access token
+	accessScope := service.RemoveScope(scope, "refresh_token")
+
 	// Generate new access token
-	accessToken, err := generateToken(entityID, clientID, scope, 3600)
+	accessToken, err := generateToken(entityID, clientID, accessScope, 3600)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate access token"})
 		return
 	}
 
-	// Generate new refresh token
+	// Generate new refresh token (keep refresh_token in scope)
 	newRefreshToken, err := generateToken(entityID, clientID, scope, 7*24*3600)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
@@ -174,7 +182,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		RefreshToken: newRefreshToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    3600,
-		Scope:        scope,
+		Scope:        accessScope,
 	})
 }
 

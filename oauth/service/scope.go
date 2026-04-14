@@ -23,3 +23,13 @@ func ScopesContain(scopes string, target string) bool {
 	}
 	return false
 }
+
+func RemoveScope(scopes string, target string) string {
+	var result []string
+	for _, scope := range strings.Fields(scopes) {
+		if scope != target {
+			result = append(result, scope)
+		}
+	}
+	return strings.Join(result, " ")
+}
