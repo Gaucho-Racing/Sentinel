@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/rand"
+
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -176,4 +178,14 @@ func ValidateRedirectURI(applicationID string, redirectURI string) (bool, error)
 		}
 	}
 	return false, nil
+}
+
+func generateSecret(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, length)
+	rand.Read(b)
+	for i := range b {
+		b[i] = charset[int(b[i])%len(charset)]
+	}
+	return string(b)
 }
