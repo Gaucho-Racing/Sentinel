@@ -51,6 +51,12 @@ func CreateApplication(app model.Application) (model.Application, error) {
 	if app.ID == "" {
 		app.ID = ulid.Make().Prefixed("app")
 	}
+	if app.ClientID == "" {
+		app.ClientID = generateSecret(12)
+	}
+	if app.ClientSecret == "" {
+		app.ClientSecret = generateSecret(64)
+	}
 	if err := database.DB.Create(&app).Error; err != nil {
 		return model.Application{}, err
 	}

@@ -10,23 +10,20 @@ import (
 
 const SentinelClientID = "sentinel"
 
-func InitializeSentinelApplication() {
+func InitializeDefaultApplications() {
 	_, err := GetApplicationByClientID(SentinelClientID)
 	if err == gorm.ErrRecordNotFound {
-		secret := generateSecret(64)
 		app, err := CreateApplication(model.Application{
-			Name:         "Sentinel",
-			Description:  "Sentinel Identity Platform",
-			ClientID:     SentinelClientID,
-			ClientSecret: secret,
-			IconURL:      "",
+			Name:        "Sentinel",
+			Description: "Sentinel Identity Platform",
+			ClientID:    SentinelClientID,
 		})
 		if err != nil {
 			logger.SugarLogger.Fatalf("Failed to create Sentinel application: %v", err)
 			return
 		}
 		logger.SugarLogger.Infof("Created Sentinel application (id=%s, client_id=%s)", app.ID, app.ClientID)
-		logger.SugarLogger.Infof("Sentinel client secret: %s", secret)
+		logger.SugarLogger.Infof("Sentinel client secret: %s", app.ClientSecret)
 
 		defaultRedirectURIs := []string{
 			"http://localhost:3000/auth/callback",
