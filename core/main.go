@@ -18,6 +18,7 @@ func main() {
 	rincon.Init(&config.Service, &config.Routes)
 	database.Init()
 	service.InitializeKeys()
+	service.InitializeSentinelApplication()
 
 	api.Run()
 }
