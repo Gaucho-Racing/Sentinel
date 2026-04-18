@@ -4,6 +4,7 @@ import (
 	"github.com/gaucho-racing/sentinel/core/api"
 	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/database"
+	"github.com/gaucho-racing/sentinel/core/jobs"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/pkg/rincon"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -18,8 +19,7 @@ func main() {
 	rincon.Init(&config.Service, &config.Routes)
 	database.Init()
 	service.InitializeKeys()
-	service.InitializeDefaultApplications()
-	service.InitializeDefaultServiceAccount()
+	jobs.InitializeCore()
 
 	api.Run()
 }
