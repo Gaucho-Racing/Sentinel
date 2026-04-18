@@ -19,6 +19,7 @@ func main() {
 	database.Init()
 	service.InitializeKeys()
 	service.InitializeDefaultApplications()
+	service.InitializeDefaultServiceAccount()
 
 	api.Run()
 }

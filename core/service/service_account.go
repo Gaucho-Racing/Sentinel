@@ -36,6 +36,15 @@ func GetServiceAccountByEntityID(entityID string) (model.ServiceAccount, error) 
 	return sa, nil
 }
 
+func GetServiceAccountByName(name string) (model.ServiceAccount, error) {
+	var sa model.ServiceAccount
+	if err := database.DB.Where("name = ?", name).First(&sa).Error; err != nil {
+		return model.ServiceAccount{}, err
+	}
+	PopulateServiceAccount(&sa)
+	return sa, nil
+}
+
 func GetServiceAccountsByApplicationID(applicationID string) ([]model.ServiceAccount, error) {
 	var serviceAccounts []model.ServiceAccount
 	if err := database.DB.Where("application_id = ?", applicationID).Find(&serviceAccounts).Error; err != nil {
