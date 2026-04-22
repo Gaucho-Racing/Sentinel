@@ -9,8 +9,6 @@ import (
 	"github.com/gaucho-racing/ulid-go"
 )
 
-const SentinelClientID = "sentinel"
-
 func GetAllApplications() ([]model.Application, error) {
 	var applications []model.Application
 	if err := database.DB.Find(&applications).Error; err != nil {

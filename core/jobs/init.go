@@ -7,18 +7,24 @@ import (
 	"gorm.io/gorm"
 )
 
+const SentinelClientID = "sentinel"
+
+const SentinelCoreEntityID = "ent_01kpgkjbstpswced3c61rjrbkh"
+const SentinelCoreServiceAccountID = "sa_01kpgkhs9k6mxkaqff0tmtqm0y"
+
 func InitializeCore() {
 	initializeDefaultApplications()
-	initializeDefaultServiceAccount()
+	initializeDefaultEntities()
+	// initializeDefaultServiceAccounts()
 }
 
 func initializeDefaultApplications() {
-	_, err := service.GetApplicationByClientID(service.SentinelClientID)
+	_, err := service.GetApplicationByClientID(SentinelClientID)
 	if err == gorm.ErrRecordNotFound {
 		app, err := service.CreateApplication(model.Application{
 			Name:        "Sentinel",
-			Description: "Sentinel Identity Platform",
-			ClientID:    service.SentinelClientID,
+			Description: "Gaucho Racing's authentication service",
+			ClientID:    SentinelClientID,
 		})
 		if err != nil {
 			logger.SugarLogger.Fatalf("Failed to create Sentinel application: %v", err)
@@ -42,44 +48,37 @@ func initializeDefaultApplications() {
 	}
 }
 
-func initializeDefaultServiceAccount() {
-	app, err := service.GetApplicationByClientID(service.SentinelClientID)
-	if err != nil {
-		logger.SugarLogger.Fatalf("Sentinel application not found, cannot create service account: %v", err)
-		return
+// sa_01kpgkhs9k6mxkaqff0tmtqm0y
+// ent_01kpgkjbstpswced3c61rjrbkh
+func initializeDefaultEntities() {
+	sentinelCoreEntityID := "ent_01kpgkjbstpswced3c61rjrbkh"
+	sentinelCoreServiceAccountID := "sa_01kpgkhs9k6mxkaqff0tmtqm0y"
+	var sentinelCoreEntity model.Entity
+	var sentinelCoreServiceAccount model.ServiceAccount
+	var err error
+	sentinelCoreEntity, err = service.GetEntityByID(sentinelCoreEntityID)
+	if err == gorm.ErrRecordNotFound {
+		sentinelCoreEntity, err := service.CreateEntity(model.Entity{
+			ID:   sentinelCoreEntity.ID,
+			Type: model.EntityTypeServiceAccount,
+		})
+		if err != nil {
+			logger.SugarLogger.Fatalf("Failed to create Sentinel core entity: %v", err)
+			return
+		}
+		logger.SugarLogger.Infof("Created Sentinel core entity (id=%s)", sentinelCoreEntity.ID)
+	} else if err != nil {
+		logger.SugarLogger.Fatalf("Failed to check for Sentinel core entity: %v", err)
+	} else {
+		logger.SugarLogger.Infoln("Sentinel core entity already exists")
 	}
-
-	existing, _ := service.GetServiceAccountByName(service.SentinelServiceAccountName)
-	if existing.ID != "" {
-		logger.SugarLogger.Infoln("Sentinel service account already exists")
-		return
+	sentinelCoreServiceAccount, err = service.GetServiceAccountByID(sentinelCoreServiceAccountID)
+	if err == gorm.ErrRecordNotFound {
+		sentinelCoreServiceAccount, err = service.CreateServiceAccount(model.ServiceAccount{
+			ID:       sentinelCoreServiceAccountID,
+			EntityID: sentinelCoreEntity.ID,
+			Name:     "Sentinel Core",
+		})
 	}
-
-	entity, err := service.CreateEntity(model.Entity{
-		Type: model.EntityTypeServiceAccount,
-	})
-	if err != nil {
-		logger.SugarLogger.Fatalf("Failed to create entity for Sentinel service account: %v", err)
-		return
-	}
-
-	sa, err := service.CreateServiceAccount(model.ServiceAccount{
-		EntityID:      entity.ID,
-		ApplicationID: app.ID,
-		Name:          service.SentinelServiceAccountName,
-		CreatedBy:     "system",
-	})
-	if err != nil {
-		logger.SugarLogger.Fatalf("Failed to create Sentinel service account: %v", err)
-		return
-	}
-	logger.SugarLogger.Infof("Created Sentinel service account (id=%s, entity_id=%s)", sa.ID, sa.EntityID)
-
-	token, tokenID, err := service.GenerateToken(entity.ID, app.ClientID, "sentinel:all", 365*24*3600, nil)
-	if err != nil {
-		logger.SugarLogger.Fatalf("Failed to generate token for Sentinel service account: %v", err)
-		return
-	}
-	logger.SugarLogger.Infof("Generated Sentinel service account token (id=%s)", tokenID)
-	logger.SugarLogger.Infof("Sentinel service account token: %s", token)
+	print(sentinelCoreServiceAccount.ID)
 }

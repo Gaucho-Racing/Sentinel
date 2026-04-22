@@ -29,7 +29,24 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		db.AutoMigrate(&model.Entity{}, &model.EntityEmail{}, &model.EntityPhone{}, &model.EntityExternalAuth{}, &model.PhoneLoginCode{}, &model.EmailLoginCode{}, &model.Token{}, &model.ApplicationGroup{}, &model.ApplicationRedirectURI{}, &model.EntityLogin{})
+		db.AutoMigrate(
+			&model.Entity{},
+			&model.EntityEmail{},
+			&model.EntityPhone{},
+			&model.EntityExternalAuth{},
+			&model.PhoneLoginCode{},
+			&model.EmailLoginCode{},
+			&model.Token{},
+			&model.Application{},
+			&model.ApplicationGroup{},
+			&model.ApplicationRedirectURI{},
+			&model.EntityLogin{},
+			&model.ServiceAccount{},
+			&model.Group{},
+			&model.GroupMember{},
+			&model.GroupJoinRequest{},
+			&model.GroupOwner{},
+		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}
