@@ -8,20 +8,23 @@ import (
 )
 
 const SentinelClientID = "sentinel"
+const SentinelApplicationID = "app_01kpy5f8263c4rqnhn9v2akdvf"
 
-const SentinelCoreEntityID = "ent_01kpgkjbstpswced3c61rjrbkh"
-const SentinelCoreServiceAccountID = "sa_01kpgkhs9k6mxkaqff0tmtqm0y"
+const SentinelCoreEntityID = "ent_01kpy5f8263c4rqnhn9y920fkn"
+const SentinelCoreServiceAccountID = "sa_01kpy5f8263c4rqnhn9zejxyhk"
 
 func InitializeCore() {
 	initializeDefaultApplications()
 	initializeDefaultEntities()
-	// initializeDefaultServiceAccounts()
+	initializeDefaultServiceAccounts()
+	logger.SugarLogger.Infoln("Finished initializing sentinel-core")
 }
 
 func initializeDefaultApplications() {
-	_, err := service.GetApplicationByClientID(SentinelClientID)
+	_, err := service.GetApplicationByID(SentinelApplicationID)
 	if err == gorm.ErrRecordNotFound {
 		app, err := service.CreateApplication(model.Application{
+			ID:          SentinelApplicationID,
 			Name:        "Sentinel",
 			Description: "Gaucho Racing's authentication service",
 			ClientID:    SentinelClientID,
@@ -35,7 +38,6 @@ func initializeDefaultApplications() {
 
 		defaultRedirectURIs := []string{
 			"http://localhost:3000/auth/callback",
-			"https://sso.gauchoracing.com/auth/callback",
 		}
 		for _, uri := range defaultRedirectURIs {
 			service.CreateApplicationRedirectURI(app.ID, uri)
@@ -48,15 +50,10 @@ func initializeDefaultApplications() {
 	}
 }
 
-// sa_01kpgkhs9k6mxkaqff0tmtqm0y
-// ent_01kpgkjbstpswced3c61rjrbkh
 func initializeDefaultEntities() {
-	sentinelCoreEntityID := "ent_01kpgkjbstpswced3c61rjrbkh"
-	sentinelCoreServiceAccountID := "sa_01kpgkhs9k6mxkaqff0tmtqm0y"
 	var sentinelCoreEntity model.Entity
-	var sentinelCoreServiceAccount model.ServiceAccount
 	var err error
-	sentinelCoreEntity, err = service.GetEntityByID(sentinelCoreEntityID)
+	sentinelCoreEntity, err = service.GetEntityByID(SentinelCoreEntityID)
 	if err == gorm.ErrRecordNotFound {
 		sentinelCoreEntity, err := service.CreateEntity(model.Entity{
 			ID:   sentinelCoreEntity.ID,
@@ -72,13 +69,28 @@ func initializeDefaultEntities() {
 	} else {
 		logger.SugarLogger.Infoln("Sentinel core entity already exists")
 	}
-	sentinelCoreServiceAccount, err = service.GetServiceAccountByID(sentinelCoreServiceAccountID)
+}
+
+func initializeDefaultServiceAccounts() {
+	var sentinelCoreServiceAccount model.ServiceAccount
+	var err error
+	sentinelCoreServiceAccount, err = service.GetServiceAccountByID(SentinelCoreServiceAccountID)
 	if err == gorm.ErrRecordNotFound {
 		sentinelCoreServiceAccount, err = service.CreateServiceAccount(model.ServiceAccount{
-			ID:       sentinelCoreServiceAccountID,
-			EntityID: sentinelCoreEntity.ID,
-			Name:     "Sentinel Core",
+			ID:            SentinelCoreServiceAccountID,
+			EntityID:      SentinelCoreEntityID,
+			ApplicationID: SentinelApplicationID,
+			Name:          "Sentinel Core",
+			CreatedBy:     SentinelCoreServiceAccountID,
 		})
+		if err != nil {
+			logger.SugarLogger.Fatalf("Failed to create Sentinel core service account: %v", err)
+			return
+		}
+		logger.SugarLogger.Infof("Created Sentinel core service account (id=%s)", sentinelCoreServiceAccount.ID)
+	} else if err != nil {
+		logger.SugarLogger.Fatalf("Failed to check for Sentinel core service account: %v", err)
+	} else {
+		logger.SugarLogger.Infoln("Sentinel core service account already exists")
 	}
-	print(sentinelCoreServiceAccount.ID)
 }
