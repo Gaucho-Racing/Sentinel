@@ -4,6 +4,7 @@ services:
   rincon:
     container_name: sentinel-rincon
     image: bk1031/rincon:latest
+    restart: always
     ports:
       - "10311:10311"
     depends_on:
@@ -20,6 +21,7 @@ services:
   core:
     container_name: sentinel-core
     image: golang:1.26-alpine
+    restart: always
     working_dir: /app
     command: >
       sh -c "go install github.com/air-verse/air@latest && air"
@@ -48,6 +50,7 @@ services:
   discord:
     container_name: sentinel-discord
     image: golang:1.26-alpine
+    restart: always
     working_dir: /app
     command: >
       sh -c "go install github.com/air-verse/air@latest && air"
@@ -79,6 +82,7 @@ services:
   oauth:
     container_name: sentinel-oauth
     image: golang:1.26-alpine
+    restart: always
     working_dir: /app
     command: >
       sh -c "go install github.com/air-verse/air@latest && air"
@@ -107,6 +111,7 @@ services:
   db:
     container_name: sentinel-db
     image: postgres:18-alpine
+    restart: always
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
