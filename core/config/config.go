@@ -8,7 +8,7 @@ import (
 )
 
 var Service rincon.Service = rincon.Service{
-	Name:        "sentinel-core",
+	Name:        "Sentinel Core",
 	Version:     "0.1.0",
 	Endpoint:    os.Getenv("SERVICE_ENDPOINT"),
 	HealthCheck: os.Getenv("SERVICE_HEALTH_CHECK"),

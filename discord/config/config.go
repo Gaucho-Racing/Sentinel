@@ -7,7 +7,7 @@ import (
 )
 
 var Service rincon.Service = rincon.Service{
-	Name:        "sentinel-discord",
+	Name:        "Sentinel Discord",
 	Version:     "0.1.0",
 	Endpoint:    os.Getenv("SERVICE_ENDPOINT"),
 	HealthCheck: os.Getenv("SERVICE_HEALTH_CHECK"),
