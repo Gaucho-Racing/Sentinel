@@ -9,6 +9,30 @@ import (
 	"gorm.io/gorm"
 )
 
+func GetEntityByID(c *gin.Context) {
+	entityID := c.Param("entityID")
+	entity, err := service.GetEntityByID(entityID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "entity not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, entity)
+}
+
+func GetEntityGroups(c *gin.Context) {
+	entityID := c.Param("entityID")
+	groups, err := service.GetGroupsForEntity(entityID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, groups)
+}
+
 func GetEntityByExternalAuth(c *gin.Context) {
 	provider := c.Param("provider")
 	externalID := c.Param("externalID")
