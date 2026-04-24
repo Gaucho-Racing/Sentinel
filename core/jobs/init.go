@@ -51,19 +51,17 @@ func initializeDefaultApplications() {
 }
 
 func initializeDefaultEntities() {
-	var sentinelCoreEntity model.Entity
-	var err error
-	sentinelCoreEntity, err = service.GetEntityByID(SentinelCoreEntityID)
+	_, err := service.GetEntityByID(SentinelCoreEntityID)
 	if err == gorm.ErrRecordNotFound {
-		sentinelCoreEntity, err := service.CreateEntity(model.Entity{
-			ID:   sentinelCoreEntity.ID,
+		entity, err := service.CreateEntity(model.Entity{
+			ID:   SentinelCoreEntityID,
 			Type: model.EntityTypeServiceAccount,
 		})
 		if err != nil {
 			logger.SugarLogger.Fatalf("Failed to create Sentinel core entity: %v", err)
 			return
 		}
-		logger.SugarLogger.Infof("Created Sentinel core entity (id=%s)", sentinelCoreEntity.ID)
+		logger.SugarLogger.Infof("Created Sentinel core entity (id=%s)", entity.ID)
 	} else if err != nil {
 		logger.SugarLogger.Fatalf("Failed to check for Sentinel core entity: %v", err)
 	} else {
@@ -72,11 +70,9 @@ func initializeDefaultEntities() {
 }
 
 func initializeDefaultServiceAccounts() {
-	var sentinelCoreServiceAccount model.ServiceAccount
-	var err error
-	sentinelCoreServiceAccount, err = service.GetServiceAccountByID(SentinelCoreServiceAccountID)
+	_, err := service.GetServiceAccountByID(SentinelCoreServiceAccountID)
 	if err == gorm.ErrRecordNotFound {
-		sentinelCoreServiceAccount, err = service.CreateServiceAccount(model.ServiceAccount{
+		serviceAccount, err := service.CreateServiceAccount(model.ServiceAccount{
 			ID:            SentinelCoreServiceAccountID,
 			EntityID:      SentinelCoreEntityID,
 			ApplicationID: SentinelApplicationID,
@@ -87,7 +83,7 @@ func initializeDefaultServiceAccounts() {
 			logger.SugarLogger.Fatalf("Failed to create Sentinel core service account: %v", err)
 			return
 		}
-		logger.SugarLogger.Infof("Created Sentinel core service account (id=%s)", sentinelCoreServiceAccount.ID)
+		logger.SugarLogger.Infof("Created Sentinel core service account (id=%s)", serviceAccount.ID)
 	} else if err != nil {
 		logger.SugarLogger.Fatalf("Failed to check for Sentinel core service account: %v", err)
 	} else {
