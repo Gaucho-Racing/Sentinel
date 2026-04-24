@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/oauth/config"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 	"github.com/gaucho-racing/sentinel/oauth/service"
@@ -95,15 +96,17 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		return
 	}
 
+	claims := service.BuildTokenClaims(authCode.EntityID, clientID)
+
 	// Generate access token via core
-	accessToken, accessTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope, 3600)
+	accessToken, accessTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope, config.AccessTokenTTL, claims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate access token"})
 		return
 	}
 
 	// Generate refresh token via core
-	refreshToken, refreshTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope+" refresh_token", 7*24*3600)
+	refreshToken, refreshTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope+" refresh_token", config.RefreshTokenTTL, claims)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
 		refreshToken = ""
@@ -123,7 +126,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    3600,
+		ExpiresIn:    config.AccessTokenTTL,
 		Scope:        authCode.Scope,
 	})
 }
@@ -174,15 +177,17 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// Strip refresh_token from scope for the access token
 	accessScope := service.RemoveScope(scope, "refresh_token")
 
+	newClaims := service.BuildTokenClaims(entityID, clientID)
+
 	// Generate new access token
-	accessToken, accessTokenID, err := generateToken(entityID, clientID, accessScope, 3600)
+	accessToken, accessTokenID, err := generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, newClaims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate access token"})
 		return
 	}
 
 	// Generate new refresh token (keep refresh_token in scope)
-	newRefreshToken, newRefreshTokenID, err := generateToken(entityID, clientID, scope, 7*24*3600)
+	newRefreshToken, newRefreshTokenID, err := generateToken(entityID, clientID, scope, config.RefreshTokenTTL, newClaims)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
 		newRefreshToken = ""
@@ -202,18 +207,19 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    3600,
+		ExpiresIn:    config.AccessTokenTTL,
 		Scope:        accessScope,
 	})
 }
 
-func generateToken(entityID string, clientID string, scope string, expiresIn int) (string, string, error) {
+func generateToken(entityID string, clientID string, scope string, expiresIn int, claims map[string]interface{}) (string, string, error) {
 	var result tokenResponse
 	err := sentinel.Post("/core/token", tokenRequest{
 		EntityID:  entityID,
 		ClientID:  clientID,
 		Scope:     scope,
 		ExpiresIn: expiresIn,
+		Claims:    claims,
 	}, &result)
 	if err != nil {
 		return "", "", err
@@ -221,9 +227,8 @@ func generateToken(entityID string, clientID string, scope string, expiresIn int
 	return result.Token, result.TokenID, nil
 }
 
+
 func validateClientSecret(clientID string, clientSecret string) bool {
-	// TODO: core needs an endpoint to validate client credentials
-	// For now we'll need to add a POST /core/applications/verify endpoint
 	var result map[string]interface{}
 	err := sentinel.Post("/core/applications/verify", map[string]string{
 		"client_id":     clientID,

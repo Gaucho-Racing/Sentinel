@@ -1,6 +1,11 @@
 package config
 
-import "github.com/gaucho-racing/sentinel/oauth/pkg/logger"
+import (
+	"os"
+	"strconv"
+
+	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
+)
 
 func Verify() {
 	if Env == "" {
@@ -31,4 +36,20 @@ func Verify() {
 		DatabaseName = "sentinel"
 		logger.SugarLogger.Infof("DATABASE_NAME is not set, defaulting to %s", DatabaseName)
 	}
+	AccessTokenTTL = parseIntEnv("ACCESS_TOKEN_TTL", 30*60)
+	RefreshTokenTTL = parseIntEnv("REFRESH_TOKEN_TTL", 7*24*60*60)
+}
+
+func parseIntEnv(key string, fallback int) int {
+	raw := os.Getenv(key)
+	if raw == "" {
+		logger.SugarLogger.Infof("%s is not set, defaulting to %d", key, fallback)
+		return fallback
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		logger.SugarLogger.Warnf("%s is not a valid integer (%q), defaulting to %d", key, raw, fallback)
+		return fallback
+	}
+	return n
 }

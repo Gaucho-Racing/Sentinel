@@ -7,7 +7,7 @@ import (
 )
 
 var Service rincon.Service = rincon.Service{
-	Name:        "sentinel-oauth",
+	Name:        "Sentinel OAuth",
 	Version:     "0.1.0",
 	Endpoint:    os.Getenv("SERVICE_ENDPOINT"),
 	HealthCheck: os.Getenv("SERVICE_HEALTH_CHECK"),
@@ -26,6 +26,9 @@ var Routes = []rincon.Route{
 
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
+
+var AccessTokenTTL int
+var RefreshTokenTTL int
 
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
