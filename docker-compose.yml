@@ -108,6 +108,22 @@ services:
       SERVICE_ENDPOINT: http://oauth:9997
       SERVICE_HEALTH_CHECK: http://oauth:9997/oauth/ping
 
+  web:
+    container_name: sentinel-web
+    image: node:22-alpine
+    restart: always
+    working_dir: /app
+    command: >
+      sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./web:/app
+      - web_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_CORE_API_URL: http://localhost:9999
+      VITE_OAUTH_API_URL: http://localhost:9997
+
   db:
     container_name: sentinel-db
     image: postgres:18-alpine
@@ -126,3 +142,4 @@ volumes:
   core_gopath:
   discord_gopath:
   oauth_gopath:
+  web_node_modules:
