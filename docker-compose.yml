@@ -1,6 +1,23 @@
 name: sentinel
 
 services:
+  kerbecs:
+    container_name: sentinel-kerbecs
+    image: bk1031/kerbecs:latest
+    restart: always
+    ports:
+      - "10310:10310"
+      - "10300:10300"
+    volumes:
+      - ./kerbecs.yaml:/etc/kerbecs/kerbecs.yaml:ro
+    environment:
+      KERBECS_CONFIG: /etc/kerbecs/kerbecs.yaml
+    depends_on:
+      - core
+      - oauth
+      - discord
+      - web
+
   rincon:
     container_name: sentinel-rincon
     image: bk1031/rincon:latest
@@ -28,8 +45,6 @@ services:
     volumes:
       - ./core:/app
       - core_gopath:/go
-    ports:
-      - "9999:9999"
     depends_on:
       - db
       - rincon
@@ -57,8 +72,6 @@ services:
     volumes:
       - ./discord:/app
       - discord_gopath:/go
-    ports:
-      - "9998:9998"
     depends_on:
       - db
       - rincon
@@ -89,8 +102,6 @@ services:
     volumes:
       - ./oauth:/app
       - oauth_gopath:/go
-    ports:
-      - "9997:9997"
     depends_on:
       - db
       - rincon
@@ -121,8 +132,7 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_CORE_API_URL: http://localhost:9999
-      VITE_OAUTH_API_URL: http://localhost:9997
+      VITE_API_URL: http://localhost:10310
 
   db:
     container_name: sentinel-db
