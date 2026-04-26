@@ -12,3 +12,16 @@
   /* Brand font — used for the Gaucho Racing wordmark, matches the logo. */
   --font-brand: "Inter Variable", sans-serif;
 }
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+}
+
+@keyframes draw-stroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}

@@ -4,6 +4,7 @@ import { AppShell } from "@/components/AppShell"
 import AnalyticsPage from "@/pages/analytics/AnalyticsPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginPage from "@/pages/auth/LoginPage"
+import DebugPage from "@/pages/debug/DebugPage"
 import GroupsPage from "@/pages/groups/GroupsPage"
 import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { path: "/groups", element: <GroupsPage /> },
       { path: "/analytics", element: <AnalyticsPage /> },
       { path: "/settings", element: <SettingsPage /> },
+      { path: "/debug", element: <DebugPage /> },
     ],
   },
   { path: "/auth/login", element: <LoginPage /> },

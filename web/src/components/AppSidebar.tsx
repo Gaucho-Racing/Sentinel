@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutDashboard, Settings, Users } from "lucide-react"
+import { BarChart3, Boxes, Bug, LayoutDashboard, Settings, Users } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import {
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { to: "/groups", label: "Groups", icon: Users },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
+  { to: "/debug", label: "Debug", icon: Bug },
 ]
 
 function isActive(currentPath: string, target: string) {
