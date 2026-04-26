@@ -1,0 +1,7 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gr-pink: #e105a3;
+  --color-gr-purple: #8412fc;
+  --color-discord-blurple: #7289da;
+}
