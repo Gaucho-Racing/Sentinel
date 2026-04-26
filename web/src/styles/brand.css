@@ -4,4 +4,11 @@
   --color-gr-pink: #e105a3;
   --color-gr-purple: #8412fc;
   --color-discord-blurple: #7289da;
+
+  /* Re-state index.css's font choice — re-importing tailwindcss above
+     would otherwise reset --font-sans back to the system stack. */
+  --font-sans: "Geist Variable", sans-serif;
+
+  /* Brand font — used for the Gaucho Racing wordmark, matches the logo. */
+  --font-brand: "Inter Variable", sans-serif;
 }

@@ -104,7 +104,7 @@ export default function HomePage() {
 
       <section>
         <Card>
-          <CardHeader className="flex-row items-end justify-between space-y-0">
+          <CardHeader className="flex flex-row items-end justify-between space-y-0">
             <div className="space-y-1">
               <CardTitle>Recent activity</CardTitle>
               <CardDescription>Tokens issued for your account, newest first.</CardDescription>

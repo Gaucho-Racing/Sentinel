@@ -37,6 +37,22 @@ export type Login = {
   at: string
 }
 
+export type Notification = {
+  id: string
+  type: "group_request" | "token_issued" | "system"
+  title: string
+  body?: string
+  at: string
+  read: boolean
+  href?: string
+}
+
+export type Member = {
+  id: string
+  name: string
+  email: string
+}
+
 export const mockUser: Entity = {
   id: "ent_01kpgkjbstpswced3c61rjrbkh",
   type: "USER",
@@ -101,6 +117,44 @@ export const mockGroups: Group[] = [
   { id: "grp_01kpwwy0002", name: "Officers", description: "Team officers", memberCount: 9, role: "owner" },
   { id: "grp_01kpwwy0003", name: "Software", description: "Software subteam", memberCount: 14, role: "owner" },
   { id: "grp_01kpwwy0004", name: "BlixUsers", description: "Granted access to Blix", memberCount: 42, role: "member" },
+]
+
+export const mockMembers: Member[] = [
+  { id: "ent_01kpgkjbstpswced3c61rjrbkh", name: "Bharat Kathi", email: "bharat@gauchoracing.com" },
+  { id: "ent_01kpwwx0a0001", name: "Avery Chen", email: "avery@gauchoracing.com" },
+  { id: "ent_01kpwwx0a0002", name: "Diego Ramirez", email: "diego@gauchoracing.com" },
+  { id: "ent_01kpwwx0a0003", name: "Priya Patel", email: "priya@gauchoracing.com" },
+  { id: "ent_01kpwwx0a0004", name: "Jordan Lee", email: "jordan@gauchoracing.com" },
+  { id: "ent_01kpwwx0a0005", name: "Sam Taylor", email: "sam@gauchoracing.com" },
+]
+
+export const mockNotifications: Notification[] = [
+  {
+    id: "ntf_01kq07jn4w8nrckcmxh7gd5fd9",
+    type: "group_request",
+    title: "Avery Chen requested to join BlixUsers",
+    body: "You're an owner of this group — review the request.",
+    at: "2026-04-26T07:21:00Z",
+    read: false,
+    href: "/groups",
+  },
+  {
+    id: "ntf_01kq07j0hr5pq96jvpmtf3y20m",
+    type: "token_issued",
+    title: "New access token issued for Blix",
+    body: "Scope: user:read groups:read · 192.168.1.42",
+    at: "2026-04-26T05:55:00Z",
+    read: false,
+    href: "/settings",
+  },
+  {
+    id: "ntf_01kq06pfntx1w8rxe4z6yb3akq",
+    type: "system",
+    title: "Mechanic scheduled for maintenance",
+    body: "Tonight from 11pm – 12am PT.",
+    at: "2026-04-25T18:14:00Z",
+    read: true,
+  },
 ]
 
 export const mockRecentLogins: Login[] = [
