@@ -35,7 +35,8 @@ var DiscordGuild = os.Getenv("DISCORD_GUILD")
 var DiscordPrefix = os.Getenv("DISCORD_PREFIX")
 
 var WebBaseURL = os.Getenv("WEB_BASE_URL")
-var OnboardingTokenTTL time.Duration
+
+var OnboardingTokenTTL = 15 * time.Minute
 
 func IsProduction() bool {
 	return Env == "PROD"
