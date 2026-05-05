@@ -32,7 +32,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: password
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-sentinel_dev_pw}
       DB_NAME: sentinel
 
   core:
@@ -54,7 +54,7 @@ services:
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
-      DATABASE_PASSWORD: password
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sentinel_dev_pw}
       DATABASE_NAME: sentinel
       RINCON_ENDPOINT: http://rincon:10311
       RINCON_USER: admin
@@ -81,7 +81,7 @@ services:
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
-      DATABASE_PASSWORD: password
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sentinel_dev_pw}
       DATABASE_NAME: sentinel
       RINCON_ENDPOINT: http://rincon:10311
       RINCON_USER: admin
@@ -111,7 +111,7 @@ services:
       DATABASE_HOST: db
       DATABASE_PORT: 5432
       DATABASE_USER: postgres
-      DATABASE_PASSWORD: password
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:-sentinel_dev_pw}
       DATABASE_NAME: sentinel
       RINCON_ENDPOINT: http://rincon:10311
       RINCON_USER: admin
@@ -140,10 +140,10 @@ services:
     restart: always
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sentinel_dev_pw}
       POSTGRES_DB: sentinel
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql
 
