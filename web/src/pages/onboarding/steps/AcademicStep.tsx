@@ -11,12 +11,13 @@ import {
 } from "@/components/ui/select"
 import type { StepProps } from "@/pages/onboarding/types"
 
-const GRADUATE_LEVELS = [
+const STUDENT_LEVELS = [
   { value: "undergraduate", label: "Undergraduate" },
   { value: "graduate", label: "Graduate" },
   { value: "phd", label: "PhD" },
-  { value: "none", label: "N/A" },
 ]
+
+const NONE_OPTION = { value: "none", label: "N/A" }
 
 type Props = StepProps & {
   nonStudentRole?: string | null
@@ -24,6 +25,7 @@ type Props = StepProps & {
 
 export function AcademicStep({ data, update, nonStudentRole }: Props) {
   const isNonStudent = data.graduateLevel === "none"
+  const levels = nonStudentRole ? [...STUDENT_LEVELS, NONE_OPTION] : STUDENT_LEVELS
 
   return (
     <div className="space-y-6">
@@ -59,7 +61,7 @@ export function AcademicStep({ data, update, nonStudentRole }: Props) {
               <SelectValue placeholder="Select" />
             </SelectTrigger>
             <SelectContent>
-              {GRADUATE_LEVELS.map((g) => (
+              {levels.map((g) => (
                 <SelectItem key={g.value} value={g.value}>
                   {g.label}
                 </SelectItem>

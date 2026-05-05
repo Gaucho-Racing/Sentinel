@@ -292,7 +292,11 @@ export default function OnboardingPage() {
                 data={data}
                 update={update}
                 nonStudentRole={
-                  confirmedNonStudentDomain === emailDomain ? nonStudentRole : null
+                  confirmedNonStudentDomain === emailDomain &&
+                  nonStudentRole &&
+                  nonStudentRole !== "Alumni"
+                    ? nonStudentRole
+                    : null
                 }
               />
             )}
