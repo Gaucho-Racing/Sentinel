@@ -31,7 +31,6 @@ import {
   type OnboardingData,
 } from "@/pages/onboarding/types"
 
-const MOCK_LATENCY_MS = 1500
 const CONVERGE_MS = 250
 const CHECKMARK_DRAW_MS = 650
 const HOLD_MS = 250
@@ -203,6 +202,22 @@ export default function OnboardingPage() {
       return
     }
 
+    if (currentStep === "academic") {
+      const gradYear = parseInt(data.graduationYear, 10)
+      const currentYear = new Date().getFullYear()
+      if (
+        Number.isFinite(gradYear) &&
+        gradYear > 0 &&
+        gradYear < currentYear &&
+        emailDomain === STUDENT_DOMAIN
+      ) {
+        toast.error(
+          "UCSB emails expire after graduation. Update your graduation year or use a personal email.",
+        )
+        return
+      }
+    }
+
     if (needsStudentConfirm) {
       setStudentDialogOpen(true)
       return
@@ -213,17 +228,50 @@ export default function OnboardingPage() {
       return
     }
 
+    const initialRole =
+      confirmedNonStudentDomain === emailDomain && nonStudentRole
+        ? nonStudentRole.toLowerCase()
+        : "member"
+
+    const payload = {
+      email: data.email,
+      password: data.password,
+      username: data.username,
+      first_name: data.firstName,
+      last_name: data.lastName,
+      gender: data.gender,
+      birthday: data.birthday,
+      phone_number: data.phoneNumber,
+      graduate_level: data.graduateLevel,
+      graduation_year: data.graduationYear ? parseInt(data.graduationYear, 10) : 0,
+      major: data.major,
+      shirt_size: data.shirtSize,
+      jacket_size: data.jacketSize,
+      sae_registration_number: data.saeRegistrationNumber,
+      initial_role: initialRole,
+    }
+
     setSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS))
+    try {
+      await api.post(`/discord/onboarding-tokens/${token}/consume`, payload)
+    } catch (err: unknown) {
+      setSubmitting(false)
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Something went wrong. Try again."
+      toast.error(message)
+      return
+    }
     setSubmitting(false)
     setTransitioning(true)
     await new Promise((resolve) =>
       setTimeout(resolve, CONVERGE_MS + CHECKMARK_DRAW_MS + HOLD_MS),
     )
+    const next = `/auth/login?email=${encodeURIComponent(data.email)}`
     if (document.startViewTransition) {
-      document.startViewTransition(() => navigate("/"))
+      document.startViewTransition(() => navigate(next))
     } else {
-      navigate("/")
+      navigate(next)
     }
   }
 
