@@ -100,6 +100,7 @@ function isStepValid(step: StepId, data: OnboardingData): boolean {
         data.gender.length > 0 && data.birthday.length > 0 && data.phoneNumber.trim().length > 0
       )
     case "academic":
+      if (data.graduateLevel === "none") return true
       return (
         data.graduateLevel.length > 0 &&
         data.graduationYear.length > 0 &&
@@ -125,6 +126,7 @@ export default function OnboardingPage() {
   const [confirmedNonStudentDomain, setConfirmedNonStudentDomain] = useState<
     string | null
   >(null)
+  const [nonStudentRole, setNonStudentRole] = useState<string | null>(null)
   const [studentDialogOpen, setStudentDialogOpen] = useState(false)
   const [tokenState, setTokenState] = useState<TokenState>({ status: "loading" })
   const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>("idle")
@@ -178,7 +180,8 @@ export default function OnboardingPage() {
     setStepIndex((i) => i + 1)
   }
 
-  function handleConfirmNonStudent() {
+  function handleConfirmNonStudent(role: string) {
+    setNonStudentRole(role)
     setConfirmedNonStudentDomain(emailDomain)
     setStudentDialogOpen(false)
     advance()
@@ -284,7 +287,15 @@ export default function OnboardingPage() {
               />
             )}
             {currentStep === "personal" && <PersonalStep data={data} update={update} />}
-            {currentStep === "academic" && <AcademicStep data={data} update={update} />}
+            {currentStep === "academic" && (
+              <AcademicStep
+                data={data}
+                update={update}
+                nonStudentRole={
+                  confirmedNonStudentDomain === emailDomain ? nonStudentRole : null
+                }
+              />
+            )}
             {currentStep === "team" && <TeamStep data={data} update={update} />}
             {currentStep === "review" && <ReviewStep data={data} />}
           </motion.div>
@@ -353,7 +364,7 @@ export default function OnboardingPage() {
                 <button
                   key={role}
                   type="button"
-                  onClick={handleConfirmNonStudent}
+                  onClick={() => handleConfirmNonStudent(role)}
                   className="rounded-full border border-border bg-background px-3 py-1 text-sm text-foreground transition-colors hover:border-foreground/60 hover:bg-muted/40"
                 >
                   {role}

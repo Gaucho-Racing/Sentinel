@@ -1,3 +1,5 @@
+import { Info } from "lucide-react"
+
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -13,9 +15,16 @@ const GRADUATE_LEVELS = [
   { value: "undergraduate", label: "Undergraduate" },
   { value: "graduate", label: "Graduate" },
   { value: "phd", label: "PhD" },
+  { value: "none", label: "N/A" },
 ]
 
-export function AcademicStep({ data, update }: StepProps) {
+type Props = StepProps & {
+  nonStudentRole?: string | null
+}
+
+export function AcademicStep({ data, update, nonStudentRole }: Props) {
+  const isNonStudent = data.graduateLevel === "none"
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -24,6 +33,20 @@ export function AcademicStep({ data, update }: StepProps) {
           Helps us track team eligibility and graduation timelines.
         </p>
       </div>
+
+      {nonStudentRole && (
+        <div className="flex gap-3 rounded-md border border-gr-pink/40 bg-gr-pink/5 px-3 py-2.5 text-xs duration-300 animate-in fade-in slide-in-from-top-1">
+          <Info className="mt-0.5 size-4 shrink-0 text-gr-pink" />
+          <p className="leading-snug">
+            <span className="text-foreground">
+              Since you marked yourself as {nonStudentRole.toLowerCase()},
+            </span>{" "}
+            <span className="text-muted-foreground">
+              feel free to set Level to N/A and leave the other fields blank.
+            </span>
+          </p>
+        </div>
+      )}
 
       <div className="space-y-4">
         <div className="space-y-2">
@@ -51,12 +74,12 @@ export function AcademicStep({ data, update }: StepProps) {
             id="graduationYear"
             type="number"
             inputMode="numeric"
-            placeholder="2027"
+            placeholder={isNonStudent ? "Optional" : "2027"}
             min={2020}
             max={2035}
             value={data.graduationYear}
             onChange={(e) => update({ graduationYear: e.target.value })}
-            required
+            required={!isNonStudent}
           />
         </div>
 
@@ -64,10 +87,10 @@ export function AcademicStep({ data, update }: StepProps) {
           <Label htmlFor="major">Major</Label>
           <Input
             id="major"
-            placeholder="Mechanical Engineering"
+            placeholder={isNonStudent ? "Optional" : "Mechanical Engineering"}
             value={data.major}
             onChange={(e) => update({ major: e.target.value })}
-            required
+            required={!isNonStudent}
           />
         </div>
       </div>
