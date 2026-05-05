@@ -36,6 +36,18 @@ func GetUserByEntityID(entityID string) (model.User, error) {
 	return user, nil
 }
 
+// IsUsernameAvailable returns true when no user has the given username,
+// matched case-insensitively.
+func IsUsernameAvailable(username string) (bool, error) {
+	var count int64
+	if err := database.DB.Model(&model.User{}).
+		Where("LOWER(username) = LOWER(?)", username).
+		Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
 func CreateUser(user model.User) (model.User, error) {
 	if user.ID == "" {
 		user.ID = ulid.Make().Prefixed("usr")

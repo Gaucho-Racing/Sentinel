@@ -18,6 +18,21 @@ func GetAllUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
+func CheckUsername(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	username := c.Query("username")
+	if username == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "username query param is required"})
+		return
+	}
+	available, err := service.IsUsernameAvailable(username)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"available": available})
+}
+
 func GetUserByID(c *gin.Context) {
 	id := c.Param("id")
 	user, err := service.GetUserByID(id)

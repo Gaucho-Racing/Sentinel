@@ -54,6 +54,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/applications/verify", VerifyClientCredentials)
 
 	router.GET("/users", GetAllUsers)
+	router.GET("/users/check-username", CheckUsername)
 	router.GET("/users/:id", GetUserByID)
 	router.POST("/users", CreateOrUpdateUser)
 	router.DELETE("/users/:id", DeleteUser)
