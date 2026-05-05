@@ -37,6 +37,7 @@ func Init() {
 			&model.PhoneLoginCode{},
 			&model.EmailLoginCode{},
 			&model.Token{},
+			&model.User{},
 			&model.Application{},
 			&model.ApplicationGroup{},
 			&model.ApplicationRedirectURI{},
@@ -45,6 +46,7 @@ func Init() {
 			&model.Group{},
 			&model.GroupMember{},
 			&model.GroupJoinRequest{},
+			&model.GroupJoinRequestComment{},
 			&model.GroupOwner{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
