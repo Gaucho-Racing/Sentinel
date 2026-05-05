@@ -2,6 +2,7 @@ import { GraduationCap } from "lucide-react"
 import { AnimatePresence, motion, type Variants } from "motion/react"
 import { useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
@@ -13,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { validatePassword } from "@/lib/password"
 import { cn } from "@/lib/utils"
 import { OnboardingProgress } from "@/pages/onboarding/OnboardingProgress"
 import { AcademicStep } from "@/pages/onboarding/steps/AcademicStep"
@@ -145,6 +147,14 @@ export default function OnboardingPage() {
 
   async function handleNext() {
     if (!canProceed || submitting) return
+
+    if (currentStep === "credentials") {
+      const passwordError = validatePassword(data.password)
+      if (passwordError) {
+        toast.error(passwordError)
+        return
+      }
+    }
 
     if (needsStudentConfirm) {
       setStudentDialogOpen(true)
