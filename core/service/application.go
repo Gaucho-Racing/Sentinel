@@ -10,7 +10,7 @@ import (
 )
 
 func GetAllApplications() ([]model.Application, error) {
-	var applications []model.Application
+	applications := []model.Application{}
 	if err := database.DB.Find(&applications).Error; err != nil {
 		return []model.Application{}, err
 	}
@@ -39,7 +39,7 @@ func GetApplicationByClientID(clientID string) (model.Application, error) {
 }
 
 func GetApplicationsByOwnerID(ownerID string) ([]model.Application, error) {
-	var applications []model.Application
+	applications := []model.Application{}
 	if err := database.DB.Where("owner_id = ?", ownerID).Find(&applications).Error; err != nil {
 		return []model.Application{}, err
 	}
@@ -90,11 +90,11 @@ func DeleteApplication(id string) error {
 }
 
 func GetGroupsForApplication(applicationID string) ([]model.Group, error) {
-	var appGroups []model.ApplicationGroup
+	appGroups := []model.ApplicationGroup{}
 	if err := database.DB.Where("application_id = ?", applicationID).Find(&appGroups).Error; err != nil {
 		return []model.Group{}, err
 	}
-	var groups []model.Group
+	groups := []model.Group{}
 	for _, ag := range appGroups {
 		var group model.Group
 		if err := database.DB.Where("id = ?", ag.GroupID).First(&group).Error; err != nil {
@@ -107,11 +107,11 @@ func GetGroupsForApplication(applicationID string) ([]model.Group, error) {
 }
 
 func GetApplicationsForGroup(groupID string) ([]model.Application, error) {
-	var appGroups []model.ApplicationGroup
+	appGroups := []model.ApplicationGroup{}
 	if err := database.DB.Where("group_id = ?", groupID).Find(&appGroups).Error; err != nil {
 		return []model.Application{}, err
 	}
-	var applications []model.Application
+	applications := []model.Application{}
 	for _, ag := range appGroups {
 		var app model.Application
 		if err := database.DB.Where("id = ?", ag.ApplicationID).First(&app).Error; err != nil {
@@ -138,7 +138,7 @@ func DeleteApplicationGroup(applicationID string, groupID string) error {
 }
 
 func GetRedirectURIsForApplication(applicationID string) ([]string, error) {
-	var uris []model.ApplicationRedirectURI
+	uris := []model.ApplicationRedirectURI{}
 	if err := database.DB.Where("application_id = ?", applicationID).Find(&uris).Error; err != nil {
 		return []string{}, err
 	}

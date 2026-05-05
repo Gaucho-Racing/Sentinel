@@ -8,7 +8,7 @@ import (
 )
 
 func GetAllGroups() ([]model.Group, error) {
-	var groups []model.Group
+	groups := []model.Group{}
 	if err := database.DB.Find(&groups).Error; err != nil {
 		return []model.Group{}, err
 	}
@@ -48,7 +48,7 @@ func DeleteGroup(id string) error {
 }
 
 func GetMembersForGroup(groupID string) ([]model.GroupMember, error) {
-	var members []model.GroupMember
+	members := []model.GroupMember{}
 	if err := database.DB.Where("group_id = ?", groupID).Find(&members).Error; err != nil {
 		return []model.GroupMember{}, err
 	}
@@ -85,7 +85,7 @@ func DeleteGroupMember(groupID string, entityID string) error {
 }
 
 func GetOwnersForGroup(groupID string) ([]model.GroupOwner, error) {
-	var owners []model.GroupOwner
+	owners := []model.GroupOwner{}
 	if err := database.DB.Where("group_id = ?", groupID).Find(&owners).Error; err != nil {
 		return []model.GroupOwner{}, err
 	}
@@ -115,7 +115,7 @@ func DeleteGroupOwner(groupID string, entityID string) error {
 }
 
 func GetJoinRequestsByGroup(groupID string) ([]model.GroupJoinRequest, error) {
-	var requests []model.GroupJoinRequest
+	requests := []model.GroupJoinRequest{}
 	if err := database.DB.Where("group_id = ?", groupID).Find(&requests).Error; err != nil {
 		return []model.GroupJoinRequest{}, err
 	}
@@ -126,7 +126,7 @@ func GetJoinRequestsByGroup(groupID string) ([]model.GroupJoinRequest, error) {
 }
 
 func GetJoinRequestsByEntity(entityID string) ([]model.GroupJoinRequest, error) {
-	var requests []model.GroupJoinRequest
+	requests := []model.GroupJoinRequest{}
 	if err := database.DB.Where("entity_id = ?", entityID).Find(&requests).Error; err != nil {
 		return []model.GroupJoinRequest{}, err
 	}
@@ -180,7 +180,7 @@ func PopulateJoinRequest(request *model.GroupJoinRequest) {
 }
 
 func GetCommentsForJoinRequest(requestID string) ([]model.GroupJoinRequestComment, error) {
-	var comments []model.GroupJoinRequestComment
+	comments := []model.GroupJoinRequestComment{}
 	if err := database.DB.Where("request_id = ?", requestID).Find(&comments).Error; err != nil {
 		return []model.GroupJoinRequestComment{}, err
 	}

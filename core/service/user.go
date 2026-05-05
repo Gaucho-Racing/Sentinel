@@ -8,7 +8,7 @@ import (
 )
 
 func GetAllUsers() ([]model.User, error) {
-	var users []model.User
+	users := []model.User{}
 	if err := database.DB.Find(&users).Error; err != nil {
 		return []model.User{}, err
 	}
@@ -97,7 +97,7 @@ func GetGroupsForEntity(entityID string) ([]model.Group, error) {
 	if err := database.DB.Where("entity_id = ?", entityID).Find(&members).Error; err != nil {
 		return []model.Group{}, err
 	}
-	var groups []model.Group
+	groups := []model.Group{}
 	for _, member := range members {
 		var group model.Group
 		if err := database.DB.Where("id = ?", member.GroupID).First(&group).Error; err != nil {

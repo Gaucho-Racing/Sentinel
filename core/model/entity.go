@@ -25,8 +25,8 @@ type Entity struct {
 	EmailAuth      EntityEmail          `json:"email_auth" gorm:"-"`
 	PhoneAuth      EntityPhone          `json:"phone_auth" gorm:"-"`
 	ExternalAuths  []EntityExternalAuth `json:"external_auths" gorm:"-"`
-	User           *User                `json:"user" gorm:"-"`
-	ServiceAccount *ServiceAccount      `json:"service_account" gorm:"-"`
+	User           *User                `json:"user,omitempty" gorm:"-"`
+	ServiceAccount *ServiceAccount      `json:"service_account,omitempty" gorm:"-"`
 }
 
 func (Entity) TableName() string {

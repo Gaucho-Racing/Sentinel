@@ -19,7 +19,7 @@ func CreateEntityLogin(login model.EntityLogin) (model.EntityLogin, error) {
 }
 
 func GetEntityLogins(entityID string, clientID string, scope string, limit string) ([]model.EntityLogin, error) {
-	var logins []model.EntityLogin
+	logins := []model.EntityLogin{}
 	query := database.DB.Where("entity_id = ?", entityID)
 	if clientID != "" {
 		query = query.Where("client_id = ?", clientID)
