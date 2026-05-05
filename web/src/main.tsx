@@ -10,6 +10,6 @@ import "@/styles/brand.css"
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <RouterProvider router={router} />
-    <Toaster position="top-center" richColors />
+    <Toaster position="bottom-right" richColors />
   </StrictMode>,
 )

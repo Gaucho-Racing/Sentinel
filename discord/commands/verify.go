@@ -10,7 +10,7 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
 
-const verifyReplyTTL = 10 * time.Second
+const verifyReplyTTL = 5 * time.Second
 
 func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	defer s.ChannelMessageDelete(m.ChannelID, m.ID)
