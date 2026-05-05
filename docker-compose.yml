@@ -91,6 +91,8 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_GUILD: ${DISCORD_GUILD}
       DISCORD_PREFIX: d!
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:10310}
+      ONBOARDING_TOKEN_TTL: 15m
 
   oauth:
     container_name: sentinel-oauth

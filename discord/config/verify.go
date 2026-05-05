@@ -1,6 +1,11 @@
 package config
 
-import "github.com/gaucho-racing/sentinel/discord/pkg/logger"
+import (
+	"os"
+	"time"
+
+	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
+)
 
 func Verify() {
 	if Env == "" {
@@ -41,4 +46,23 @@ func Verify() {
 		DiscordPrefix = "d!"
 		logger.SugarLogger.Infof("DISCORD_PREFIX is not set, defaulting to %s", DiscordPrefix)
 	}
+	if WebBaseURL == "" {
+		WebBaseURL = "http://localhost:10310"
+		logger.SugarLogger.Infof("WEB_BASE_URL is not set, defaulting to %s", WebBaseURL)
+	}
+	OnboardingTokenTTL = parseDurationEnv("ONBOARDING_TOKEN_TTL", 15*time.Minute)
+}
+
+func parseDurationEnv(key string, fallback time.Duration) time.Duration {
+	raw := os.Getenv(key)
+	if raw == "" {
+		logger.SugarLogger.Infof("%s is not set, defaulting to %s", key, fallback)
+		return fallback
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		logger.SugarLogger.Warnf("%s is not a valid duration (%q), defaulting to %s", key, raw, fallback)
+		return fallback
+	}
+	return d
 }

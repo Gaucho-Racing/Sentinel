@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	"github.com/bk1031/rincon-go/v2"
 )
@@ -32,6 +33,9 @@ var DatabaseName = os.Getenv("DATABASE_NAME")
 var DiscordToken = os.Getenv("DISCORD_TOKEN")
 var DiscordGuild = os.Getenv("DISCORD_GUILD")
 var DiscordPrefix = os.Getenv("DISCORD_PREFIX")
+
+var WebBaseURL = os.Getenv("WEB_BASE_URL")
+var OnboardingTokenTTL time.Duration
 
 func IsProduction() bool {
 	return Env == "PROD"

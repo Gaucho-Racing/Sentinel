@@ -58,6 +58,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	switch command {
 	case "ping":
 		Ping(args, s, m)
+	case "verify":
+		Verify(args, s, m)
 	default:
 		logger.SugarLogger.Infof("Unknown command: %s", command)
 	}

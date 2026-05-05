@@ -29,7 +29,11 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		db.AutoMigrate(&model.DiscordMessage{}, &model.DiscordReaction{})
+		db.AutoMigrate(
+			&model.DiscordMessage{},
+			&model.DiscordReaction{},
+			&model.OnboardingToken{},
+		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}

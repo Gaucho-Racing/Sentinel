@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
@@ -25,4 +27,32 @@ func GetChannelName(channelID string) string {
 		return ""
 	}
 	return channel.Name
+}
+
+// SendDisappearingMessage posts a channel message and schedules its deletion
+// after the given delay. Returns immediately; deletion happens in a goroutine.
+func SendDisappearingMessage(channelID, content string, delay time.Duration) {
+	msg, err := Discord.ChannelMessageSend(channelID, content)
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to send disappearing message in %s: %v", channelID, err)
+		return
+	}
+	go delayedMessageDelete(channelID, msg.ID, delay)
+}
+
+func delayedMessageDelete(channelID, messageID string, delay time.Duration) {
+	time.Sleep(delay)
+	if err := Discord.ChannelMessageDelete(channelID, messageID); err != nil {
+		logger.SugarLogger.Errorf("Failed to delete message %s in %s: %v", messageID, channelID, err)
+	}
+}
+
+// SendDirectMessage opens a DM channel with the user and posts the content.
+func SendDirectMessage(userID, content string) error {
+	channel, err := Discord.UserChannelCreate(userID)
+	if err != nil {
+		return err
+	}
+	_, err = Discord.ChannelMessageSend(channel.ID, content)
+	return err
 }
