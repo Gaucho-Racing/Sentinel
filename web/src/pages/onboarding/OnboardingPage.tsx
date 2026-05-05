@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
 import { OnboardingProgress } from "@/pages/onboarding/OnboardingProgress"
 import { AcademicStep } from "@/pages/onboarding/steps/AcademicStep"
 import { CredentialsStep } from "@/pages/onboarding/steps/CredentialsStep"
-import { IdentityStep } from "@/pages/onboarding/steps/IdentityStep"
+import { IdentityStep, type UsernameAvailability } from "@/pages/onboarding/steps/IdentityStep"
 import { PersonalStep } from "@/pages/onboarding/steps/PersonalStep"
 import { ReviewStep } from "@/pages/onboarding/steps/ReviewStep"
 import { TeamStep } from "@/pages/onboarding/steps/TeamStep"
@@ -127,6 +127,7 @@ export default function OnboardingPage() {
   >(null)
   const [studentDialogOpen, setStudentDialogOpen] = useState(false)
   const [tokenState, setTokenState] = useState<TokenState>({ status: "loading" })
+  const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>("idle")
 
   useEffect(() => {
     if (!token) return
@@ -192,6 +193,11 @@ export default function OnboardingPage() {
         toast.error(passwordError)
         return
       }
+    }
+
+    if (currentStep === "identity" && usernameAvailability === "taken") {
+      toast.error("Username is already taken")
+      return
     }
 
     if (needsStudentConfirm) {
@@ -270,7 +276,13 @@ export default function OnboardingPage() {
             {currentStep === "credentials" && (
               <CredentialsStep data={data} update={update} />
             )}
-            {currentStep === "identity" && <IdentityStep data={data} update={update} />}
+            {currentStep === "identity" && (
+              <IdentityStep
+                data={data}
+                update={update}
+                onAvailabilityChange={setUsernameAvailability}
+              />
+            )}
             {currentStep === "personal" && <PersonalStep data={data} update={update} />}
             {currentStep === "academic" && <AcademicStep data={data} update={update} />}
             {currentStep === "team" && <TeamStep data={data} update={update} />}

@@ -10,10 +10,23 @@ import type { StepProps } from "@/pages/onboarding/types"
 const DEBOUNCE_MS = 400
 const MIN_LENGTH = 3
 
-type Availability = "idle" | "checking" | "available" | "taken" | "error"
+export type UsernameAvailability =
+  | "idle"
+  | "checking"
+  | "available"
+  | "taken"
+  | "error"
 
-export function IdentityStep({ data, update }: StepProps) {
-  const [availability, setAvailability] = useState<Availability>("idle")
+type Props = StepProps & {
+  onAvailabilityChange?: (a: UsernameAvailability) => void
+}
+
+export function IdentityStep({ data, update, onAvailabilityChange }: Props) {
+  const [availability, setAvailabilityRaw] = useState<UsernameAvailability>("idle")
+  const setAvailability = (a: UsernameAvailability) => {
+    setAvailabilityRaw(a)
+    onAvailabilityChange?.(a)
+  }
 
   useEffect(() => {
     const username = data.username.trim()
@@ -39,6 +52,8 @@ export function IdentityStep({ data, update }: StepProps) {
       cancelled = true
       clearTimeout(timer)
     }
+    // setAvailability is stable enough; deps are intentional
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.username])
 
   return (
@@ -92,7 +107,7 @@ export function IdentityStep({ data, update }: StepProps) {
   )
 }
 
-function UsernameStatus({ availability }: { availability: Availability }) {
+function UsernameStatus({ availability }: { availability: UsernameAvailability }) {
   if (availability === "idle") {
     return (
       <p className="text-xs text-muted-foreground">
