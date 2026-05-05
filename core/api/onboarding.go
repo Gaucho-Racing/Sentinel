@@ -1,0 +1,99 @@
+package api
+
+import (
+	"net/http"
+
+	"github.com/gaucho-racing/sentinel/core/model"
+	"github.com/gaucho-racing/sentinel/core/service"
+	"github.com/gin-gonic/gin"
+)
+
+type createEntityRequest struct {
+	Type model.EntityType `json:"type" binding:"required"`
+}
+
+func CreateEntity(c *gin.Context) {
+	var req createEntityRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	entity, err := service.CreateEntity(model.Entity{Type: req.Type})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, entity)
+}
+
+type createEmailAuthRequest struct {
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func CreateEntityEmailAuth(c *gin.Context) {
+	entityID := c.Param("entityID")
+	var req createEmailAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.ValidatePassword(req.Password); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	hashed, err := service.HashPassword(req.Password)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	auth, err := service.CreateEmailAuthForEntity(entityID, req.Email, hashed)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, auth)
+}
+
+type createPhoneAuthRequest struct {
+	PhoneNumber string `json:"phone_number" binding:"required"`
+}
+
+func CreateEntityPhoneAuth(c *gin.Context) {
+	entityID := c.Param("entityID")
+	var req createPhoneAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	auth, err := service.CreatePhoneAuthForEntity(entityID, req.PhoneNumber)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, auth)
+}
+
+type createExternalAuthRequest struct {
+	Provider   model.ExternalAuthProvider `json:"provider" binding:"required"`
+	ExternalID string                     `json:"external_id" binding:"required"`
+}
+
+func CreateEntityExternalAuth(c *gin.Context) {
+	entityID := c.Param("entityID")
+	var req createExternalAuthRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	auth, err := service.CreateExternalAuthForEntity(model.EntityExternalAuth{
+		EntityID:   entityID,
+		Provider:   req.Provider,
+		ExternalID: req.ExternalID,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, auth)
+}

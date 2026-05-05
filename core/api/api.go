@@ -47,9 +47,14 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.GET("/core/entity/external/:provider/:externalID", GetEntityByExternalAuth)
 	router.POST("/core/entity/logins", CreateEntityLogin)
+	router.POST("/core/entity", CreateEntity)
 	router.GET("/core/entity/:entityID", GetEntityByID)
 	router.GET("/core/entity/:entityID/groups", GetEntityGroups)
 	router.GET("/core/entity/:entityID/logins", GetEntityLogins)
+	router.POST("/core/entity/:entityID/email-auth", CreateEntityEmailAuth)
+	router.POST("/core/entity/:entityID/phone-auth", CreateEntityPhoneAuth)
+	router.POST("/core/entity/:entityID/external-auth", CreateEntityExternalAuth)
+	router.POST("/core/users", CreateOrUpdateUser)
 
 	router.POST("/core/applications/verify", VerifyClientCredentials)
 

@@ -131,3 +131,10 @@ func GetExternalAuthForEntity(entityID string) ([]model.EntityExternalAuth, erro
 	}
 	return auths, nil
 }
+
+func CreateExternalAuthForEntity(auth model.EntityExternalAuth) (model.EntityExternalAuth, error) {
+	if err := database.DB.Create(&auth).Error; err != nil {
+		return model.EntityExternalAuth{}, err
+	}
+	return auth, nil
+}
