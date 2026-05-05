@@ -35,4 +35,5 @@ func InitializeRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/discord/ping", Ping)
+	router.GET("/discord/onboarding-tokens/:id", GetOnboardingToken)
 }

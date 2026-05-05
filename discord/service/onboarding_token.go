@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/discord/config"
@@ -8,6 +9,12 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrOnboardingTokenNotFound = errors.New("onboarding token not found")
+	ErrOnboardingTokenInvalid  = errors.New("onboarding token expired or already used")
 )
 
 // CreateOnboardingTokenForDiscordUser invalidates any unused tokens for the
@@ -31,6 +38,23 @@ func CreateOnboardingTokenForDiscordUser(discordID, username, globalName, avatar
 	}
 	if err := database.DB.Create(&token).Error; err != nil {
 		return model.OnboardingToken{}, err
+	}
+	return token, nil
+}
+
+// GetOnboardingTokenByID returns the token row if it exists and is still
+// usable. ErrOnboardingTokenNotFound for a missing row, ErrOnboardingTokenInvalid
+// for a row that is expired or already consumed.
+func GetOnboardingTokenByID(id string) (model.OnboardingToken, error) {
+	var token model.OnboardingToken
+	if err := database.DB.Where("id = ?", id).First(&token).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return model.OnboardingToken{}, ErrOnboardingTokenNotFound
+		}
+		return model.OnboardingToken{}, err
+	}
+	if token.UsedAt != nil || time.Now().After(token.ExpiresAt) {
+		return token, ErrOnboardingTokenInvalid
 	}
 	return token, nil
 }

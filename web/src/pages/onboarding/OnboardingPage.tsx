@@ -1,6 +1,6 @@
-import { GraduationCap } from "lucide-react"
+import { GraduationCap, Loader2 } from "lucide-react"
 import { AnimatePresence, motion, type Variants } from "motion/react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { api } from "@/lib/api"
 import { validatePassword } from "@/lib/password"
 import { cn } from "@/lib/utils"
 import { OnboardingProgress } from "@/pages/onboarding/OnboardingProgress"
@@ -52,10 +53,18 @@ const stepVariants: Variants = {
   }),
 }
 
-const MOCK_IDENTITY: DiscordIdentity = {
-  username: "bk1031",
-  globalName: "Bharat Kathi",
-  avatarUrl: undefined,
+type TokenState =
+  | { status: "loading" }
+  | { status: "ready"; identity: DiscordIdentity }
+  | { status: "not_found" }
+  | { status: "expired" }
+  | { status: "error" }
+
+type TokenInfoResponse = {
+  discord_id: string
+  discord_username: string
+  discord_global_name: string
+  discord_avatar_url: string
 }
 
 type StepId = "welcome" | "credentials" | "identity" | "personal" | "academic" | "team" | "review"
@@ -117,6 +126,35 @@ export default function OnboardingPage() {
     string | null
   >(null)
   const [studentDialogOpen, setStudentDialogOpen] = useState(false)
+  const [tokenState, setTokenState] = useState<TokenState>({ status: "loading" })
+
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    api
+      .get<TokenInfoResponse>(`/discord/onboarding-tokens/${token}`)
+      .then((res) => {
+        if (cancelled) return
+        setTokenState({
+          status: "ready",
+          identity: {
+            username: res.data.discord_username,
+            globalName: res.data.discord_global_name,
+            avatarUrl: res.data.discord_avatar_url || undefined,
+          },
+        })
+      })
+      .catch((err) => {
+        if (cancelled) return
+        const status = err.response?.status
+        if (status === 404) setTokenState({ status: "not_found" })
+        else if (status === 410) setTokenState({ status: "expired" })
+        else setTokenState({ status: "error" })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [token])
 
   const currentStep = STEPS[stepIndex]
   const isLast = stepIndex === STEPS.length - 1
@@ -186,20 +224,15 @@ export default function OnboardingPage() {
     setStepIndex((i) => i - 1)
   }
 
-  if (!token) {
+  if (!token) return <InviteError kind="not_found" />
+  if (tokenState.status === "loading") {
     return (
       <main className="flex min-h-svh items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm space-y-2 text-center">
-          <h1 className="text-xl font-semibold tracking-tight">Invalid invite link</h1>
-          <p className="text-sm text-muted-foreground">
-            This onboarding link is missing a verification token. Run{" "}
-            <code className="font-mono text-xs">!verify</code> in the team Discord to get a
-            fresh link.
-          </p>
-        </div>
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
       </main>
     )
   }
+  if (tokenState.status !== "ready") return <InviteError kind={tokenState.status} />
 
   return (
     <main className="relative flex min-h-svh items-center justify-center px-4 py-12">
@@ -233,7 +266,7 @@ export default function OnboardingPage() {
             exit="exit"
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            {currentStep === "welcome" && <WelcomeStep identity={MOCK_IDENTITY} />}
+            {currentStep === "welcome" && <WelcomeStep identity={tokenState.identity} />}
             {currentStep === "credentials" && (
               <CredentialsStep data={data} update={update} />
             )}
@@ -318,6 +351,44 @@ export default function OnboardingPage() {
           </div>
         </DialogContent>
       </Dialog>
+    </main>
+  )
+}
+
+const ERROR_COPY: Record<"not_found" | "expired" | "error", { title: string; body: React.ReactNode }> = {
+  not_found: {
+    title: "Invalid invite link",
+    body: (
+      <>
+        We couldn't find that link. Run{" "}
+        <code className="font-mono text-xs">!verify</code> in the team Discord to get a fresh
+        one.
+      </>
+    ),
+  },
+  expired: {
+    title: "Link expired",
+    body: (
+      <>
+        This onboarding link has expired or already been used. Run{" "}
+        <code className="font-mono text-xs">!verify</code> in the team Discord for a new one.
+      </>
+    ),
+  },
+  error: {
+    title: "Something went wrong",
+    body: "We couldn't load your invite. Try refreshing the page in a minute.",
+  },
+}
+
+function InviteError({ kind }: { kind: "not_found" | "expired" | "error" }) {
+  const { title, body } = ERROR_COPY[kind]
+  return (
+    <main className="flex min-h-svh items-center justify-center px-4 py-12">
+      <div className="w-full max-w-sm space-y-2 text-center">
+        <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+        <p className="text-sm text-muted-foreground">{body}</p>
+      </div>
     </main>
   )
 }
