@@ -38,6 +38,12 @@ const GROUPS: LinkGroup[] = [
         label: "OAuth authorize",
         note: "with sample client_id, redirect_uri, scope",
       },
+      {
+        to: "/onboard?token=mock_verify_token",
+        label: "Onboarding",
+        note: "Discord !verify → DM'd link, multi-step account setup",
+      },
+      { to: "/onboard", label: "Onboarding (no token)", note: "invalid invite fallback" },
     ],
   },
   {

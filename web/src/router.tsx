@@ -9,6 +9,7 @@ import GroupsPage from "@/pages/groups/GroupsPage"
 import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
 import AuthorizePage from "@/pages/oauth/AuthorizePage"
+import OnboardingPage from "@/pages/onboarding/OnboardingPage"
 import SettingsPage from "@/pages/settings/SettingsPage"
 
 export const router = createBrowserRouter([
@@ -25,5 +26,6 @@ export const router = createBrowserRouter([
   },
   { path: "/auth/login", element: <LoginPage /> },
   { path: "/oauth/authorize", element: <AuthorizePage /> },
+  { path: "/onboard", element: <OnboardingPage /> },
   { path: "*", element: <NotFoundPage /> },
 ])

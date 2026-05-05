@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 
 type OutlineButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean
+  innerClassName?: string
 }
 
 /**
@@ -13,6 +14,7 @@ type OutlineButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
  */
 export function OutlineButton({
   className,
+  innerClassName,
   children,
   loading = false,
   disabled,
@@ -27,7 +29,12 @@ export function OutlineButton({
         className,
       )}
     >
-      <span className="relative flex size-full items-center justify-center rounded-[10px] bg-background px-4 py-2 transition-colors group-hover:bg-transparent">
+      <span
+        className={cn(
+          "relative flex size-full items-center justify-center rounded-[10px] bg-background px-4 py-2 transition-colors group-hover:bg-transparent",
+          innerClassName,
+        )}
+      >
         {loading ? <Loader2 className="size-4 animate-spin" /> : children}
       </span>
     </button>
