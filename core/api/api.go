@@ -59,6 +59,9 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/applications/verify", VerifyClientCredentials)
 	router.POST("/core/login/email-password", LoginEmailPassword)
 
+	router.GET("/entities/@me", GetMe)
+	router.GET("/entities/:id", GetEntity)
+
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/check-username", CheckUsername)
 	router.GET("/users/:id", GetUserByID)
@@ -172,6 +175,11 @@ func All(conditions ...bool) bool {
 	return true
 }
 
+func RequestTokenExists(c *gin.Context) bool {
+	_, exists := c.Get("Auth-Token")
+	return exists
+}
+
 func RequestTokenHasScope(c *gin.Context, scope string) bool {
 	scopes := GetRequestTokenScopes(c)
 	for _, s := range strings.Split(scopes, " ") {
@@ -184,6 +192,18 @@ func RequestTokenHasScope(c *gin.Context, scope string) bool {
 
 func RequestTokenHasAudience(c *gin.Context, audience string) bool {
 	return GetRequestTokenAudience(c) == audience
+}
+
+func RequestTokenHasEntityID(c *gin.Context, entityID string) bool {
+	return GetRequestTokenEntityID(c) == entityID
+}
+
+func GetRequestToken(c *gin.Context) string {
+	token, exists := c.Get("Auth-Token")
+	if !exists {
+		return ""
+	}
+	return token.(string)
 }
 
 func GetRequestTokenScopes(c *gin.Context) string {
@@ -208,4 +228,14 @@ func GetRequestTokenClaims(c *gin.Context) map[string]interface{} {
 		return nil
 	}
 	return claims.(map[string]interface{})
+}
+
+// GetRequestTokenEntityID returns the subject (entity_id) of the bearer that
+// AuthChecker resolved, or "" if no valid bearer was presented.
+func GetRequestTokenEntityID(c *gin.Context) string {
+	id, exists := c.Get("Auth-EntityID")
+	if !exists {
+		return ""
+	}
+	return id.(string)
 }

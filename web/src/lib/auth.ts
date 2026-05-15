@@ -74,7 +74,7 @@ export function useAuth() {
   const query = useQuery({
     queryKey: ["currentEntity", entityId],
     queryFn: async () => {
-      const res = await api.get<Entity>(`/core/entity/${entityId}`)
+      const res = await api.get<Entity>("/entities/@me")
       return res.data
     },
     enabled: !!entityId,

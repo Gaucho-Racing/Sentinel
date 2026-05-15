@@ -9,6 +9,38 @@ import (
 	"gorm.io/gorm"
 )
 
+func GetMe(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "user:read"))
+	id := GetRequestTokenEntityID(c)
+
+	entity, err := service.GetEntityByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "entity not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, entity)
+}
+
+func GetEntity(c *gin.Context) {
+	id := c.Param("id")
+	Require(c, RequestTokenHasScope(c, "user:read") && RequestTokenHasEntityID(c, id))
+
+	entity, err := service.GetEntityByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "entity not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, entity)
+}
+
 func GetEntityByID(c *gin.Context) {
 	entityID := c.Param("entityID")
 	entity, err := service.GetEntityByID(entityID)

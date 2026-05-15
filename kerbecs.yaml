@@ -84,6 +84,14 @@ routes:
       strip_prefix: /api
     envelope: passthrough
 
+  - name: core-entities
+    match:
+      path: /api/entities/*
+    upstream: core
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
   - name: oauth
     match:
       path: /api/oauth/*
