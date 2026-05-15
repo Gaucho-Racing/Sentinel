@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQueries, useQuery } from "@tanstack/react-query"
 import { ArrowRight, ExternalLink } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -22,6 +22,12 @@ type EntityLogin = {
   refresh_token_id: string
   ip_address: string
   created_at: string
+}
+
+type ApplicationResponse = {
+  id: string
+  client_id: string
+  name: string
 }
 
 function formatTime(iso: string) {
@@ -119,6 +125,22 @@ export default function HomePage() {
 
   const recentActivity = loginsQuery.data ?? []
 
+  const uniqueClientIds = [...new Set(recentActivity.map((l) => l.client_id))]
+  const appQueries = useQueries({
+    queries: uniqueClientIds.map((cid) => ({
+      queryKey: ["application", cid],
+      queryFn: async () => {
+        const res = await api.get<ApplicationResponse>(`/applications/client/${cid}`)
+        return res.data
+      },
+      staleTime: 5 * 60 * 1000,
+    })),
+  })
+  const appNameByClientId = new Map<string, string>()
+  appQueries.forEach((q, i) => {
+    if (q.data?.name) appNameByClientId.set(uniqueClientIds[i], q.data.name)
+  })
+
   return (
     <PageContainer>
       <section className="mb-10">
@@ -176,7 +198,14 @@ export default function HomePage() {
                         {formatTime(login.created_at)}
                       </span>
                       <div>
-                        <p className="text-sm font-medium leading-none">{login.client_id}</p>
+                        <p className="text-sm font-medium leading-none">
+                          {login.client_id}
+                          {appNameByClientId.get(login.client_id) && (
+                            <span className="ml-2 font-normal text-muted-foreground">
+                              · {appNameByClientId.get(login.client_id)}
+                            </span>
+                          )}
+                        </p>
                         <p className="mt-1 font-mono text-xs text-muted-foreground">{login.scope}</p>
                       </div>
                       <span className="font-mono text-xs text-muted-foreground">{login.ip_address}</span>
