@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react"
 import type { ComponentType, SVGProps } from "react"
 import { useState } from "react"
-import { useNavigate, useSearchParams } from "react-router-dom"
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
@@ -50,8 +50,10 @@ type LoginResponse = {
 
 export default function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [params] = useSearchParams()
   const arrivedFromOnboarding = params.has("email")
+  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/"
   const [email, setEmail] = useState(params.get("email") ?? "")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState<LoadingTarget>(null)
@@ -66,9 +68,9 @@ export default function LoginPage() {
       setTimeout(resolve, CONVERGE_MS + CHECKMARK_DRAW_MS + HOLD_MS),
     )
     if (document.startViewTransition) {
-      document.startViewTransition(() => navigate("/"))
+      document.startViewTransition(() => navigate(from, { replace: true }))
     } else {
-      navigate("/")
+      navigate(from, { replace: true })
     }
   }
 

@@ -1,6 +1,7 @@
 import { createBrowserRouter } from "react-router-dom"
 
 import { AppShell } from "@/components/AppShell"
+import { RequireAuth } from "@/components/RequireAuth"
 import AnalyticsPage from "@/pages/analytics/AnalyticsPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginPage from "@/pages/auth/LoginPage"
@@ -14,14 +15,19 @@ import SettingsPage from "@/pages/settings/SettingsPage"
 
 export const router = createBrowserRouter([
   {
-    element: <AppShell />,
+    element: <RequireAuth />,
     children: [
-      { path: "/", element: <HomePage /> },
-      { path: "/applications", element: <ApplicationsPage /> },
-      { path: "/groups", element: <GroupsPage /> },
-      { path: "/analytics", element: <AnalyticsPage /> },
-      { path: "/settings", element: <SettingsPage /> },
-      { path: "/debug", element: <DebugPage /> },
+      {
+        element: <AppShell />,
+        children: [
+          { path: "/", element: <HomePage /> },
+          { path: "/applications", element: <ApplicationsPage /> },
+          { path: "/groups", element: <GroupsPage /> },
+          { path: "/analytics", element: <AnalyticsPage /> },
+          { path: "/settings", element: <SettingsPage /> },
+          { path: "/debug", element: <DebugPage /> },
+        ],
+      },
     ],
   },
   { path: "/auth/login", element: <LoginPage /> },
