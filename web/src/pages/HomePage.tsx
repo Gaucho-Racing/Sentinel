@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, ExternalLink } from "lucide-react"
 import { Link } from "react-router-dom"
 
@@ -5,11 +6,23 @@ import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
-import { type Application, mockApplications, mockRecentLogins } from "@/lib/mock"
+import { type Application, mockApplications } from "@/lib/mock"
 
 const RECENT_APPS_LIMIT = 6
 const RECENT_ACTIVITY_LIMIT = 5
+
+type EntityLogin = {
+  id: string
+  entity_id: string
+  client_id: string
+  scope: string
+  access_token_id: string
+  refresh_token_id: string
+  ip_address: string
+  created_at: string
+}
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -71,15 +84,40 @@ function AppCard({ app }: { app: Application }) {
   )
 }
 
+function ActivityRowSkeleton() {
+  return (
+    <li className="grid grid-cols-1 gap-1 px-6 py-4 sm:grid-cols-[160px_1fr_auto] sm:items-center sm:gap-4">
+      <Skeleton className="h-3 w-32" />
+      <div className="space-y-2">
+        <Skeleton className="h-3 w-24" />
+        <Skeleton className="h-3 w-48" />
+      </div>
+      <Skeleton className="h-3 w-24" />
+    </li>
+  )
+}
+
 export default function HomePage() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading: userLoading } = useAuth()
   const firstName = user?.user?.first_name
+  const userId = user?.user?.id
+
+  const loginsQuery = useQuery({
+    queryKey: ["logins", userId],
+    queryFn: async () => {
+      const res = await api.get<EntityLogin[]>(`/users/${userId}/logins`, {
+        params: { limit: RECENT_ACTIVITY_LIMIT },
+      })
+      return res.data
+    },
+    enabled: !!userId,
+  })
 
   const recentApps = [...mockApplications]
     .sort((a, b) => new Date(b.lastAccessedAt ?? 0).getTime() - new Date(a.lastAccessedAt ?? 0).getTime())
     .slice(0, RECENT_APPS_LIMIT)
 
-  const recentActivity = mockRecentLogins.slice(0, RECENT_ACTIVITY_LIMIT)
+  const recentActivity = loginsQuery.data ?? []
 
   return (
     <PageContainer>
@@ -87,7 +125,7 @@ export default function HomePage() {
         <p className="text-sm text-muted-foreground">Welcome back</p>
         <h1 className="mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight">
           Hello,{" "}
-          {isLoading || !firstName ? (
+          {userLoading || !firstName ? (
             <Skeleton className="h-8 w-32" />
           ) : (
             <span className="text-gr-pink">{firstName}</span>
@@ -121,19 +159,29 @@ export default function HomePage() {
           </CardHeader>
           <CardContent className="p-0">
             <ul className="divide-y divide-border">
-              {recentActivity.map((login) => (
-                <li
-                  key={login.id}
-                  className="grid grid-cols-1 gap-1 px-6 py-4 sm:grid-cols-[160px_1fr_auto] sm:items-center sm:gap-4"
-                >
-                  <span className="text-xs tabular-nums text-muted-foreground">{formatTime(login.at)}</span>
-                  <div>
-                    <p className="text-sm font-medium leading-none">{login.applicationName}</p>
-                    <p className="mt-1 font-mono text-xs text-muted-foreground">{login.scope}</p>
-                  </div>
-                  <span className="font-mono text-xs text-muted-foreground">{login.ipAddress}</span>
-                </li>
-              ))}
+              {loginsQuery.isLoading
+                ? Array.from({ length: 3 }).map((_, i) => <ActivityRowSkeleton key={i} />)
+                : recentActivity.length === 0
+                  ? (
+                    <li className="px-6 py-6 text-center text-sm text-muted-foreground">
+                      No sign-in activity yet.
+                    </li>
+                  )
+                  : recentActivity.map((login) => (
+                    <li
+                      key={login.id}
+                      className="grid grid-cols-1 gap-1 px-6 py-4 sm:grid-cols-[160px_1fr_auto] sm:items-center sm:gap-4"
+                    >
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {formatTime(login.created_at)}
+                      </span>
+                      <div>
+                        <p className="text-sm font-medium leading-none">{login.client_id}</p>
+                        <p className="mt-1 font-mono text-xs text-muted-foreground">{login.scope}</p>
+                      </div>
+                      <span className="font-mono text-xs text-muted-foreground">{login.ip_address}</span>
+                    </li>
+                  ))}
             </ul>
           </CardContent>
         </Card>
