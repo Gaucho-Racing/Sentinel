@@ -1,4 +1,4 @@
-const SESSION_KEY = "sentinel:session"
+const SESSION_KEY = "sentinel_session"
 
 export type Session = {
   accessToken: string
