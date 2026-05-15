@@ -1,7 +1,8 @@
 import { Loader2 } from "lucide-react"
 import type { ComponentType, SVGProps } from "react"
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
@@ -9,6 +10,8 @@ import { DiscordIcon, GoogleIcon } from "@/components/icons/socials"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { api } from "@/lib/api"
+import { saveSession } from "@/lib/auth"
 import { DISCORD_INVITE_URL } from "@/lib/links"
 import { cn } from "@/lib/utils"
 
@@ -30,7 +33,7 @@ const PROVIDERS: Array<{
   },
 ]
 
-// Mock latency for the design-stage flows. Replace with real API calls.
+// Mock latency for provider buttons that aren't real yet.
 const MOCK_LATENCY_MS = 1500
 
 // Convergence (login content collapses) -> checkmark draws -> hold -> navigate.
@@ -38,9 +41,18 @@ const CONVERGE_MS = 250
 const CHECKMARK_DRAW_MS = 650 // circle (400) + check (250) starting at +350ms
 const HOLD_MS = 250
 
+type LoginResponse = {
+  access_token: string
+  refresh_token: string
+  expires_in: number
+  entity_id: string
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
-  const [email, setEmail] = useState("")
+  const [params] = useSearchParams()
+  const arrivedFromOnboarding = params.has("email")
+  const [email, setEmail] = useState(params.get("email") ?? "")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState<LoadingTarget>(null)
   const [transitioning, setTransitioning] = useState(false)
@@ -64,7 +76,25 @@ export default function LoginPage() {
     event.preventDefault()
     if (isBusy) return
     setLoading("email")
-    await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS))
+    try {
+      const res = await api.post<LoginResponse>("/auth/login/email-password", {
+        email,
+        password,
+      })
+      saveSession({
+        accessToken: res.data.access_token,
+        refreshToken: res.data.refresh_token,
+        expiresIn: res.data.expires_in,
+        entityId: res.data.entity_id,
+      })
+    } catch (err: unknown) {
+      setLoading(null)
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Couldn't sign you in. Try again."
+      toast.error(message)
+      return
+    }
     handleSuccess()
   }
 
@@ -88,9 +118,13 @@ export default function LoginPage() {
         <div className="flex flex-col items-center gap-3 text-center">
           <img src="/logo/gr-logo-blank.png" alt="Gaucho Racing" className="size-12" />
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in to Sentinel</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {arrivedFromOnboarding ? "Account created" : "Sign in to Sentinel"}
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Choose how you'd like to sign in.
+              {arrivedFromOnboarding
+                ? "Sign in with the password you just set."
+                : "Choose how you'd like to sign in."}
             </p>
           </div>
         </div>
