@@ -92,3 +92,35 @@ func GetUserGroups(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, user.Groups)
 }
+
+func GetUserLogins(c *gin.Context) {
+	id := c.Param("id")
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
+	))
+
+	user, err := service.GetUserByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	logins, err := service.GetEntityLogins(service.EntityLoginsFilter{
+		EntityID: user.EntityID,
+		ClientID: c.Query("client_id"),
+		Scope:    c.Query("scope"),
+		Before:   c.Query("before"),
+		After:    c.Query("after"),
+		Limit:    c.Query("limit"),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, logins)
+}

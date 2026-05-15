@@ -68,6 +68,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/users", CreateOrUpdateUser)
 	router.DELETE("/users/:id", DeleteUser)
 	router.GET("/users/:id/groups", GetUserGroups)
+	router.GET("/users/:id/logins", GetUserLogins)
 
 	router.GET("/applications", GetAllApplications)
 	router.GET("/applications/:id", GetApplicationByID)
@@ -238,4 +239,21 @@ func GetRequestTokenEntityID(c *gin.Context) string {
 		return ""
 	}
 	return id.(string)
+}
+
+// GetRequestTokenUserID returns the user_id custom claim from the bearer, or
+// "" if the bearer represents a non-user (service account) or no bearer.
+func GetRequestTokenUserID(c *gin.Context) string {
+	claims := GetRequestTokenClaims(c)
+	if claims == nil {
+		return ""
+	}
+	id, _ := claims["user_id"].(string)
+	return id
+}
+
+// RequestTokenHasUserID returns true when the bearer's user_id claim equals
+// the given userID.
+func RequestTokenHasUserID(c *gin.Context, userID string) bool {
+	return GetRequestTokenUserID(c) == userID
 }

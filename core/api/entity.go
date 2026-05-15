@@ -98,12 +98,14 @@ func CreateEntityLogin(c *gin.Context) {
 }
 
 func GetEntityLogins(c *gin.Context) {
-	entityID := c.Param("entityID")
-	clientID := c.Query("client_id")
-	scope := c.Query("scope")
-	limit := c.Query("limit")
-
-	logins, err := service.GetEntityLogins(entityID, clientID, scope, limit)
+	logins, err := service.GetEntityLogins(service.EntityLoginsFilter{
+		EntityID: c.Param("entityID"),
+		ClientID: c.Query("client_id"),
+		Scope:    c.Query("scope"),
+		Before:   c.Query("before"),
+		After:    c.Query("after"),
+		Limit:    c.Query("limit"),
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
