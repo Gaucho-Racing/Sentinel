@@ -42,3 +42,14 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/auth/login/email-password", LoginEmailPassword)
 	router.POST("/auth/refresh", RefreshSession)
 }
+
+// GetClientIP returns the originating client IP. Prefers Cloudflare's
+// CF-Connecting-IP (set by CF, overrides any client-supplied value, and
+// unspoofable as long as the origin only accepts traffic from CF's IP
+// ranges). Falls back to gin's c.ClientIP() in dev or non-CF deployments.
+func GetClientIP(c *gin.Context) string {
+	if ip := c.GetHeader("CF-Connecting-IP"); ip != "" {
+		return ip
+	}
+	return c.ClientIP()
+}

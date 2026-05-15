@@ -119,7 +119,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		"scope":            authCode.Scope,
 		"access_token_id":  accessTokenID,
 		"refresh_token_id": refreshTokenID,
-		"ip_address":       c.ClientIP(),
+		"ip_address":       GetClientIP(c),
 	}, nil)
 
 	c.JSON(http.StatusOK, exchangeTokenResponse{
@@ -200,7 +200,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		"scope":            accessScope,
 		"access_token_id":  accessTokenID,
 		"refresh_token_id": newRefreshTokenID,
-		"ip_address":       c.ClientIP(),
+		"ip_address":       GetClientIP(c),
 	}, nil)
 
 	c.JSON(http.StatusOK, exchangeTokenResponse{

@@ -112,7 +112,7 @@ func mintFirstPartySession(c *gin.Context, entityID string) (sessionResponse, er
 		"scope":            firstPartyAccessScope,
 		"access_token_id":  accessTokenID,
 		"refresh_token_id": refreshTokenID,
-		"ip_address":       c.ClientIP(),
+		"ip_address":       GetClientIP(c),
 	}, nil)
 
 	return sessionResponse{
