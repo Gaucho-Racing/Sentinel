@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { mockUser } from "@/lib/mock"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/lib/auth"
 
 function initials(name: string) {
   return name
@@ -25,26 +26,36 @@ function initials(name: string) {
 
 function HeaderUserMenu() {
   const navigate = useNavigate()
+  const { user, isLoading, logout } = useAuth()
+
+  if (isLoading || !user?.user) {
+    return <Skeleton className="size-8 rounded-full" />
+  }
+
+  const name = `${user.user.first_name} ${user.user.last_name}`.trim() || user.user.username
+  const email = user.email_auth?.email ?? user.user.email
+  const avatarUrl = user.user.avatar_url
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="rounded-full outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
           <Avatar className="size-8 cursor-pointer">
-            <AvatarImage src={mockUser.avatarUrl} alt={mockUser.name} />
-            <AvatarFallback>{initials(mockUser.name)}</AvatarFallback>
+            <AvatarImage src={avatarUrl} alt={name} />
+            <AvatarFallback>{initials(name)}</AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={10} className="w-56">
         <DropdownMenuLabel className="flex flex-col">
-          <span className="text-sm font-medium">{mockUser.name}</span>
-          <span className="text-xs font-normal text-muted-foreground">{mockUser.email}</span>
+          <span className="text-sm font-medium">{name}</span>
+          <span className="text-xs font-normal text-muted-foreground">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => navigate("/settings")}>Settings</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
-          onSelect={() => navigate("/auth/login")}
+          onSelect={logout}
           className="text-destructive focus:text-destructive"
         >
           Sign out
