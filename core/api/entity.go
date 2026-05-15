@@ -27,7 +27,10 @@ func GetMe(c *gin.Context) {
 
 func GetEntity(c *gin.Context) {
 	id := c.Param("id")
-	Require(c, RequestTokenHasScope(c, "user:read") && RequestTokenHasEntityID(c, id))
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "user:read") && RequestTokenHasEntityID(c, id),
+	))
 
 	entity, err := service.GetEntityByID(id)
 	if err != nil {
