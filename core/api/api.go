@@ -57,6 +57,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/users", CreateOrUpdateUser)
 
 	router.POST("/core/applications/verify", VerifyClientCredentials)
+	router.POST("/core/login/email-password", LoginEmailPassword)
 
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/check-username", CheckUsername)

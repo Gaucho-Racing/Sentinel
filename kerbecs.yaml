@@ -92,6 +92,14 @@ routes:
       strip_prefix: /api
     envelope: passthrough
 
+  - name: auth
+    match:
+      path: /api/auth/*
+    upstream: oauth
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
   - name: discord
     match:
       path: /api/discord/*

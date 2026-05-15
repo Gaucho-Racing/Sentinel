@@ -19,6 +19,10 @@ var Routes = []rincon.Route{
 		Method: "*",
 	},
 	{
+		Route:  "/auth/**",
+		Method: "*",
+	},
+	{
 		Route:  "/.well-known/**",
 		Method: "GET",
 	},
