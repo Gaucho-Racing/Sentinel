@@ -4,7 +4,9 @@ import { Link } from "react-router-dom"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { type Application, mockApplications, mockRecentLogins, mockUser } from "@/lib/mock"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useAuth } from "@/lib/auth"
+import { type Application, mockApplications, mockRecentLogins } from "@/lib/mock"
 
 const RECENT_APPS_LIMIT = 6
 const RECENT_ACTIVITY_LIMIT = 5
@@ -70,7 +72,8 @@ function AppCard({ app }: { app: Application }) {
 }
 
 export default function HomePage() {
-  const firstName = mockUser.name.split(" ")[0]
+  const { user, isLoading } = useAuth()
+  const firstName = user?.user?.first_name
 
   const recentApps = [...mockApplications]
     .sort((a, b) => new Date(b.lastAccessedAt ?? 0).getTime() - new Date(a.lastAccessedAt ?? 0).getTime())
@@ -82,8 +85,13 @@ export default function HomePage() {
     <PageContainer>
       <section className="mb-10">
         <p className="text-sm text-muted-foreground">Welcome back</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          Hello, <span className="text-gr-pink">{firstName}</span>
+        <h1 className="mt-1 flex items-center gap-2 text-3xl font-semibold tracking-tight">
+          Hello,{" "}
+          {isLoading || !firstName ? (
+            <Skeleton className="h-8 w-32" />
+          ) : (
+            <span className="text-gr-pink">{firstName}</span>
+          )}
         </h1>
       </section>
 
