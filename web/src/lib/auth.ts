@@ -65,6 +65,14 @@ export type Entity = {
     created_at: string
     updated_at: string
   }
+  service_account?: {
+    id: string
+    entity_id: string
+    application_id: string
+    name: string
+    created_by: string
+    created_at: string
+  }
 }
 
 export function useAuth() {

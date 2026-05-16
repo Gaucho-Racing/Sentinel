@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
+import type { Entity } from "@/lib/auth"
 
 function initial(name: string) {
   return name.slice(0, 1).toUpperCase()
@@ -87,6 +88,32 @@ export default function ApplicationDetailsPage() {
     enabled: !!id && secretVisible,
     staleTime: 5 * 60 * 1000,
   })
+
+  const ownerId = query.data?.owner_id
+  const ownerQuery = useQuery({
+    queryKey: ["entity", ownerId],
+    queryFn: async () => {
+      const res = await api.get<Entity>(`/entities/${ownerId}`)
+      return res.data
+    },
+    enabled: !!ownerId,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  function ownerLabel(): string {
+    if (!ownerId) return "—"
+    if (ownerQuery.isLoading) return "Loading…"
+    const e = ownerQuery.data
+    if (!e) return ownerId
+    if (e.type === "USER" && e.user) {
+      const full = `${e.user.first_name} ${e.user.last_name}`.trim()
+      return full || e.user.username || ownerId
+    }
+    if (e.type === "SERVICE_ACCOUNT" && e.service_account) {
+      return e.service_account.name || ownerId
+    }
+    return ownerId
+  }
 
   if (query.isLoading) {
     return (
@@ -248,6 +275,9 @@ export default function ApplicationDetailsPage() {
               ) : (
                 <span className="text-sm text-muted-foreground">—</span>
               )}
+            </Field>
+            <Field label="Created by">
+              <span className="text-sm">{ownerLabel()}</span>
             </Field>
             <Field label="Registered">
               <span className="text-sm">{formatTime(app.created_at)}</span>

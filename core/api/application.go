@@ -84,6 +84,7 @@ type createdApplicationResponse struct {
 }
 
 func CreateApplication(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
 	var req createApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -94,6 +95,7 @@ func CreateApplication(c *gin.Context) {
 		Description: req.Description,
 		IconURL:     req.IconURL,
 		LaunchURL:   req.LaunchURL,
+		OwnerID:     GetRequestTokenEntityID(c),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

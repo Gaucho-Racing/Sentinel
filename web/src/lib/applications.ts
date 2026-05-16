@@ -1,4 +1,5 @@
 // Application API shape — mirror of core's model.Application JSON.
+// owner_id is the entity_id of the creator (USER or SERVICE_ACCOUNT entity).
 export type Application = {
   id: string
   owner_id: string

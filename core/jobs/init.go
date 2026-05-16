@@ -29,6 +29,7 @@ func initializeDefaultApplications() {
 			Description: "Gaucho Racing's authentication service",
 			ClientID:    SentinelClientID,
 			LaunchURL:   "https://sso.gauchoracing.com",
+			OwnerID:     SentinelCoreEntityID,
 		})
 		if err != nil {
 			logger.SugarLogger.Fatalf("Failed to create Sentinel application: %v", err)
