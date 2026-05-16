@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
@@ -23,13 +24,43 @@ function formatTime(iso: string) {
   })
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
   return (
-    <div className="flex flex-col gap-1 border-b border-border/60 py-3 last:border-b-0 sm:flex-row sm:items-center sm:gap-6">
-      <span className="text-xs uppercase tracking-wider text-muted-foreground sm:w-40 sm:shrink-0">
-        {label}
-      </span>
-      <div className="min-w-0 flex-1 text-sm">{children}</div>
+    <div>
+      <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="mt-1.5">{children}</div>
+    </div>
+  )
+}
+
+function CopyableMono({
+  value,
+  label,
+  className,
+}: {
+  value: string
+  label: string
+  className?: string
+}) {
+  return (
+    <div className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5">
+      <code className={`flex-1 truncate font-mono text-xs ${className ?? ""}`}>{value}</code>
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        onClick={() => {
+          navigator.clipboard.writeText(value)
+          toast.success(`${label} copied`)
+        }}
+      >
+        <Copy className="size-3.5" />
+      </Button>
     </div>
   )
 }
@@ -56,11 +87,6 @@ export default function ApplicationDetailsPage() {
     enabled: !!id && secretVisible,
     staleTime: 5 * 60 * 1000,
   })
-
-  function copy(value: string, label: string) {
-    navigator.clipboard.writeText(value)
-    toast.success(`${label} copied`)
-  }
 
   if (query.isLoading) {
     return (
@@ -93,6 +119,7 @@ export default function ApplicationDetailsPage() {
   }
 
   const app = query.data
+  const maskedSecret = "•".repeat(48)
 
   return (
     <PageContainer>
@@ -103,7 +130,7 @@ export default function ApplicationDetailsPage() {
         </Link>
       </Button>
 
-      <header className="mb-8 flex items-start justify-between gap-4">
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="flex size-16 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-2xl font-semibold text-white">
             {app.icon_url ? (
@@ -137,72 +164,100 @@ export default function ApplicationDetailsPage() {
         </div>
       </header>
 
-      <section className="rounded-lg border border-border/60 bg-card px-5">
-        <Row label="Client ID">
-          <div className="flex items-center gap-2">
-            <code className="flex-1 break-all font-mono text-xs">{app.client_id}</code>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => copy(app.client_id, "Client ID")}
-            >
-              <Copy className="size-3.5" />
-            </Button>
-          </div>
-        </Row>
-        <Row label="Client Secret">
-          <div className="flex items-center gap-2">
-            <code className="flex-1 break-all font-mono text-xs">
-              {secretVisible
-                ? (secretQuery.data ?? "loading…")
-                : "•".repeat(48)}
-            </code>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setSecretVisible((v) => !v)}
-            >
-              {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              disabled={!secretQuery.data}
-              onClick={() => secretQuery.data && copy(secretQuery.data, "Client secret")}
-            >
-              <Copy className="size-3.5" />
-            </Button>
-          </div>
-        </Row>
-        <Row label="Launch URL">
-          {app.launch_url ? (
-            <a
-              href={app.launch_url}
-              target="_blank"
-              rel="noreferrer"
-              className="break-all text-foreground hover:text-gr-pink"
-            >
-              {app.launch_url}
-            </a>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          )}
-        </Row>
-        <Row label="Redirect URIs">
-          {app.redirect_uris.length === 0 ? (
-            <span className="text-muted-foreground">—</span>
-          ) : (
-            <ul className="space-y-1">
-              {app.redirect_uris.map((uri) => (
-                <li key={uri} className="break-all font-mono text-xs text-muted-foreground">
-                  {uri}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Row>
-        <Row label="Registered">{formatTime(app.created_at)}</Row>
-      </section>
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>OAuth credentials</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <Field label="Client ID">
+              <CopyableMono value={app.client_id} label="Client ID" />
+            </Field>
+            <Field label="Client Secret">
+              <div className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5">
+                <code className="flex-1 truncate font-mono text-xs">
+                  {secretVisible ? (secretQuery.data ?? "Loading…") : maskedSecret}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setSecretVisible((v) => !v)}
+                >
+                  {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={!secretQuery.data}
+                  onClick={() => {
+                    if (!secretQuery.data) return
+                    navigator.clipboard.writeText(secretQuery.data)
+                    toast.success("Client secret copied")
+                  }}
+                >
+                  <Copy className="size-3.5" />
+                </Button>
+              </div>
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Redirect URIs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {app.redirect_uris.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No redirect URIs registered.{" "}
+                <Link
+                  to={`/applications/${app.id}/edit`}
+                  className="text-foreground hover:text-gr-pink"
+                >
+                  Add one
+                </Link>
+                .
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {app.redirect_uris.map((uri) => (
+                  <li key={uri}>
+                    <CopyableMono value={uri} label="Redirect URI" />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Metadata</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <Field label="Launch URL">
+              {app.launch_url ? (
+                <a
+                  href={app.launch_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all text-sm text-foreground hover:text-gr-pink"
+                >
+                  {app.launch_url}
+                </a>
+              ) : (
+                <span className="text-sm text-muted-foreground">—</span>
+              )}
+            </Field>
+            <Field label="Registered">
+              <span className="text-sm">{formatTime(app.created_at)}</span>
+            </Field>
+            <Field label="Last updated">
+              <span className="text-sm">{formatTime(app.updated_at)}</span>
+            </Field>
+          </CardContent>
+        </Card>
+      </div>
     </PageContainer>
   )
 }
