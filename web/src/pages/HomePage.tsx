@@ -1,14 +1,15 @@
 import { useQueries, useQuery } from "@tanstack/react-query"
-import { ArrowRight, ExternalLink } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import { AppCard } from "@/components/AppCard"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
+import type { Application } from "@/lib/applications"
 import { useAuth } from "@/lib/auth"
-import { type Application } from "@/lib/mock"
 
 const RECENT_APPS_LIMIT = 6
 const RECENT_ACTIVITY_LIMIT = 5
@@ -24,21 +25,7 @@ type EntityLogin = {
   created_at: string
 }
 
-type ApplicationResponse = {
-  id: string
-  client_id: string
-  name: string
-}
-
-type AccessedApplication = {
-  id: string
-  client_id: string
-  name: string
-  description: string
-  icon_url: string
-  launch_url: string
-  last_accessed_at: string
-}
+type AccessedApplication = Application & { last_accessed_at: string }
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -49,20 +36,6 @@ function formatTime(iso: string) {
   })
 }
 
-function relativeTime(iso?: string) {
-  if (!iso) return "—"
-  const ms = Date.now() - new Date(iso).getTime()
-  const minutes = Math.floor(ms / 60_000)
-  if (minutes < 1) return "just now"
-  if (minutes < 60) return `${minutes}m ago`
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 30) return `${days}d ago`
-  const months = Math.floor(days / 30)
-  return `${months}mo ago`
-}
-
 function ViewAllLink({ to, children }: { to: string; children: string }) {
   return (
     <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
@@ -71,32 +44,6 @@ function ViewAllLink({ to, children }: { to: string; children: string }) {
         <ArrowRight className="ml-1 size-3.5" />
       </Link>
     </Button>
-  )
-}
-
-function AppCard({ app }: { app: Application }) {
-  const initial = app.name.slice(0, 1).toUpperCase()
-  return (
-    <a
-      href={app.url ?? "#"}
-      target="_blank"
-      rel="noreferrer"
-      className="group flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-4 transition-colors hover:bg-muted/40"
-    >
-      <div className="flex items-start justify-between">
-        <div className="flex size-10 items-center justify-center rounded-md bg-gradient-to-br from-gr-pink to-gr-purple text-base font-semibold text-white">
-          {initial}
-        </div>
-        <ExternalLink className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-      </div>
-      <div>
-        <p className="text-sm font-medium leading-none">{app.name}</p>
-        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{app.description}</p>
-      </div>
-      <p className="mt-auto text-[11px] text-muted-foreground">
-        Last accessed {relativeTime(app.lastAccessedAt)}
-      </p>
-    </a>
   )
 }
 
@@ -140,15 +87,7 @@ export default function HomePage() {
     enabled: !!userId,
   })
 
-  const recentApps: Application[] = (recentAppsQuery.data ?? []).map((a) => ({
-    id: a.id,
-    clientId: a.client_id,
-    name: a.name,
-    description: a.description,
-    iconUrl: a.icon_url,
-    url: a.launch_url,
-    lastAccessedAt: a.last_accessed_at,
-  }))
+  const recentApps = recentAppsQuery.data ?? []
 
   const recentActivity = loginsQuery.data ?? []
 
@@ -157,7 +96,7 @@ export default function HomePage() {
     queries: uniqueClientIds.map((cid) => ({
       queryKey: ["application", cid],
       queryFn: async () => {
-        const res = await api.get<ApplicationResponse>(`/applications/client/${cid}`)
+        const res = await api.get<Application>(`/applications/client/${cid}`)
         return res.data
       },
       staleTime: 5 * 60 * 1000,
@@ -201,7 +140,9 @@ export default function HomePage() {
                   Sign into a team app to see it here.
                 </p>
               )
-              : recentApps.map((app) => <AppCard key={app.id} app={app} />)}
+              : recentApps.map((app) => (
+                  <AppCard key={app.id} app={app} lastAccessedAt={app.last_accessed_at} />
+                ))}
         </div>
       </section>
 
