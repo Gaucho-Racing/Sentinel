@@ -2,12 +2,53 @@ package service
 
 import (
 	"crypto/rand"
+	"time"
 
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
 )
+
+// AccessedApplication is an Application plus the last time the requesting
+// entity signed into it. Used by GetAccessedApplicationsForEntity for the
+// "recently accessed" dashboard surface.
+type AccessedApplication struct {
+	model.Application
+	LastAccessedAt time.Time `json:"last_accessed_at"`
+}
+
+// GetAccessedApplicationsForEntity returns the applications the entity has
+// signed into, deduplicated by client_id, ordered by most-recent access.
+// Server-side dedupe so users with lopsided login distributions (many logins
+// for one app, few for others) still see all distinct apps. limit=0 means
+// unlimited.
+func GetAccessedApplicationsForEntity(entityID string, limit int) ([]AccessedApplication, error) {
+	apps := []AccessedApplication{}
+	sql := `
+		SELECT a.*, l.last_accessed_at
+		FROM application a
+		INNER JOIN (
+			SELECT client_id, MAX(created_at) AS last_accessed_at
+			FROM entity_login
+			WHERE entity_id = ?
+			GROUP BY client_id
+		) l ON l.client_id = a.client_id
+		ORDER BY l.last_accessed_at DESC
+	`
+	args := []interface{}{entityID}
+	if limit > 0 {
+		sql += " LIMIT ?"
+		args = append(args, limit)
+	}
+	if err := database.DB.Raw(sql, args...).Scan(&apps).Error; err != nil {
+		return []AccessedApplication{}, err
+	}
+	for i := range apps {
+		PopulateApplication(&apps[i].Application)
+	}
+	return apps, nil
+}
 
 func GetAllApplications() ([]model.Application, error) {
 	applications := []model.Application{}

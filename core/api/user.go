@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -91,6 +92,38 @@ func GetUserGroups(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, user.Groups)
+}
+
+func GetUserApplications(c *gin.Context) {
+	id := c.Param("id")
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
+	))
+
+	user, err := service.GetUserByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	limit := 0
+	if raw := c.Query("limit"); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil && n > 0 {
+			limit = n
+		}
+	}
+
+	apps, err := service.GetAccessedApplicationsForEntity(user.EntityID, limit)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, apps)
 }
 
 func GetUserLogins(c *gin.Context) {

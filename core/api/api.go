@@ -69,6 +69,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.DELETE("/users/:id", DeleteUser)
 	router.GET("/users/:id/groups", GetUserGroups)
 	router.GET("/users/:id/logins", GetUserLogins)
+	router.GET("/users/:id/applications", GetUserApplications)
 
 	router.GET("/applications", GetAllApplications)
 	router.GET("/applications/:id", GetApplicationByID)

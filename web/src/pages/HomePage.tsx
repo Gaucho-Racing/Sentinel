@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
-import { type Application, mockApplications } from "@/lib/mock"
+import { type Application } from "@/lib/mock"
 
 const RECENT_APPS_LIMIT = 6
 const RECENT_ACTIVITY_LIMIT = 5
@@ -28,6 +28,15 @@ type ApplicationResponse = {
   id: string
   client_id: string
   name: string
+}
+
+type AccessedApplication = {
+  id: string
+  client_id: string
+  name: string
+  description: string
+  icon_url: string
+  last_accessed_at: string
 }
 
 function formatTime(iso: string) {
@@ -119,9 +128,25 @@ export default function HomePage() {
     enabled: !!userId,
   })
 
-  const recentApps = [...mockApplications]
-    .sort((a, b) => new Date(b.lastAccessedAt ?? 0).getTime() - new Date(a.lastAccessedAt ?? 0).getTime())
-    .slice(0, RECENT_APPS_LIMIT)
+  const recentAppsQuery = useQuery({
+    queryKey: ["recentApplications", userId],
+    queryFn: async () => {
+      const res = await api.get<AccessedApplication[]>(`/users/${userId}/applications`, {
+        params: { limit: RECENT_APPS_LIMIT },
+      })
+      return res.data
+    },
+    enabled: !!userId,
+  })
+
+  const recentApps: Application[] = (recentAppsQuery.data ?? []).map((a) => ({
+    id: a.id,
+    clientId: a.client_id,
+    name: a.name,
+    description: a.description,
+    iconUrl: a.icon_url,
+    lastAccessedAt: a.last_accessed_at,
+  }))
 
   const recentActivity = loginsQuery.data ?? []
 
@@ -164,9 +189,17 @@ export default function HomePage() {
           <ViewAllLink to="/applications">View all</ViewAllLink>
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {recentApps.map((app) => (
-            <AppCard key={app.id} app={app} />
-          ))}
+          {recentAppsQuery.isLoading
+            ? Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 rounded-lg" />
+              ))
+            : recentApps.length === 0
+              ? (
+                <p className="col-span-full py-6 text-center text-sm text-muted-foreground">
+                  Sign into a team app to see it here.
+                </p>
+              )
+              : recentApps.map((app) => <AppCard key={app.id} app={app} />)}
         </div>
       </section>
 
