@@ -48,6 +48,7 @@ func Init() {
 			&model.GroupJoinRequest{},
 			&model.GroupJoinRequestComment{},
 			&model.GroupOwner{},
+			&model.SigningKey{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db

@@ -3,7 +3,10 @@ package service
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
@@ -14,22 +17,86 @@ import (
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
 	"github.com/golang-jwt/jwt/v5"
+	"gorm.io/gorm"
 )
 
+// InitializeKeys loads the active RSA signing key from the signing_key
+// table, or generates a fresh keypair and persists it if no active key
+// exists. Persistence keeps sessions valid across core restarts.
 func InitializeKeys() {
-	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	if err != nil {
-		logger.SugarLogger.Errorln("Failed to generate RSA private key:", err)
+	var stored model.SigningKey
+	err := database.DB.Where("active = ?", true).First(&stored).Error
+	if err == nil {
+		priv, perr := parsePrivateKeyPEM(stored.PrivateKeyPEM)
+		if perr != nil {
+			logger.SugarLogger.Fatalf("Failed to parse stored signing key %s: %v", stored.ID, perr)
+			return
+		}
+		applyKey(priv)
+		logger.SugarLogger.Infof("Loaded signing key %s from db", stored.ID)
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		logger.SugarLogger.Fatalf("Failed to load signing key: %v", err)
 		return
 	}
 
-	publicKey := &privateKey.PublicKey
-	config.RsaPrivateKey = privateKey
-	config.RsaPublicKey = publicKey
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		logger.SugarLogger.Fatalf("Failed to generate RSA private key: %v", err)
+		return
+	}
+	privPEM := encodePrivateKeyPEM(priv)
+	pubPEM, err := encodePublicKeyPEM(&priv.PublicKey)
+	if err != nil {
+		logger.SugarLogger.Fatalf("Failed to encode public key: %v", err)
+		return
+	}
+	fresh := model.SigningKey{
+		ID:            ulid.Make().Prefixed("sig"),
+		Algorithm:     "RS256",
+		PrivateKeyPEM: privPEM,
+		PublicKeyPEM:  pubPEM,
+		Active:        true,
+	}
+	if err := database.DB.Create(&fresh).Error; err != nil {
+		logger.SugarLogger.Fatalf("Failed to persist signing key: %v", err)
+		return
+	}
+	applyKey(priv)
+	logger.SugarLogger.Infof("Generated and persisted new signing key %s", fresh.ID)
+}
 
-	config.RsaPublicKeyJWKS = PublicKeyToJWKS(publicKey)
+func applyKey(priv *rsa.PrivateKey) {
+	config.RsaPrivateKey = priv
+	config.RsaPublicKey = &priv.PublicKey
+	config.RsaPublicKeyJWKS = PublicKeyToJWKS(&priv.PublicKey)
+}
 
-	logger.SugarLogger.Infoln("Successfully generated new RSA keypair")
+func encodePrivateKeyPEM(priv *rsa.PrivateKey) string {
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: x509.MarshalPKCS1PrivateKey(priv),
+	}))
+}
+
+func encodePublicKeyPEM(pub *rsa.PublicKey) (string, error) {
+	der, err := x509.MarshalPKIXPublicKey(pub)
+	if err != nil {
+		return "", err
+	}
+	return string(pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: der,
+	})), nil
+}
+
+func parsePrivateKeyPEM(s string) (*rsa.PrivateKey, error) {
+	block, _ := pem.Decode([]byte(s))
+	if block == nil {
+		return nil, fmt.Errorf("invalid PEM block")
+	}
+	return x509.ParsePKCS1PrivateKey(block.Bytes)
 }
 
 func PublicKeyToJWKS(publicKey *rsa.PublicKey) map[string]interface{} {
