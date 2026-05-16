@@ -69,27 +69,75 @@ func VerifyClientCredentials(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "valid"})
 }
 
-func CreateOrUpdateApplication(c *gin.Context) {
-	var app model.Application
-	if err := c.ShouldBindJSON(&app); err != nil {
+type createApplicationRequest struct {
+	Name        string `json:"name" binding:"required"`
+	Description string `json:"description"`
+	IconURL     string `json:"icon_url"`
+	LaunchURL   string `json:"launch_url"`
+}
+
+// createdApplicationResponse exposes the freshly minted client_secret
+// (model.Application JSON-skips it on subsequent reads).
+type createdApplicationResponse struct {
+	model.Application
+	Secret string `json:"client_secret"`
+}
+
+func CreateApplication(c *gin.Context) {
+	var req createApplicationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	existing, err := service.GetApplicationByID(app.ID)
-	if err != nil && err != gorm.ErrRecordNotFound {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	if existing.ID != "" {
-		app, err = service.UpdateApplication(app)
-	} else {
-		app, err = service.CreateApplication(app)
-	}
+	app, err := service.CreateApplication(model.Application{
+		Name:        req.Name,
+		Description: req.Description,
+		IconURL:     req.IconURL,
+		LaunchURL:   req.LaunchURL,
+	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, app)
+	c.JSON(http.StatusOK, createdApplicationResponse{
+		Application: app,
+		Secret:      app.ClientSecret,
+	})
+}
+
+type updateApplicationRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IconURL     string `json:"icon_url"`
+	LaunchURL   string `json:"launch_url"`
+}
+
+func UpdateApplication(c *gin.Context) {
+	id := c.Param("id")
+	existing, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	var req updateApplicationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	existing.Name = req.Name
+	existing.Description = req.Description
+	existing.IconURL = req.IconURL
+	existing.LaunchURL = req.LaunchURL
+	updated, err := service.UpdateApplication(existing)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, updated)
 }
 
 func DeleteApplication(c *gin.Context) {

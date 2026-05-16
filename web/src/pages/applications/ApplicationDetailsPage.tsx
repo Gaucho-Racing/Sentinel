@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, ExternalLink } from "lucide-react"
+import { ArrowLeft, ExternalLink, Pencil } from "lucide-react"
 import { Link, useParams } from "react-router-dom"
 
 import { OutlineButton } from "@/components/OutlineButton"
@@ -98,16 +98,24 @@ export default function ApplicationDetailsPage() {
             <p className="mt-1 text-sm text-muted-foreground">{app.description}</p>
           </div>
         </div>
-        {app.launch_url && (
-          <OutlineButton
-            type="button"
-            className="w-auto"
-            onClick={() => window.open(app.launch_url, "_blank", "noreferrer")}
-          >
-            Launch
-            <ExternalLink className="ml-1.5 size-3.5" />
-          </OutlineButton>
-        )}
+        <div className="flex gap-2">
+          <Button asChild variant="outline" size="sm">
+            <Link to={`/applications/${app.id}/edit`}>
+              <Pencil className="mr-1 size-3.5" />
+              Edit
+            </Link>
+          </Button>
+          {app.launch_url && (
+            <OutlineButton
+              type="button"
+              className="w-auto"
+              onClick={() => window.open(app.launch_url, "_blank", "noreferrer")}
+            >
+              Launch
+              <ExternalLink className="ml-1.5 size-3.5" />
+            </OutlineButton>
+          )}
+        </div>
       </header>
 
       <section className="rounded-lg border border-border/60 bg-card px-5">

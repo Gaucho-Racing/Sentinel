@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query"
-import { Search } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
 
 import { AppCard } from "@/components/AppCard"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
@@ -34,10 +36,18 @@ export default function ApplicationsPage() {
 
   return (
     <PageContainer>
-      <PageHeader
-        title="Applications"
-        description="Team apps you can sign into through Sentinel."
-      />
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <PageHeader
+          title="Applications"
+          description="Team apps you can sign into through Sentinel."
+        />
+        <Button asChild>
+          <Link to="/applications/new">
+            <Plus className="mr-1 size-3.5" />
+            New application
+          </Link>
+        </Button>
+      </div>
 
       <div className="relative mb-6">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
