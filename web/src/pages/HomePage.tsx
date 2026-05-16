@@ -36,6 +36,7 @@ type AccessedApplication = {
   name: string
   description: string
   icon_url: string
+  launch_url: string
   last_accessed_at: string
 }
 
@@ -145,6 +146,7 @@ export default function HomePage() {
     name: a.name,
     description: a.description,
     iconUrl: a.icon_url,
+    url: a.launch_url,
     lastAccessedAt: a.last_accessed_at,
   }))
 
