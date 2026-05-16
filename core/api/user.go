@@ -94,7 +94,7 @@ func GetUserGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, user.Groups)
 }
 
-func GetUserApplications(c *gin.Context) {
+func GetUserRecentApplications(c *gin.Context) {
 	id := c.Param("id")
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),

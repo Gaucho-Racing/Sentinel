@@ -131,7 +131,7 @@ export default function HomePage() {
   const recentAppsQuery = useQuery({
     queryKey: ["recentApplications", userId],
     queryFn: async () => {
-      const res = await api.get<AccessedApplication[]>(`/users/${userId}/applications`, {
+      const res = await api.get<AccessedApplication[]>(`/users/${userId}/recent-applications`, {
         params: { limit: RECENT_APPS_LIMIT },
       })
       return res.data
