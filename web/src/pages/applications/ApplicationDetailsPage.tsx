@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, ExternalLink, Pencil } from "lucide-react"
+import { ArrowLeft, Copy, ExternalLink, Eye, EyeOff, Pencil } from "lucide-react"
+import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
+import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
@@ -34,6 +36,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 export default function ApplicationDetailsPage() {
   const { id } = useParams<{ id: string }>()
+  const [secretVisible, setSecretVisible] = useState(false)
+
   const query = useQuery({
     queryKey: ["application", "id", id],
     queryFn: async () => {
@@ -42,6 +46,21 @@ export default function ApplicationDetailsPage() {
     },
     enabled: !!id,
   })
+
+  const secretQuery = useQuery({
+    queryKey: ["application", "id", id, "secret"],
+    queryFn: async () => {
+      const res = await api.get<{ client_secret: string }>(`/applications/${id}/secret`)
+      return res.data.client_secret
+    },
+    enabled: !!id && secretVisible,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  function copy(value: string, label: string) {
+    navigator.clipboard.writeText(value)
+    toast.success(`${label} copied`)
+  }
 
   if (query.isLoading) {
     return (
@@ -120,7 +139,40 @@ export default function ApplicationDetailsPage() {
 
       <section className="rounded-lg border border-border/60 bg-card px-5">
         <Row label="Client ID">
-          <code className="font-mono text-xs">{app.client_id}</code>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 break-all font-mono text-xs">{app.client_id}</code>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => copy(app.client_id, "Client ID")}
+            >
+              <Copy className="size-3.5" />
+            </Button>
+          </div>
+        </Row>
+        <Row label="Client Secret">
+          <div className="flex items-center gap-2">
+            <code className="flex-1 break-all font-mono text-xs">
+              {secretVisible
+                ? (secretQuery.data ?? "loading…")
+                : "•".repeat(48)}
+            </code>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setSecretVisible((v) => !v)}
+            >
+              {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              disabled={!secretQuery.data}
+              onClick={() => secretQuery.data && copy(secretQuery.data, "Client secret")}
+            >
+              <Copy className="size-3.5" />
+            </Button>
+          </div>
         </Row>
         <Row label="Launch URL">
           {app.launch_url ? (

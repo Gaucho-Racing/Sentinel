@@ -140,6 +140,25 @@ func UpdateApplication(c *gin.Context) {
 	c.JSON(http.StatusOK, updated)
 }
 
+// GetApplicationSecret returns just the client_secret. Separated from the
+// main GET handler so the secret doesn't leak through list/by-id reads.
+// Gating tightens later when ownership lands; for now any first-party
+// bearer can see it.
+func GetApplicationSecret(c *gin.Context) {
+	Require(c, RequestTokenHasAudience(c, "sentinel"))
+	id := c.Param("id")
+	app, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"client_secret": app.ClientSecret})
+}
+
 func DeleteApplication(c *gin.Context) {
 	id := c.Param("id")
 	if err := service.DeleteApplication(id); err != nil {
