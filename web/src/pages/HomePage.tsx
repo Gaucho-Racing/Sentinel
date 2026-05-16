@@ -2,7 +2,7 @@ import { useQueries, useQuery } from "@tanstack/react-query"
 import { ArrowRight } from "lucide-react"
 import { Link } from "react-router-dom"
 
-import { AppCard } from "@/components/AppCard"
+import { LaunchAppCard } from "@/components/LaunchAppCard"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -141,7 +141,11 @@ export default function HomePage() {
                 </p>
               )
               : recentApps.map((app) => (
-                  <AppCard key={app.id} app={app} lastAccessedAt={app.last_accessed_at} />
+                  <LaunchAppCard
+                    key={app.id}
+                    app={app}
+                    lastAccessedAt={app.last_accessed_at}
+                  />
                 ))}
         </div>
       </section>
