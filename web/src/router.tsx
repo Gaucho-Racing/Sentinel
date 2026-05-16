@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router-dom"
 import { AppShell } from "@/components/AppShell"
 import { RequireAuth } from "@/components/RequireAuth"
 import AnalyticsPage from "@/pages/analytics/AnalyticsPage"
+import ApplicationDetailsPage from "@/pages/applications/ApplicationDetailsPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginPage from "@/pages/auth/LoginPage"
 import DebugPage from "@/pages/debug/DebugPage"
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "/", element: <HomePage /> },
           { path: "/applications", element: <ApplicationsPage /> },
+          { path: "/applications/:id", element: <ApplicationDetailsPage /> },
           { path: "/groups", element: <GroupsPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/settings", element: <SettingsPage /> },

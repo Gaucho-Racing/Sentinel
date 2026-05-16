@@ -1,4 +1,5 @@
-import { ExternalLink } from "lucide-react"
+import { ChevronRight } from "lucide-react"
+import { Link } from "react-router-dom"
 
 import type { Application } from "@/lib/applications"
 
@@ -29,10 +30,8 @@ export function AppCard({
 }) {
   const accessed = relativeTime(lastAccessedAt)
   return (
-    <a
-      href={app.launch_url || "#"}
-      target="_blank"
-      rel="noreferrer"
+    <Link
+      to={`/applications/${app.id}`}
       className="group flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-4 transition-colors hover:bg-muted/40"
     >
       <div className="flex items-start justify-between">
@@ -43,7 +42,7 @@ export function AppCard({
             initial(app.name)
           )}
         </div>
-        <ExternalLink className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+        <ChevronRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
       <div>
         <p className="text-sm font-medium leading-none">{app.name}</p>
@@ -52,6 +51,6 @@ export function AppCard({
       {accessed && (
         <p className="mt-auto text-[11px] text-muted-foreground">Last accessed {accessed}</p>
       )}
-    </a>
+    </Link>
   )
 }
