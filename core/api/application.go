@@ -10,6 +10,10 @@ import (
 )
 
 func GetAllApplications(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "applications:read"),
+	))
 	applications, err := service.GetAllApplications()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -19,6 +23,10 @@ func GetAllApplications(c *gin.Context) {
 }
 
 func GetApplicationByID(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "applications:read"),
+	))
 	id := c.Param("id")
 	app, err := service.GetApplicationByID(id)
 	if err != nil {
@@ -84,7 +92,11 @@ type createdApplicationResponse struct {
 }
 
 func CreateApplication(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "applications:write"),
+	))
+
 	var req createApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -125,6 +137,7 @@ func UpdateApplication(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, ApplicationWriteAuthorized(c, existing))
 	var req updateApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -147,7 +160,6 @@ func UpdateApplication(c *gin.Context) {
 // Gating tightens later when ownership lands; for now any first-party
 // bearer can see it.
 func GetApplicationSecret(c *gin.Context) {
-	Require(c, RequestTokenHasAudience(c, "sentinel"))
 	id := c.Param("id")
 	app, err := service.GetApplicationByID(id)
 	if err != nil {
@@ -158,11 +170,25 @@ func GetApplicationSecret(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
+	))
 	c.JSON(http.StatusOK, gin.H{"client_secret": app.ClientSecret})
 }
 
 func DeleteApplication(c *gin.Context) {
 	id := c.Param("id")
+	existing, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, ApplicationWriteAuthorized(c, existing))
 	if err := service.DeleteApplication(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -171,6 +197,10 @@ func DeleteApplication(c *gin.Context) {
 }
 
 func GetApplicationGroups(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "applications:read"),
+	))
 	id := c.Param("id")
 	groups, err := service.GetGroupsForApplication(id)
 	if err != nil {
@@ -186,6 +216,16 @@ type addApplicationGroupRequest struct {
 
 func AddApplicationGroup(c *gin.Context) {
 	id := c.Param("id")
+	existing, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, ApplicationWriteAuthorized(c, existing))
 	var req addApplicationGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -204,6 +244,16 @@ func AddApplicationGroup(c *gin.Context) {
 
 func RemoveApplicationGroup(c *gin.Context) {
 	id := c.Param("id")
+	existing, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, ApplicationWriteAuthorized(c, existing))
 	groupID := c.Param("groupID")
 	if err := service.DeleteApplicationGroup(id, groupID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -213,6 +263,10 @@ func RemoveApplicationGroup(c *gin.Context) {
 }
 
 func GetApplicationRedirectURIs(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "applications:read"),
+	))
 	id := c.Param("id")
 	uris, err := service.GetRedirectURIsForApplication(id)
 	if err != nil {
@@ -228,6 +282,16 @@ type addRedirectURIRequest struct {
 
 func AddApplicationRedirectURI(c *gin.Context) {
 	id := c.Param("id")
+	existing, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, ApplicationWriteAuthorized(c, existing))
 	var req addRedirectURIRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -243,6 +307,16 @@ func AddApplicationRedirectURI(c *gin.Context) {
 
 func RemoveApplicationRedirectURI(c *gin.Context) {
 	id := c.Param("id")
+	existing, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, ApplicationWriteAuthorized(c, existing))
 	uri := c.Query("uri")
 	if uri == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "uri query parameter is required"})
@@ -253,4 +327,15 @@ func RemoveApplicationRedirectURI(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "redirect uri removed from application"})
+}
+
+// ApplicationWriteAuthorized returns true when the bearer can mutate the
+// given application: admin scope, first-party UI used by the owner, or a
+// third-party with explicit applications:write granted by the owner.
+func ApplicationWriteAuthorized(c *gin.Context, app model.Application) bool {
+	return Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
+		RequestTokenHasScope(c, "applications:write") && RequestTokenHasEntityID(c, app.OwnerID),
+	)
 }
