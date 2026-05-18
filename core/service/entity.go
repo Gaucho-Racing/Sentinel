@@ -84,6 +84,19 @@ func CreateEmailAuthForEntity(entityID string, email string, password string) (m
 	return auth, nil
 }
 
+func UpdateEmailAuthForEntity(entityID string, email string, password string) (model.EntityEmail, error) {
+	var auth model.EntityEmail
+	if err := database.DB.Where("entity_id = ?", entityID).First(&auth).Error; err != nil {
+		return model.EntityEmail{}, err
+	}
+	auth.Email = email
+	auth.Password = password
+	if err := database.DB.Save(&auth).Error; err != nil {
+		return model.EntityEmail{}, err
+	}
+	return auth, nil
+}
+
 func GetEntityByEmail(email string) (model.Entity, error) {
 	var entityEmail model.EntityEmail
 	if err := database.DB.Where("email = ?", email).First(&entityEmail).Error; err != nil {

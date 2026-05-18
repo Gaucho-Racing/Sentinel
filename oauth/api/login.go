@@ -35,7 +35,13 @@ func LoginEmailPassword(c *gin.Context) {
 		EntityID string `json:"entity_id"`
 	}
 	if err := sentinel.Post("/core/login/email-password", req, &verify); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+		var apiErr *sentinel.APIError
+		if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnauthorized {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+			return
+		}
+		logger.SugarLogger.Errorf("login: upstream failure: %v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "auth service unavailable"})
 		return
 	}
 

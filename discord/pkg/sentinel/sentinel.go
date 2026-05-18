@@ -1,6 +1,7 @@
 package sentinel
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
@@ -9,6 +10,36 @@ import (
 )
 
 var client = resty.New()
+
+// APIError is returned by every method in this package. Status == 0 means no
+// HTTP response was received (route resolution failure or transport error).
+// Status > 0 means the upstream replied with that status code. Callers should
+// use errors.As to inspect it and decide how to surface to their own
+// response — most importantly, a 4xx from upstream should NOT collapse to a
+// generic "service unavailable" on the user-facing side.
+type APIError struct {
+	Method  string
+	Route   string
+	Status  int    // 0 when no HTTP response was received
+	Body    string // raw response body
+	Message string // parsed "error" field from a JSON body, when present
+	Err     error  // underlying transport or resolution error
+}
+
+func (e *APIError) Error() string {
+	if e.Status == 0 {
+		if e.Err != nil {
+			return fmt.Sprintf("%s %s: %v", e.Method, e.Route, e.Err)
+		}
+		return fmt.Sprintf("%s %s: no response", e.Method, e.Route)
+	}
+	if e.Message != "" {
+		return fmt.Sprintf("%s %s returned %d: %s", e.Method, e.Route, e.Status, e.Message)
+	}
+	return fmt.Sprintf("%s %s returned %d", e.Method, e.Route, e.Status)
+}
+
+func (e *APIError) Unwrap() error { return e.Err }
 
 func resolveURL(route string, method string) (string, error) {
 	if rincon.RinconClient == nil {
@@ -21,102 +52,60 @@ func resolveURL(route string, method string) (string, error) {
 	return service.Endpoint + route, nil
 }
 
-func Get(route string, result interface{}, headers ...map[string]string) error {
-	url, err := resolveURL(route, "GET")
+func do(method, route string, body, result interface{}, headers []map[string]string) error {
+	url, err := resolveURL(route, method)
 	if err != nil {
-		return err
+		return &APIError{Method: method, Route: route, Err: err}
 	}
-	req := client.R().SetResult(result)
+	req := client.R()
+	if body != nil {
+		req = req.SetBody(body)
+	}
+	if result != nil {
+		req = req.SetResult(result)
+	}
 	if len(headers) > 0 {
-		req.SetHeaders(headers[0])
+		req = req.SetHeaders(headers[0])
 	}
-	resp, err := req.Get(url)
+	resp, err := req.Execute(method, url)
 	if err != nil {
-		return err
+		return &APIError{Method: method, Route: route, Err: err}
 	}
 	if resp.IsError() {
-		logger.SugarLogger.Errorf("GET %s returned %d: %s", route, resp.StatusCode(), resp.String())
-		return fmt.Errorf("GET %s returned %d", route, resp.StatusCode())
+		ae := &APIError{
+			Method: method,
+			Route:  route,
+			Status: resp.StatusCode(),
+			Body:   resp.String(),
+		}
+		var parsed struct {
+			Error string `json:"error"`
+		}
+		if json.Unmarshal(resp.Body(), &parsed) == nil && parsed.Error != "" {
+			ae.Message = parsed.Error
+		}
+		logger.SugarLogger.Errorf("%s %s returned %d: %s", method, route, resp.StatusCode(), resp.String())
+		return ae
 	}
 	return nil
+}
+
+func Get(route string, result interface{}, headers ...map[string]string) error {
+	return do("GET", route, nil, result, headers)
 }
 
 func Post(route string, body interface{}, result interface{}, headers ...map[string]string) error {
-	url, err := resolveURL(route, "POST")
-	if err != nil {
-		return err
-	}
-	req := client.R().SetBody(body).SetResult(result)
-	if len(headers) > 0 {
-		req.SetHeaders(headers[0])
-	}
-	resp, err := req.Post(url)
-	if err != nil {
-		return err
-	}
-	if resp.IsError() {
-		logger.SugarLogger.Errorf("POST %s returned %d: %s", route, resp.StatusCode(), resp.String())
-		return fmt.Errorf("POST %s returned %d", route, resp.StatusCode())
-	}
-	return nil
+	return do("POST", route, body, result, headers)
 }
 
 func Put(route string, body interface{}, result interface{}, headers ...map[string]string) error {
-	url, err := resolveURL(route, "PUT")
-	if err != nil {
-		return err
-	}
-	req := client.R().SetBody(body).SetResult(result)
-	if len(headers) > 0 {
-		req.SetHeaders(headers[0])
-	}
-	resp, err := req.Put(url)
-	if err != nil {
-		return err
-	}
-	if resp.IsError() {
-		logger.SugarLogger.Errorf("PUT %s returned %d: %s", route, resp.StatusCode(), resp.String())
-		return fmt.Errorf("PUT %s returned %d", route, resp.StatusCode())
-	}
-	return nil
+	return do("PUT", route, body, result, headers)
 }
 
 func Patch(route string, body interface{}, result interface{}, headers ...map[string]string) error {
-	url, err := resolveURL(route, "PATCH")
-	if err != nil {
-		return err
-	}
-	req := client.R().SetBody(body).SetResult(result)
-	if len(headers) > 0 {
-		req.SetHeaders(headers[0])
-	}
-	resp, err := req.Patch(url)
-	if err != nil {
-		return err
-	}
-	if resp.IsError() {
-		logger.SugarLogger.Errorf("PATCH %s returned %d: %s", route, resp.StatusCode(), resp.String())
-		return fmt.Errorf("PATCH %s returned %d", route, resp.StatusCode())
-	}
-	return nil
+	return do("PATCH", route, body, result, headers)
 }
 
 func Delete(route string, result interface{}, headers ...map[string]string) error {
-	url, err := resolveURL(route, "DELETE")
-	if err != nil {
-		return err
-	}
-	req := client.R().SetResult(result)
-	if len(headers) > 0 {
-		req.SetHeaders(headers[0])
-	}
-	resp, err := req.Delete(url)
-	if err != nil {
-		return err
-	}
-	if resp.IsError() {
-		logger.SugarLogger.Errorf("DELETE %s returned %d: %s", route, resp.StatusCode(), resp.String())
-		return fmt.Errorf("DELETE %s returned %d", route, resp.StatusCode())
-	}
-	return nil
+	return do("DELETE", route, nil, result, headers)
 }

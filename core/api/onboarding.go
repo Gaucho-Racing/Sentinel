@@ -6,6 +6,7 @@ import (
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 type createEntityRequest struct {
@@ -31,6 +32,10 @@ type createEmailAuthRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
+// CreateEntityEmailAuth upserts an entity's email auth — creates a fresh
+// row on onboarding, replaces email + password on subsequent calls
+// (password reset, email change). Picks the service-layer function based
+// on whether a row already exists.
 func CreateEntityEmailAuth(c *gin.Context) {
 	entityID := c.Param("entityID")
 	var req createEmailAuthRequest
@@ -47,7 +52,18 @@ func CreateEntityEmailAuth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	auth, err := service.CreateEmailAuthForEntity(entityID, req.Email, hashed)
+
+	existing, err := service.GetEmailAuthForEntity(entityID)
+	var auth model.EntityEmail
+	switch {
+	case err == gorm.ErrRecordNotFound || existing.EntityID == "":
+		auth, err = service.CreateEmailAuthForEntity(entityID, req.Email, hashed)
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	default:
+		auth, err = service.UpdateEmailAuthForEntity(entityID, req.Email, hashed)
+	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
