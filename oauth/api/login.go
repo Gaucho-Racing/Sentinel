@@ -41,7 +41,7 @@ func LoginEmailPassword(c *gin.Context) {
 			return
 		}
 		logger.SugarLogger.Errorf("login: upstream failure: %v", err)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "auth service unavailable"})
+		c.JSON(http.StatusBadGateway, gin.H{"error": "core service is unavailable"})
 		return
 	}
 
