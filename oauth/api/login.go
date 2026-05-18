@@ -41,14 +41,7 @@ func LoginEmailPassword(c *gin.Context) {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 			return
 		}
-		switch {
-		case errors.Is(err, sentinel.ErrRinconUninitialized):
-			c.JSON(http.StatusBadGateway, gin.H{"error": "service registry not initialized"})
-		case errors.Is(err, sentinel.ErrRouteResolution):
-			c.JSON(http.StatusBadGateway, gin.H{"error": "core route not registered with rincon"})
-		default:
-			c.JSON(http.StatusBadGateway, gin.H{"error": "core service is unreachable"})
-		}
+		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
 		return
 	}
 
