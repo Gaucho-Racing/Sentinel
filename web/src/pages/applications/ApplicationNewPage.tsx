@@ -1,4 +1,4 @@
-import { ArrowLeft, Copy } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
@@ -6,20 +6,11 @@ import { toast } from "sonner"
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
-
-type CreatedApplication = Application & { client_secret: string }
 
 export default function ApplicationNewPage() {
   const navigate = useNavigate()
@@ -28,20 +19,20 @@ export default function ApplicationNewPage() {
   const [iconURL, setIconURL] = useState("")
   const [launchURL, setLaunchURL] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [created, setCreated] = useState<CreatedApplication | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (submitting) return
     setSubmitting(true)
     try {
-      const res = await api.post<CreatedApplication>("/applications", {
+      const res = await api.post<Application>("/applications", {
         name,
         description,
         icon_url: iconURL,
         launch_url: launchURL,
       })
-      setCreated(res.data)
+      toast.success("Application created")
+      navigate(`/applications/${res.data.id}`)
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
@@ -50,11 +41,6 @@ export default function ApplicationNewPage() {
     } finally {
       setSubmitting(false)
     }
-  }
-
-  function copy(value: string, label: string) {
-    navigator.clipboard.writeText(value)
-    toast.success(`${label} copied`)
   }
 
   return (
@@ -125,59 +111,6 @@ export default function ApplicationNewPage() {
           </OutlineButton>
         </div>
       </form>
-
-      <Dialog open={!!created} onOpenChange={(open) => !open && navigate(`/applications/${created!.id}`)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Application created</DialogTitle>
-            <DialogDescription>
-              Save the client secret somewhere safe — it won't be shown again.
-            </DialogDescription>
-          </DialogHeader>
-          {created && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">Client ID</p>
-                <div className="mt-1 flex items-center gap-2">
-                  <code className="flex-1 break-all rounded bg-muted px-2 py-1 font-mono text-xs">
-                    {created.client_id}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => copy(created.client_id, "Client ID")}
-                  >
-                    <Copy className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                  Client secret
-                </p>
-                <div className="mt-1 flex items-center gap-2">
-                  <code className="flex-1 break-all rounded bg-muted px-2 py-1 font-mono text-xs">
-                    {created.client_secret}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => copy(created.client_secret, "Client secret")}
-                  >
-                    <Copy className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
-              <OutlineButton
-                type="button"
-                onClick={() => navigate(`/applications/${created.id}`)}
-              >
-                Done
-              </OutlineButton>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </PageContainer>
   )
 }
