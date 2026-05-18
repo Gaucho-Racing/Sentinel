@@ -1,5 +1,17 @@
 name: sentinel
 
+# Neuter OrbStack's host-level HTTP proxy injection. Without these, Go's
+# net/http honors HTTP_PROXY=http://proxyproxy.orb.internal:8305 and every
+# container-to-container call (notably to rincon:10311) gets routed through
+# OrbStack's proxy, which returns 502 and breaks service registration.
+x-no-proxy: &no-proxy
+  HTTP_PROXY: ""
+  HTTPS_PROXY: ""
+  http_proxy: ""
+  https_proxy: ""
+  NO_PROXY: ""
+  no_proxy: ""
+
 services:
   kerbecs:
     container_name: sentinel-kerbecs
@@ -11,6 +23,7 @@ services:
     volumes:
       - ./kerbecs.yaml:/etc/kerbecs/kerbecs.yaml:ro
     environment:
+      <<: *no-proxy
       KERBECS_CONFIG: /etc/kerbecs/kerbecs.yaml
     depends_on:
       - core
@@ -27,6 +40,7 @@ services:
     depends_on:
       - db
     environment:
+      <<: *no-proxy
       STORAGE_MODE: sql
       DB_DRIVER: postgres
       DB_HOST: db
@@ -49,6 +63,7 @@ services:
       - db
       - rincon
     environment:
+      <<: *no-proxy
       ENV: DEV
       PORT: 9999
       DATABASE_HOST: db
@@ -76,6 +91,7 @@ services:
       - db
       - rincon
     environment:
+      <<: *no-proxy
       ENV: DEV
       PORT: 9998
       DATABASE_HOST: db
@@ -107,6 +123,7 @@ services:
       - db
       - rincon
     environment:
+      <<: *no-proxy
       ENV: DEV
       PORT: 9997
       DATABASE_HOST: db
