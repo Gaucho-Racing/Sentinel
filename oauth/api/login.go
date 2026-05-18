@@ -35,13 +35,20 @@ func LoginEmailPassword(c *gin.Context) {
 		EntityID string `json:"entity_id"`
 	}
 	if err := sentinel.Post("/core/login/email-password", req, &verify); err != nil {
+		logger.SugarLogger.Errorf("login: upstream failure: %v", err)
 		var apiErr *sentinel.APIError
 		if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnauthorized {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 			return
 		}
-		logger.SugarLogger.Errorf("login: upstream failure: %v", err)
-		c.JSON(http.StatusBadGateway, gin.H{"error": "core service is unavailable"})
+		switch {
+		case errors.Is(err, sentinel.ErrRinconUninitialized):
+			c.JSON(http.StatusBadGateway, gin.H{"error": "service registry not initialized"})
+		case errors.Is(err, sentinel.ErrRouteResolution):
+			c.JSON(http.StatusBadGateway, gin.H{"error": "core route not registered with rincon"})
+		default:
+			c.JSON(http.StatusBadGateway, gin.H{"error": "core service is unreachable"})
+		}
 		return
 	}
 

@@ -2,11 +2,19 @@ package sentinel
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/rincon"
 	"github.com/go-resty/resty/v2"
+)
+
+// Sentinel-side error categories — wrapped into APIError.Err so callers
+// can errors.Is on them and pick the right user-facing message.
+var (
+	ErrRinconUninitialized = errors.New("rincon client not initialized")
+	ErrRouteResolution     = errors.New("rincon could not resolve route")
 )
 
 var client = resty.New()
@@ -43,11 +51,11 @@ func (e *APIError) Unwrap() error { return e.Err }
 
 func resolveURL(route string, method string) (string, error) {
 	if rincon.RinconClient == nil {
-		return "", fmt.Errorf("rincon client is not initialized")
+		return "", ErrRinconUninitialized
 	}
 	service, err := rincon.RinconClient.MatchRoute(route, method)
 	if err != nil {
-		return "", fmt.Errorf("failed to resolve route %s: %w", route, err)
+		return "", fmt.Errorf("%w: %s: %v", ErrRouteResolution, route, err)
 	}
 	return service.Endpoint + route, nil
 }
