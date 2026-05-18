@@ -29,15 +29,17 @@ api.interceptors.response.use(
     const status = error.response?.status
     const url = original?.url ?? ""
 
-    if (status !== 401 || !original || original._retried || url.includes("/auth/refresh")) {
+    // A 401 from these endpoints means "the credentials you just sent are
+    // wrong," not "your bearer expired." Propagate so the caller can toast.
+    const isAuthEndpoint = url.includes("/auth/login") || url.includes("/auth/refresh")
+
+    if (status !== 401 || !original || original._retried || isAuthEndpoint) {
       return Promise.reject(error)
     }
     original._retried = true
 
     const session = loadSession()
     if (!session?.refreshToken) {
-      clearSession()
-      window.location.href = "/auth/login"
       return Promise.reject(error)
     }
 
