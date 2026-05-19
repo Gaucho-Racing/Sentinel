@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 type OutlineButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   loading?: boolean
   innerClassName?: string
+  size?: "default" | "sm"
 }
 
 /**
@@ -18,20 +19,31 @@ export function OutlineButton({
   children,
   loading = false,
   disabled,
+  size = "default",
   ...props
 }: OutlineButtonProps) {
+  const outer =
+    size === "sm"
+      ? "h-7 rounded-lg text-[0.8rem]"
+      : "h-10 rounded-xl text-sm"
+  const inner =
+    size === "sm"
+      ? "rounded-[7px] px-2.5"
+      : "rounded-[10px] px-4 py-2"
   return (
     <button
       {...props}
       disabled={disabled || loading}
       className={cn(
-        "group relative inline-flex h-10 w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple p-0.5 text-sm font-medium text-white transition-opacity disabled:pointer-events-none disabled:opacity-50",
+        "group relative inline-flex w-full items-center justify-center overflow-hidden bg-gradient-to-br from-gr-pink to-gr-purple p-0.5 font-medium text-white transition-opacity disabled:pointer-events-none disabled:opacity-50",
+        outer,
         className,
       )}
     >
       <span
         className={cn(
-          "relative flex size-full items-center justify-center rounded-[10px] bg-background px-4 py-2 transition-colors group-hover:bg-transparent",
+          "relative flex size-full items-center justify-center bg-background transition-colors group-hover:bg-transparent",
+          inner,
           innerClassName,
         )}
       >

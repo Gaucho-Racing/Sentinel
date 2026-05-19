@@ -114,13 +114,13 @@ export default function ApplicationDetailsPage() {
       const initials = (e.user.first_name?.[0] ?? "") + (e.user.last_name?.[0] ?? "")
       return (
         <div className="flex items-center gap-2.5">
-          <Avatar className="size-7">
+          <Avatar className="size-8">
             <AvatarImage src={e.user.avatar_url} alt={name} />
             <AvatarFallback className="text-xs">
               {initials.toUpperCase() || name.slice(0, 1).toUpperCase()}
             </AvatarFallback>
           </Avatar>
-          <div className="flex items-baseline gap-1.5">
+          <div className="flex flex-col leading-tight">
             <span className="text-sm">{name}</span>
             {e.user.username && (
               <span className="text-xs text-muted-foreground">@{e.user.username}</span>
@@ -201,6 +201,7 @@ export default function ApplicationDetailsPage() {
           {app.launch_url && (
             <OutlineButton
               type="button"
+              size="sm"
               className="w-auto"
               onClick={() => window.open(app.launch_url, "_blank", "noreferrer")}
             >
