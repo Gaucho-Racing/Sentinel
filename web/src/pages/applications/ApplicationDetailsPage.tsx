@@ -130,7 +130,27 @@ export default function ApplicationDetailsPage() {
       )
     }
     if (e.type === "SERVICE_ACCOUNT" && e.service_account) {
-      return <span className="text-sm">{e.service_account.name || ownerId}</span>
+      const name = e.service_account.name || ownerId
+      const initials = name
+        .split(/\s+/)
+        .map((p) => p[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+      return (
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-8">
+            <AvatarFallback className="bg-gradient-to-br from-gr-pink to-gr-purple text-xs text-white">
+              {initials || name.slice(0, 1).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col leading-tight">
+            <span className="text-sm">{name}</span>
+            <span className="text-xs text-muted-foreground">Service account</span>
+          </div>
+        </div>
+      )
     }
     return <span className="font-mono text-xs text-muted-foreground">{ownerId}</span>
   }
