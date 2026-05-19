@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -100,19 +101,38 @@ export default function ApplicationDetailsPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  function ownerLabel(): string {
-    if (!ownerId) return "—"
-    if (ownerQuery.isLoading) return "Loading…"
+  function renderOwner() {
+    if (!ownerId) return <span className="text-sm text-muted-foreground">—</span>
+    if (ownerQuery.isLoading) {
+      return <span className="text-sm text-muted-foreground">Loading…</span>
+    }
     const e = ownerQuery.data
-    if (!e) return ownerId
+    if (!e) return <span className="font-mono text-xs text-muted-foreground">{ownerId}</span>
     if (e.type === "USER" && e.user) {
       const full = `${e.user.first_name} ${e.user.last_name}`.trim()
-      return full || e.user.username || ownerId
+      const name = full || e.user.username || ownerId
+      const initials = (e.user.first_name?.[0] ?? "") + (e.user.last_name?.[0] ?? "")
+      return (
+        <div className="flex items-center gap-2.5">
+          <Avatar className="size-7">
+            <AvatarImage src={e.user.avatar_url} alt={name} />
+            <AvatarFallback className="text-xs">
+              {initials.toUpperCase() || name.slice(0, 1).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm">{name}</span>
+            {e.user.username && (
+              <span className="text-xs text-muted-foreground">@{e.user.username}</span>
+            )}
+          </div>
+        </div>
+      )
     }
     if (e.type === "SERVICE_ACCOUNT" && e.service_account) {
-      return e.service_account.name || ownerId
+      return <span className="text-sm">{e.service_account.name || ownerId}</span>
     }
-    return ownerId
+    return <span className="font-mono text-xs text-muted-foreground">{ownerId}</span>
   }
 
   if (query.isLoading) {
@@ -276,9 +296,7 @@ export default function ApplicationDetailsPage() {
                 <span className="text-sm text-muted-foreground">—</span>
               )}
             </Field>
-            <Field label="Created by">
-              <span className="text-sm">{ownerLabel()}</span>
-            </Field>
+            <Field label="Created by">{renderOwner()}</Field>
             <Field label="Registered">
               <span className="text-sm">{formatTime(app.created_at)}</span>
             </Field>
