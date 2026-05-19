@@ -212,7 +212,11 @@ export default function ApplicationDetailsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button asChild variant="outline" size="sm">
+          <Button
+            asChild
+            variant="outline"
+            className="h-10 gap-1.5 rounded-xl px-4 text-sm"
+          >
             <Link to={`/applications/${app.id}/edit`}>
               <Pencil className="size-3.5" />
               Edit
@@ -221,7 +225,6 @@ export default function ApplicationDetailsPage() {
           {app.launch_url && (
             <OutlineButton
               type="button"
-              size="sm"
               className="w-auto"
               onClick={() => window.open(app.launch_url, "_blank", "noreferrer")}
             >
