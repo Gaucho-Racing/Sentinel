@@ -70,7 +70,7 @@ func ValidateAuthorize(c *gin.Context) {
 
 	validURI := false
 	for _, uri := range app.RedirectURIs {
-		if uri == redirectURI {
+		if service.MatchRedirectURI(uri, redirectURI) {
 			validURI = true
 			break
 		}
