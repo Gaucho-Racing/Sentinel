@@ -208,19 +208,6 @@ func DeleteApplicationRedirectURI(applicationID string, redirectURI string) erro
 	return nil
 }
 
-func ValidateRedirectURI(applicationID string, redirectURI string) (bool, error) {
-	uris, err := GetRedirectURIsForApplication(applicationID)
-	if err != nil {
-		return false, err
-	}
-	for _, uri := range uris {
-		if uri == redirectURI {
-			return true, nil
-		}
-	}
-	return false, nil
-}
-
 func generateSecret(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, length)
