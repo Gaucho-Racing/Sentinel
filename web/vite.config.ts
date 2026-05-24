@@ -10,4 +10,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Polling watcher: native filesystem events don't propagate through Docker
+  // bind mounts on macOS/Windows, so HMR misses edits. Polling is heavier on
+  // CPU but reliable across hosts.
+  server: {
+    watch: {
+      usePolling: true,
+      interval: 100,
+    },
+  },
 })
