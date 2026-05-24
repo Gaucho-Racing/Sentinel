@@ -221,7 +221,7 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
       >
         <DialogContent className="gap-5 sm:max-w-md">
           <DialogHeader className="gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
               <ShieldAlert className="size-5" />
             </div>
             <DialogTitle>This URI contains a wildcard</DialogTitle>
