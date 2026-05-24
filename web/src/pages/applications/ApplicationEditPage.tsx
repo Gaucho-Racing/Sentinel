@@ -97,7 +97,13 @@ function BasicInfoCard({ id, app }: { id: string; app: Application }) {
             />
           </div>
           <div className="flex justify-end pt-2">
-            <OutlineButton type="submit" className="w-auto" loading={submitting} disabled={!name}>
+            <OutlineButton
+              type="submit"
+              className="w-auto"
+              innerClassName="bg-card"
+              loading={submitting}
+              disabled={!name}
+            >
               Save changes
             </OutlineButton>
           </div>
