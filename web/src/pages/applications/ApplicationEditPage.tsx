@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Plus, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { ArrowLeft, Plus, ShieldAlert, X } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -8,12 +8,19 @@ import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
-import type { Application } from "@/lib/applications"
+import { redirectURIWildcardExamples, type Application } from "@/lib/applications"
 
 function BasicInfoCard({ id, app }: { id: string; app: Application }) {
   const qc = useQueryClient()
@@ -105,15 +112,20 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
   const [draft, setDraft] = useState("")
   const [adding, setAdding] = useState(false)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [wildcardConfirm, setWildcardConfirm] = useState<string | null>(null)
 
-  async function add() {
-    const uri = draft.trim()
-    if (!uri || adding) return
+  const wildcardExamples = useMemo(
+    () => (wildcardConfirm ? redirectURIWildcardExamples(wildcardConfirm) : []),
+    [wildcardConfirm],
+  )
+
+  async function addURI(uri: string) {
     setAdding(true)
     try {
       await api.post(`/applications/${id}/redirect-uris`, { redirect_uri: uri })
       qc.invalidateQueries({ queryKey: ["application", "id", id] })
       setDraft("")
+      setWildcardConfirm(null)
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
@@ -122,6 +134,16 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
     } finally {
       setAdding(false)
     }
+  }
+
+  function handleSubmit() {
+    const uri = draft.trim()
+    if (!uri || adding) return
+    if (uri.includes("*")) {
+      setWildcardConfirm(uri)
+      return
+    }
+    addURI(uri)
   }
 
   async function remove(uri: string) {
@@ -175,12 +197,11 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            add()
+            handleSubmit()
           }}
           className="flex gap-2 pt-2"
         >
           <Input
-            type="url"
             placeholder="https://app.gauchoracing.com/auth/callback"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
@@ -191,6 +212,71 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
           </Button>
         </form>
       </CardContent>
+
+      <Dialog
+        open={wildcardConfirm !== null}
+        onOpenChange={(open) => {
+          if (!open && !adding) setWildcardConfirm(null)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
+              <ShieldAlert className="size-5" />
+            </div>
+            <DialogTitle>This URI contains a wildcard</DialogTitle>
+            <DialogDescription>
+              <code className="font-mono text-foreground">*</code> matches any sequence of
+              characters — including dots and slashes — anywhere in the URI. Wildcards widen
+              the attack surface (open redirect, subdomain takeover); prefer an exact URI
+              when possible.
+            </DialogDescription>
+          </DialogHeader>
+
+          {wildcardConfirm && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Pattern</p>
+              <code className="block break-all rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 font-mono text-xs">
+                {wildcardConfirm}
+              </code>
+            </div>
+          )}
+
+          {wildcardExamples.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground">Examples that would be accepted</p>
+              <ul className="space-y-1.5">
+                {wildcardExamples.map((example) => (
+                  <li
+                    key={example}
+                    className="break-all rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 font-mono text-xs"
+                  >
+                    {example}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={adding}
+              onClick={() => setWildcardConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={adding}
+              onClick={() => wildcardConfirm && addURI(wildcardConfirm)}
+            >
+              Add anyway
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   )
 }
