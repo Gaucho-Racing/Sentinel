@@ -1,8 +1,50 @@
+import { useQuery } from "@tanstack/react-query"
 import { ArrowRight } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { PageContainer, PageHeader } from "@/components/PageContainer"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
+
+type DiscordRole = {
+  id: string
+  name: string
+  color: number
+  position: number
+  hoist: boolean
+  mentionable: boolean
+  managed: boolean
+}
+
+type DiscordChannel = {
+  id: string
+  name: string
+  type: number
+  position: number
+  parent_id: string
+  topic: string
+  nsfw: boolean
+}
+
+const CHANNEL_TYPE_LABELS: Record<number, string> = {
+  0: "text",
+  2: "voice",
+  4: "category",
+  5: "announcement",
+  10: "news-thread",
+  11: "public-thread",
+  12: "private-thread",
+  13: "stage",
+  15: "forum",
+  16: "media",
+}
+
+function roleColorHex(color: number): string | null {
+  if (!color) return null
+  return `#${color.toString(16).padStart(6, "0")}`
+}
 
 type LinkGroup = {
   title: string
@@ -71,6 +113,144 @@ function LinkRow({ to, label, note }: { to: string; label: string; note?: string
   )
 }
 
+function DiscordRolesCard() {
+  const query = useQuery({
+    queryKey: ["debug", "discord", "roles"],
+    queryFn: async () => {
+      const res = await api.get<DiscordRole[]>("/discord/roles")
+      return res.data
+    },
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Discord roles</CardTitle>
+        <CardDescription>
+          Live from <code className="font-mono">GET /discord/roles</code>, sorted by Discord position.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        {query.isLoading && (
+          <div className="space-y-2 px-6 py-4">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+          </div>
+        )}
+        {query.isError && (
+          <p className="px-6 py-4 text-sm text-destructive">
+            Failed to fetch roles: {(query.error as Error).message}
+          </p>
+        )}
+        {query.data && query.data.length === 0 && (
+          <p className="px-6 py-4 text-sm text-muted-foreground">No roles returned.</p>
+        )}
+        {query.data && query.data.length > 0 && (
+          <ul className="divide-y divide-border">
+            {query.data.map((role) => {
+              const hex = roleColorHex(role.color)
+              return (
+                <li
+                  key={role.id}
+                  className="flex items-center justify-between gap-4 px-6 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span
+                      className="size-3 shrink-0 rounded-full border border-border/60"
+                      style={{ backgroundColor: hex ?? "transparent" }}
+                      title={hex ?? "no color"}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium leading-none">{role.name}</p>
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">{role.id}</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {role.managed && <Badge variant="secondary">managed</Badge>}
+                    {role.hoist && <Badge variant="outline">hoist</Badge>}
+                    {role.mentionable && <Badge variant="outline">mention</Badge>}
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      pos {role.position}
+                    </span>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function DiscordChannelsCard() {
+  const query = useQuery({
+    queryKey: ["debug", "discord", "channels"],
+    queryFn: async () => {
+      const res = await api.get<DiscordChannel[]>("/discord/channels")
+      return res.data
+    },
+  })
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Discord channels</CardTitle>
+        <CardDescription>
+          Live from <code className="font-mono">GET /discord/channels</code>, sorted by Discord position.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-0">
+        {query.isLoading && (
+          <div className="space-y-2 px-6 py-4">
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-full" />
+            <Skeleton className="h-6 w-3/4" />
+          </div>
+        )}
+        {query.isError && (
+          <p className="px-6 py-4 text-sm text-destructive">
+            Failed to fetch channels: {(query.error as Error).message}
+          </p>
+        )}
+        {query.data && query.data.length === 0 && (
+          <p className="px-6 py-4 text-sm text-muted-foreground">No channels returned.</p>
+        )}
+        {query.data && query.data.length > 0 && (
+          <ul className="divide-y divide-border">
+            {query.data.map((channel) => {
+              const typeLabel = CHANNEL_TYPE_LABELS[channel.type] ?? `type ${channel.type}`
+              return (
+                <li
+                  key={channel.id}
+                  className="flex items-center justify-between gap-4 px-6 py-3"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Badge variant="outline" className="shrink-0 font-mono">
+                      {typeLabel}
+                    </Badge>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium leading-none">{channel.name}</p>
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">{channel.id}</p>
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {channel.nsfw && <Badge variant="destructive">nsfw</Badge>}
+                    <span className="ml-2 font-mono text-xs text-muted-foreground">
+                      pos {channel.position}
+                    </span>
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function DebugPage() {
   return (
     <PageContainer>
@@ -96,6 +276,8 @@ export default function DebugPage() {
             </CardContent>
           </Card>
         ))}
+        <DiscordRolesCard />
+        <DiscordChannelsCard />
       </div>
     </PageContainer>
   )
