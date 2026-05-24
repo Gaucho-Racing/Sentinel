@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, ChevronRight } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { PageContainer, PageHeader } from "@/components/PageContainer"
@@ -113,6 +113,38 @@ function LinkRow({ to, label, note }: { to: string; label: string; note?: string
   )
 }
 
+function CollapsibleCard({
+  title,
+  description,
+  count,
+  children,
+}: {
+  title: string
+  description: React.ReactNode
+  count?: number
+  children: React.ReactNode
+}) {
+  return (
+    <Card className="overflow-hidden p-0">
+      <details className="group/details">
+        <summary className="flex cursor-pointer list-none items-center gap-3 px-6 py-4 transition-colors hover:bg-muted/40 [&::-webkit-details-marker]:hidden">
+          <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-open/details:rotate-90" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-base font-semibold leading-none">{title}</p>
+              {typeof count === "number" && (
+                <span className="font-mono text-xs text-muted-foreground">({count})</span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          </div>
+        </summary>
+        <div className="border-t border-border">{children}</div>
+      </details>
+    </Card>
+  )
+}
+
 function DiscordRolesCard() {
   const query = useQuery({
     queryKey: ["debug", "discord", "roles"],
@@ -122,65 +154,70 @@ function DiscordRolesCard() {
     },
   })
 
+  // Backend returns roles ascending by position (Discord API ordering); reverse
+  // here so the top of the role hierarchy (admin-style roles) shows first,
+  // matching how Discord's own UI presents the role list.
+  const ordered = query.data ? [...query.data].reverse() : undefined
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Discord roles</CardTitle>
-        <CardDescription>
-          Live from <code className="font-mono">GET /discord/roles</code>, sorted by Discord position.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        {query.isLoading && (
-          <div className="space-y-2 px-6 py-4">
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-3/4" />
-          </div>
-        )}
-        {query.isError && (
-          <p className="px-6 py-4 text-sm text-destructive">
-            Failed to fetch roles: {(query.error as Error).message}
-          </p>
-        )}
-        {query.data && query.data.length === 0 && (
-          <p className="px-6 py-4 text-sm text-muted-foreground">No roles returned.</p>
-        )}
-        {query.data && query.data.length > 0 && (
-          <ul className="divide-y divide-border">
-            {query.data.map((role) => {
-              const hex = roleColorHex(role.color)
-              return (
-                <li
-                  key={role.id}
-                  className="flex items-center justify-between gap-4 px-6 py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span
-                      className="size-3 shrink-0 rounded-full border border-border/60"
-                      style={{ backgroundColor: hex ?? "transparent" }}
-                      title={hex ?? "no color"}
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium leading-none">{role.name}</p>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">{role.id}</p>
-                    </div>
+    <CollapsibleCard
+      title="Discord roles"
+      description={
+        <>
+          Live from <code className="font-mono">GET /discord/roles</code>, highest position first.
+        </>
+      }
+      count={ordered?.length}
+    >
+      {query.isLoading && (
+        <div className="space-y-2 px-6 py-4">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-3/4" />
+        </div>
+      )}
+      {query.isError && (
+        <p className="px-6 py-4 text-sm text-destructive">
+          Failed to fetch roles: {(query.error as Error).message}
+        </p>
+      )}
+      {ordered && ordered.length === 0 && (
+        <p className="px-6 py-4 text-sm text-muted-foreground">No roles returned.</p>
+      )}
+      {ordered && ordered.length > 0 && (
+        <ul className="divide-y divide-border">
+          {ordered.map((role) => {
+            const hex = roleColorHex(role.color)
+            return (
+              <li
+                key={role.id}
+                className="flex items-center justify-between gap-4 px-6 py-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span
+                    className="size-3 shrink-0 rounded-full border border-border/60"
+                    style={{ backgroundColor: hex ?? "transparent" }}
+                    title={hex ?? "no color"}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium leading-none">{role.name}</p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">{role.id}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {role.managed && <Badge variant="secondary">managed</Badge>}
-                    {role.hoist && <Badge variant="outline">hoist</Badge>}
-                    {role.mentionable && <Badge variant="outline">mention</Badge>}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">
-                      pos {role.position}
-                    </span>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {role.managed && <Badge variant="secondary">managed</Badge>}
+                  {role.hoist && <Badge variant="outline">hoist</Badge>}
+                  {role.mentionable && <Badge variant="outline">mention</Badge>}
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    pos {role.position}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </CollapsibleCard>
   )
 }
 
@@ -194,60 +231,60 @@ function DiscordChannelsCard() {
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Discord channels</CardTitle>
-        <CardDescription>
+    <CollapsibleCard
+      title="Discord channels"
+      description={
+        <>
           Live from <code className="font-mono">GET /discord/channels</code>, sorted by Discord position.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-0">
-        {query.isLoading && (
-          <div className="space-y-2 px-6 py-4">
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-full" />
-            <Skeleton className="h-6 w-3/4" />
-          </div>
-        )}
-        {query.isError && (
-          <p className="px-6 py-4 text-sm text-destructive">
-            Failed to fetch channels: {(query.error as Error).message}
-          </p>
-        )}
-        {query.data && query.data.length === 0 && (
-          <p className="px-6 py-4 text-sm text-muted-foreground">No channels returned.</p>
-        )}
-        {query.data && query.data.length > 0 && (
-          <ul className="divide-y divide-border">
-            {query.data.map((channel) => {
-              const typeLabel = CHANNEL_TYPE_LABELS[channel.type] ?? `type ${channel.type}`
-              return (
-                <li
-                  key={channel.id}
-                  className="flex items-center justify-between gap-4 px-6 py-3"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <Badge variant="outline" className="shrink-0 font-mono">
-                      {typeLabel}
-                    </Badge>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium leading-none">{channel.name}</p>
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">{channel.id}</p>
-                    </div>
+        </>
+      }
+      count={query.data?.length}
+    >
+      {query.isLoading && (
+        <div className="space-y-2 px-6 py-4">
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-full" />
+          <Skeleton className="h-6 w-3/4" />
+        </div>
+      )}
+      {query.isError && (
+        <p className="px-6 py-4 text-sm text-destructive">
+          Failed to fetch channels: {(query.error as Error).message}
+        </p>
+      )}
+      {query.data && query.data.length === 0 && (
+        <p className="px-6 py-4 text-sm text-muted-foreground">No channels returned.</p>
+      )}
+      {query.data && query.data.length > 0 && (
+        <ul className="divide-y divide-border">
+          {query.data.map((channel) => {
+            const typeLabel = CHANNEL_TYPE_LABELS[channel.type] ?? `type ${channel.type}`
+            return (
+              <li
+                key={channel.id}
+                className="flex items-center justify-between gap-4 px-6 py-3"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <Badge variant="outline" className="shrink-0 font-mono">
+                    {typeLabel}
+                  </Badge>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium leading-none">{channel.name}</p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">{channel.id}</p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    {channel.nsfw && <Badge variant="destructive">nsfw</Badge>}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">
-                      pos {channel.position}
-                    </span>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </CardContent>
-    </Card>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  {channel.nsfw && <Badge variant="destructive">nsfw</Badge>}
+                  <span className="ml-2 font-mono text-xs text-muted-foreground">
+                    pos {channel.position}
+                  </span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </CollapsibleCard>
   )
 }
 
