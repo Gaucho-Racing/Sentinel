@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 import { ArrowRight, ChevronRight } from "lucide-react"
+import { useMemo } from "react"
 import { Link } from "react-router-dom"
 
 import { PageContainer, PageHeader } from "@/components/PageContainer"
@@ -44,6 +45,71 @@ const CHANNEL_TYPE_LABELS: Record<number, string> = {
 function roleColorHex(color: number): string | null {
   if (!color) return null
   return `#${color.toString(16).padStart(6, "0")}`
+}
+
+const CHANNEL_TYPE_CATEGORY = 4
+
+type OrganizedChannels = {
+  topLevel: DiscordChannel[]
+  categories: DiscordChannel[]
+  childrenByParent: Map<string, DiscordChannel[]>
+}
+
+function organizeChannels(channels: DiscordChannel[]): OrganizedChannels {
+  const categories = channels
+    .filter((c) => c.type === CHANNEL_TYPE_CATEGORY)
+    .sort((a, b) => a.position - b.position)
+  const categoryIds = new Set(categories.map((c) => c.id))
+
+  const topLevel: DiscordChannel[] = []
+  const childrenByParent = new Map<string, DiscordChannel[]>()
+
+  for (const c of channels) {
+    if (c.type === CHANNEL_TYPE_CATEGORY) continue
+    // Channel is top-level if it has no parent, or its parent isn't a category
+    // we saw (orphaned — shouldn't happen, but defensive).
+    if (!c.parent_id || !categoryIds.has(c.parent_id)) {
+      topLevel.push(c)
+      continue
+    }
+    const list = childrenByParent.get(c.parent_id) ?? []
+    list.push(c)
+    childrenByParent.set(c.parent_id, list)
+  }
+
+  topLevel.sort((a, b) => a.position - b.position)
+  for (const list of childrenByParent.values()) {
+    list.sort((a, b) => a.position - b.position)
+  }
+
+  return { topLevel, categories, childrenByParent }
+}
+
+function ChannelRow({ channel, indent }: { channel: DiscordChannel; indent?: boolean }) {
+  const typeLabel = CHANNEL_TYPE_LABELS[channel.type] ?? `type ${channel.type}`
+  return (
+    <li
+      className={`flex items-center justify-between gap-4 py-3 pr-6 ${
+        indent ? "pl-12" : "pl-6"
+      }`}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <Badge variant="outline" className="shrink-0 font-mono">
+          {typeLabel}
+        </Badge>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium leading-none">{channel.name}</p>
+          <p className="mt-1 font-mono text-xs text-muted-foreground">{channel.id}</p>
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
+        {channel.nsfw && <Badge variant="destructive">nsfw</Badge>}
+        <span className="ml-2 font-mono text-xs text-muted-foreground">
+          pos {channel.position}
+        </span>
+      </div>
+    </li>
+  )
 }
 
 type LinkGroup = {
@@ -230,12 +296,20 @@ function DiscordChannelsCard() {
     },
   })
 
+  const organized = useMemo(
+    () => (query.data ? organizeChannels(query.data) : null),
+    [query.data],
+  )
+
+  const isEmpty =
+    organized && organized.topLevel.length === 0 && organized.categories.length === 0
+
   return (
     <CollapsibleCard
       title="Discord channels"
       description={
         <>
-          Live from <code className="font-mono">GET /discord/channels</code>, sorted by Discord position.
+          Live from <code className="font-mono">GET /discord/channels</code>, grouped by category.
         </>
       }
       count={query.data?.length}
@@ -252,37 +326,48 @@ function DiscordChannelsCard() {
           Failed to fetch channels: {(query.error as Error).message}
         </p>
       )}
-      {query.data && query.data.length === 0 && (
+      {isEmpty && (
         <p className="px-6 py-4 text-sm text-muted-foreground">No channels returned.</p>
       )}
-      {query.data && query.data.length > 0 && (
-        <ul className="divide-y divide-border">
-          {query.data.map((channel) => {
-            const typeLabel = CHANNEL_TYPE_LABELS[channel.type] ?? `type ${channel.type}`
+      {organized && !isEmpty && (
+        <div className="divide-y divide-border">
+          {organized.topLevel.length > 0 && (
+            <ul className="divide-y divide-border">
+              {organized.topLevel.map((c) => (
+                <ChannelRow key={c.id} channel={c} />
+              ))}
+            </ul>
+          )}
+          {organized.categories.map((category) => {
+            const children = organized.childrenByParent.get(category.id) ?? []
             return (
-              <li
-                key={channel.id}
-                className="flex items-center justify-between gap-4 px-6 py-3"
-              >
-                <div className="flex min-w-0 items-center gap-3">
-                  <Badge variant="outline" className="shrink-0 font-mono">
-                    {typeLabel}
-                  </Badge>
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium leading-none">{channel.name}</p>
-                    <p className="mt-1 font-mono text-xs text-muted-foreground">{channel.id}</p>
+              <section key={category.id}>
+                <div className="flex items-center justify-between gap-4 bg-muted/40 px-6 py-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {category.name}
+                    </p>
+                    <p className="font-mono text-xs text-muted-foreground/70">{category.id}</p>
                   </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  {channel.nsfw && <Badge variant="destructive">nsfw</Badge>}
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">
-                    pos {channel.position}
+                  <span className="font-mono text-xs text-muted-foreground/70">
+                    pos {category.position}
                   </span>
                 </div>
-              </li>
+                {children.length === 0 ? (
+                  <p className="px-12 py-2 text-xs italic text-muted-foreground/70">
+                    empty category
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {children.map((c) => (
+                      <ChannelRow key={c.id} channel={c} indent />
+                    ))}
+                  </ul>
+                )}
+              </section>
             )
           })}
-        </ul>
+        </div>
       )}
     </CollapsibleCard>
   )
