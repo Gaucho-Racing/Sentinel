@@ -48,11 +48,16 @@ func delayedMessageDelete(channelID, messageID string, delay time.Duration) {
 }
 
 // SendDirectMessage opens a DM channel with the user and posts the content.
-func SendDirectMessage(userID, content string) error {
+// Returns the sent message so callers can reference it (e.g., build a jump link).
+func SendDirectMessage(userID, content string) (*discordgo.Message, error) {
 	channel, err := Discord.UserChannelCreate(userID)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = Discord.ChannelMessageSend(channel.ID, content)
-	return err
+	return Discord.ChannelMessageSend(channel.ID, content)
+}
+
+// DMJumpURL returns a Discord jump link to a message in a DM channel.
+func DMJumpURL(channelID, messageID string) string {
+	return "https://discord.com/channels/@me/" + channelID + "/" + messageID
 }

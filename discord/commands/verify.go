@@ -17,8 +17,13 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if entityID := service.GetEntityIDForDiscordUser(m.Author.ID); entityID != "" {
 		logger.SugarLogger.Infof("Discord user %s is already onboarded as %s", m.Author.ID, entityID)
-		_ = service.SendDirectMessage(m.Author.ID, fmt.Sprintf("You're already onboarded! Sign in at %s/auth/login", config.WebBaseURL))
-		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> you're already onboarded — sent you a DM with the login link.", m.Author.ID), verifyReplyTTL)
+		dm, err := service.SendDirectMessage(m.Author.ID, fmt.Sprintf("You're already onboarded! Sign in at %s/auth/login", config.WebBaseURL))
+		if err != nil {
+			logger.SugarLogger.Errorf("Failed to DM onboarded user %s: %v", m.Author.ID, err)
+			service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> I couldn't DM you — enable DMs from server members and try again.", m.Author.ID), verifyReplyTTL)
+			return
+		}
+		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> you're already onboarded — [check your DM](%s) for the login link.", m.Author.ID, service.DMJumpURL(dm.ChannelID, dm.ID)), verifyReplyTTL)
 		return
 	}
 
@@ -36,12 +41,13 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	link := fmt.Sprintf("%s/onboard?token=%s", config.WebBaseURL, token.ID)
 	body := fmt.Sprintf("Welcome to Gaucho Racing! Click here to set up your Sentinel account:\n%s\n\nThis link expires in %s.", link, config.OnboardingTokenTTL)
-	if err := service.SendDirectMessage(m.Author.ID, body); err != nil {
+	dm, err := service.SendDirectMessage(m.Author.ID, body)
+	if err != nil {
 		logger.SugarLogger.Errorf("Failed to DM onboarding link to %s: %v", m.Author.ID, err)
 		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> I couldn't DM you — enable DMs from server members and run `%sverify` again.", m.Author.ID, config.DiscordPrefix), verifyReplyTTL)
 		return
 	}
 
 	logger.SugarLogger.Infof("Issued onboarding token %s to Discord user %s", token.ID, m.Author.ID)
-	service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> 📬 Check your DMs for the verification link.", m.Author.ID), verifyReplyTTL)
+	service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> 📬 [Check your DM](%s) for the verification link.", m.Author.ID, service.DMJumpURL(dm.ChannelID, dm.ID)), verifyReplyTTL)
 }
