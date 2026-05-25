@@ -6,7 +6,6 @@ import {
   MessageSquare,
   Pencil,
   Search,
-  Settings2,
   Sparkles,
   UserPlus,
 } from "lucide-react"
@@ -310,37 +309,30 @@ export default function GroupDetailsPage() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Crown className="size-4 text-muted-foreground" />
-                Owners
-              </CardTitle>
-              <CardDescription>
-                Can edit the group, manage members, and approve requests.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="divide-y divide-border/60">
-                {visibleOwners.map((o) => (
-                  <li key={o.entity_id}>
-                    <OwnerRow owner={o} />
-                  </li>
+        <Card>
+          <CardHeader>
+            <CardTitle>Group details</CardTitle>
+            <CardDescription>
+              How members are added, what this group unlocks, and identifiers.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <section>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                How members are added
+              </p>
+              <div className="mt-2 divide-y divide-border/60">
+                {syncConfigs.map((config, i) => (
+                  <SyncConfigBlock key={i} config={config} />
                 ))}
-              </ul>
-            </CardContent>
-          </Card>
+              </div>
+            </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Linked applications</CardTitle>
-              <CardDescription>
-                Apps that grant access to members via OAuth scope.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
+            <section className="border-t border-border/60 pt-6">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Linked applications
+              </p>
+              <ul className="mt-3 space-y-2">
                 {MOCK_LINKED_APPS.map((app) => (
                   <li
                     key={app.id}
@@ -353,30 +345,50 @@ export default function GroupDetailsPage() {
                   </li>
                 ))}
               </ul>
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Metadata</CardTitle>
-              <CardDescription>Identifiers and timestamps.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Group ID</span>
-                <code className="truncate font-mono text-xs">{group.id}</code>
+            <section className="border-t border-border/60 pt-6">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Metadata
+              </p>
+              <div className="mt-3 space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Group ID</span>
+                  <code className="truncate font-mono text-xs">{group.id}</code>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Created</span>
+                  <span>—</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Last updated</span>
+                  <span>—</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Created</span>
-                <span>—</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Last updated</span>
-                <span>—</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+            </section>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Crown className="size-4 text-muted-foreground" />
+              Owners
+            </CardTitle>
+            <CardDescription>
+              Can edit the group, manage members, and approve requests.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border/60">
+              {visibleOwners.map((o) => (
+                <li key={o.entity_id}>
+                  <OwnerRow owner={o} />
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader className="flex-row items-start justify-between gap-4">
@@ -418,25 +430,6 @@ export default function GroupDetailsPage() {
                 + {remainingMembers} more not shown.
               </p>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="size-4 text-muted-foreground" />
-              How members are added
-            </CardTitle>
-            <CardDescription>
-              Sources allowed to populate this group. Toggleable per group.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="divide-y divide-border/60">
-              {syncConfigs.map((config, i) => (
-                <SyncConfigBlock key={i} config={config} />
-              ))}
-            </div>
           </CardContent>
         </Card>
       </div>
