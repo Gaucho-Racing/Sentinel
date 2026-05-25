@@ -46,6 +46,7 @@ type Group struct {
 	Name           string      `json:"name"`
 	Description    string      `json:"description"`
 	AllowedSources StringSlice `json:"allowed_sources" gorm:"type:jsonb"`
+	CreatedBy      string      `json:"created_by" gorm:"index"`
 	UpdatedAt      time.Time   `json:"updated_at" gorm:"autoUpdateTime"`
 	CreatedAt      time.Time   `json:"created_at" gorm:"autoCreateTime"`
 }

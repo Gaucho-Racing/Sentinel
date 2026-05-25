@@ -11,6 +11,7 @@ export type GroupSummary = {
   owner_count: number
   allowed_sources: GroupSource[]
   pending_requests: number
+  created_by: string
 }
 
 export type MockMember = {
@@ -64,6 +65,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 3,
     allowed_sources: ["DIRECT"],
     pending_requests: 0,
+    created_by: "ent_002",
   },
   {
     id: "grp_suspension",
@@ -73,6 +75,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 2,
     allowed_sources: ["DIRECT", "DISCORD"],
     pending_requests: 1,
+    created_by: "ent_002",
   },
   {
     id: "grp_aero",
@@ -82,6 +85,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 2,
     allowed_sources: ["DIRECT", "DISCORD"],
     pending_requests: 3,
+    created_by: "ent_002",
   },
   {
     id: "grp_powertrain",
@@ -91,6 +95,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 2,
     allowed_sources: ["DIRECT", "DISCORD"],
     pending_requests: 0,
+    created_by: "ent_002",
   },
   {
     id: "grp_electrical",
@@ -100,6 +105,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 2,
     allowed_sources: ["DIRECT", "DISCORD"],
     pending_requests: 2,
+    created_by: "ent_003",
   },
   {
     id: "grp_all_members",
@@ -109,6 +115,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 1,
     allowed_sources: ["CONDITIONAL"],
     pending_requests: 0,
+    created_by: "ent_002",
   },
   {
     id: "grp_alumni",
@@ -118,6 +125,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 1,
     allowed_sources: ["CONDITIONAL"],
     pending_requests: 0,
+    created_by: "ent_002",
   },
   {
     id: "grp_mentors",
@@ -127,6 +135,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 1,
     allowed_sources: ["DIRECT"],
     pending_requests: 2,
+    created_by: "ent_003",
   },
   {
     id: "grp_faculty",
@@ -136,6 +145,7 @@ export const MOCK_GROUPS: GroupSummary[] = [
     owner_count: 1,
     allowed_sources: ["DIRECT"],
     pending_requests: 0,
+    created_by: "ent_002",
   },
 ]
 
@@ -249,6 +259,14 @@ export const MOCK_LINKED_APPS: MockLinkedApp[] = [
 export function getMockGroup(id: string | undefined): GroupSummary | undefined {
   if (!id) return undefined
   return MOCK_GROUPS.find((g) => g.id === id)
+}
+
+export function getMockPerson(entityID: string): { display_name: string; username: string } | undefined {
+  const member = MOCK_MEMBERS.find((m) => m.entity_id === entityID)
+  if (member) return { display_name: member.display_name, username: member.username }
+  const owner = MOCK_OWNERS.find((o) => o.entity_id === entityID)
+  if (owner) return { display_name: owner.display_name, username: owner.username }
+  return undefined
 }
 
 export function syncConfigsFor(group: GroupSummary): MockSyncConfig[] {

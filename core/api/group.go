@@ -33,20 +33,43 @@ func GetGroupByID(c *gin.Context) {
 	c.JSON(http.StatusOK, group)
 }
 
+type upsertGroupRequest struct {
+	ID             string   `json:"id"`
+	Name           string   `json:"name"`
+	Description    string   `json:"description"`
+	AllowedSources []string `json:"allowed_sources"`
+}
+
 func CreateOrUpdateGroup(c *gin.Context) {
-	var group model.Group
-	if err := c.ShouldBindJSON(&group); err != nil {
+	var req upsertGroupRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	existing, err := service.GetGroupByID(group.ID)
+
+	existing, err := service.GetGroupByID(req.ID)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	var group model.Group
 	if existing.ID != "" {
+		// Preserve CreatedBy and CreatedAt so updates don't overwrite the
+		// original creator lineage.
+		group = existing
+		group.Name = req.Name
+		group.Description = req.Description
+		group.AllowedSources = model.StringSlice(req.AllowedSources)
 		group, err = service.UpdateGroup(group)
 	} else {
+		group = model.Group{
+			ID:             req.ID,
+			Name:           req.Name,
+			Description:    req.Description,
+			AllowedSources: model.StringSlice(req.AllowedSources),
+			CreatedBy:      GetRequestTokenEntityID(c),
+		}
 		group, err = service.CreateGroup(group)
 	}
 	if err != nil {

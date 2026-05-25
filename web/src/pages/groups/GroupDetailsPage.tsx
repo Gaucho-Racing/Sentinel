@@ -21,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import {
   getMockGroup,
+  getMockPerson,
   MOCK_JOIN_REQUESTS,
   MOCK_LINKED_APPS,
   MOCK_MEMBERS,
@@ -362,6 +363,34 @@ export default function GroupDetailsPage() {
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-muted-foreground">Group ID</span>
                       <code className="truncate font-mono text-xs">{group.id}</code>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Created by</span>
+                      {(() => {
+                        const person = getMockPerson(group.created_by)
+                        if (!person) {
+                          return (
+                            <code className="truncate font-mono text-xs text-muted-foreground">
+                              {group.created_by}
+                            </code>
+                          )
+                        }
+                        return (
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Avatar className="size-6">
+                              <AvatarFallback className="text-[10px]">
+                                {initials(person.display_name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex min-w-0 flex-col leading-tight">
+                              <span className="truncate text-sm">{person.display_name}</span>
+                              <span className="truncate text-xs text-muted-foreground">
+                                @{person.username}
+                              </span>
+                            </div>
+                          </div>
+                        )
+                      })()}
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Created</span>
