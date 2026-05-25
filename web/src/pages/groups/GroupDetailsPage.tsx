@@ -5,10 +5,12 @@ import {
   Inbox,
   MessageSquare,
   Pencil,
+  Search,
   Settings2,
   Sparkles,
   UserPlus,
 } from "lucide-react"
+import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 
 import { OutlineButton } from "@/components/OutlineButton"
@@ -17,6 +19,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   getMockGroup,
   MOCK_JOIN_REQUESTS,
@@ -180,6 +183,7 @@ function SyncConfigBlock({ config }: { config: MockSyncConfig }) {
 export default function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const group = getMockGroup(id)
+  const [memberSearch, setMemberSearch] = useState("")
 
   if (!group) {
     return (
@@ -195,8 +199,17 @@ export default function GroupDetailsPage() {
     )
   }
 
-  const visibleMembers = MOCK_MEMBERS.slice(0, MEMBER_PREVIEW_COUNT)
-  const remainingMembers = Math.max(0, group.member_count - visibleMembers.length)
+  const needle = memberSearch.trim().toLowerCase()
+  const searching = needle.length > 0
+  const matchedMembers = searching
+    ? MOCK_MEMBERS.filter(
+        (m) =>
+          m.display_name.toLowerCase().includes(needle) ||
+          m.username.toLowerCase().includes(needle),
+      )
+    : MOCK_MEMBERS
+  const visibleMembers = searching ? matchedMembers : matchedMembers.slice(0, MEMBER_PREVIEW_COUNT)
+  const remainingMembers = searching ? 0 : Math.max(0, group.member_count - visibleMembers.length)
   const visibleOwners = MOCK_OWNERS.slice(0, group.owner_count)
   const pending = group.pending_requests > 0 ? MOCK_JOIN_REQUESTS.slice(0, group.pending_requests) : []
   const syncConfigs = syncConfigsFor(group)
@@ -239,35 +252,6 @@ export default function GroupDetailsPage() {
 
       <div className="space-y-4">
         <Card>
-          <CardHeader className="flex-row items-center justify-between gap-4">
-            <div>
-              <CardTitle>Members</CardTitle>
-              <CardDescription>
-                {group.member_count} total · {visibleMembers.filter((m) => m.source === "DIRECT").length} direct ·{" "}
-                {visibleMembers.filter((m) => m.source === "DISCORD").length} synced
-              </CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" className="text-muted-foreground">
-              View all
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y divide-border/60">
-              {visibleMembers.map((m) => (
-                <li key={m.entity_id}>
-                  <MemberRow member={m} />
-                </li>
-              ))}
-            </ul>
-            {remainingMembers > 0 && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                + {remainingMembers} more not shown.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Crown className="size-4 text-muted-foreground" />
@@ -285,6 +269,49 @@ export default function GroupDetailsPage() {
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-start justify-between gap-4">
+            <div>
+              <CardTitle>Members</CardTitle>
+              <CardDescription>
+                {group.member_count} total ·{" "}
+                {MOCK_MEMBERS.filter((m) => m.source === "DIRECT").length} direct ·{" "}
+                {MOCK_MEMBERS.filter((m) => m.source === "DISCORD").length} synced
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="relative mb-4">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search members…"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {visibleMembers.length === 0 ? (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                No members match "{memberSearch}".
+              </p>
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {visibleMembers.map((m) => (
+                  <li key={m.entity_id}>
+                    <MemberRow member={m} />
+                  </li>
+                ))}
+              </ul>
+            )}
+            {remainingMembers > 0 && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                + {remainingMembers} more not shown.
+              </p>
+            )}
           </CardContent>
         </Card>
 
