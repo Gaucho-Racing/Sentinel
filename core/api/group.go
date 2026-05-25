@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gaucho-racing/sentinel/core/model"
+	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -71,6 +72,18 @@ func CreateOrUpdateGroup(c *gin.Context) {
 			CreatedBy:      GetRequestTokenEntityID(c),
 		}
 		group, err = service.CreateGroup(group)
+		// Auto-add the creator as an owner so new groups aren't ownerless.
+		// Skip when there's no auth context — fabricating a row with an
+		// empty entity_id would just create a dangling owner.
+		if err == nil && group.CreatedBy != "" {
+			if _, ownerErr := service.CreateGroupOwner(model.GroupOwner{
+				GroupID:  group.ID,
+				EntityID: group.CreatedBy,
+				AddedBy:  group.CreatedBy,
+			}); ownerErr != nil {
+				logger.SugarLogger.Errorf("Failed to auto-add creator as owner of group %s: %v", group.ID, ownerErr)
+			}
+		}
 	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
