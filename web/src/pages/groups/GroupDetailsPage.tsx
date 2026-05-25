@@ -251,6 +251,65 @@ export default function GroupDetailsPage() {
       </header>
 
       <div className="space-y-4">
+        {pending.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Inbox className="size-4 text-gr-pink" />
+                Pending join requests
+                <Badge
+                  variant="outline"
+                  className="ml-1 border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
+                >
+                  {pending.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Awaiting owner review. Approving creates a member with <code className="font-mono">source=DIRECT</code>.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pending.map((req) => (
+                <div
+                  key={req.id}
+                  className="rounded-lg border border-border/60 bg-muted/30 p-3"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar className="size-8">
+                        <AvatarFallback className="text-xs">
+                          {initials(req.requester_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium leading-none">
+                          {req.requester_name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          @{req.requester_username} · {relativeTime(req.created_at)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="ghost" size="sm">
+                        Reject
+                      </Button>
+                      <Button size="sm">Approve</Button>
+                    </div>
+                  </div>
+                  <p className="mt-2.5 text-sm text-muted-foreground">{req.reason}</p>
+                  {req.comment_count > 0 && (
+                    <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <MessageSquare className="size-3" />
+                      {req.comment_count} {req.comment_count === 1 ? "comment" : "comments"}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -314,65 +373,6 @@ export default function GroupDetailsPage() {
             )}
           </CardContent>
         </Card>
-
-        {pending.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Inbox className="size-4 text-gr-pink" />
-                Pending join requests
-                <Badge
-                  variant="outline"
-                  className="ml-1 border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
-                >
-                  {pending.length}
-                </Badge>
-              </CardTitle>
-              <CardDescription>
-                Awaiting owner review. Approving creates a member with <code className="font-mono">source=DIRECT</code>.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {pending.map((req) => (
-                <div
-                  key={req.id}
-                  className="rounded-lg border border-border/60 bg-muted/30 p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <Avatar className="size-8">
-                        <AvatarFallback className="text-xs">
-                          {initials(req.requester_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium leading-none">
-                          {req.requester_name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          @{req.requester_username} · {relativeTime(req.created_at)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
-                        Reject
-                      </Button>
-                      <Button size="sm">Approve</Button>
-                    </div>
-                  </div>
-                  <p className="mt-2.5 text-sm text-muted-foreground">{req.reason}</p>
-                  {req.comment_count > 0 && (
-                    <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MessageSquare className="size-3" />
-                      {req.comment_count} {req.comment_count === 1 ? "comment" : "comments"}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
 
         <Card>
           <CardHeader>
