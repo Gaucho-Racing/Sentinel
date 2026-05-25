@@ -343,7 +343,12 @@ export default function GroupDetailsPage() {
                         <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
                           {app.name.slice(0, 1).toUpperCase()}
                         </div>
-                        <span className="text-sm">{app.name}</span>
+                        <div className="min-w-0 flex-1 leading-tight">
+                          <p className="truncate text-sm">{app.name}</p>
+                          <p className="truncate font-mono text-xs text-muted-foreground">
+                            {app.client_id}
+                          </p>
+                        </div>
                       </li>
                     ))}
                   </ul>

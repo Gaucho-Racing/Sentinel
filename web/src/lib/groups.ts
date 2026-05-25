@@ -41,6 +41,7 @@ export type MockJoinRequest = {
 export type MockLinkedApp = {
   id: string
   name: string
+  client_id: string
 }
 
 export type MockSyncConfig =
@@ -240,9 +241,9 @@ export const MOCK_JOIN_REQUESTS: MockJoinRequest[] = [
 ]
 
 export const MOCK_LINKED_APPS: MockLinkedApp[] = [
-  { id: "app_trackside", name: "Trackside" },
-  { id: "app_telemetry", name: "Telemetry Vault" },
-  { id: "app_parts", name: "Parts Hub" },
+  { id: "app_trackside", name: "Trackside", client_id: "trackside" },
+  { id: "app_telemetry", name: "Telemetry Vault", client_id: "telemetry-vault" },
+  { id: "app_parts", name: "Parts Hub", client_id: "parts-hub" },
 ]
 
 export function getMockGroup(id: string | undefined): GroupSummary | undefined {
