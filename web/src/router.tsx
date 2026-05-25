@@ -9,6 +9,7 @@ import ApplicationNewPage from "@/pages/applications/ApplicationNewPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginPage from "@/pages/auth/LoginPage"
 import DebugPage from "@/pages/debug/DebugPage"
+import GroupDetailsPage from "@/pages/groups/GroupDetailsPage"
 import GroupsPage from "@/pages/groups/GroupsPage"
 import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
           { path: "/applications/:id", element: <ApplicationDetailsPage /> },
           { path: "/applications/:id/edit", element: <ApplicationEditPage /> },
           { path: "/groups", element: <GroupsPage /> },
+          { path: "/groups/:id", element: <GroupDetailsPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/debug", element: <DebugPage /> },
