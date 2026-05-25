@@ -310,26 +310,73 @@ export default function GroupDetailsPage() {
           </Card>
         )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Crown className="size-4 text-muted-foreground" />
-              Owners
-            </CardTitle>
-            <CardDescription>
-              Privileged role — can edit the group, manage members, and approve requests.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="divide-y divide-border/60">
-              {visibleOwners.map((o) => (
-                <li key={o.entity_id}>
-                  <OwnerRow owner={o} />
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Crown className="size-4 text-muted-foreground" />
+                Owners
+              </CardTitle>
+              <CardDescription>
+                Can edit the group, manage members, and approve requests.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="divide-y divide-border/60">
+                {visibleOwners.map((o) => (
+                  <li key={o.entity_id}>
+                    <OwnerRow owner={o} />
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Linked applications</CardTitle>
+              <CardDescription>
+                Apps that grant access to members via OAuth scope.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="space-y-2">
+                {MOCK_LINKED_APPS.map((app) => (
+                  <li
+                    key={app.id}
+                    className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                  >
+                    <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
+                      {app.name.slice(0, 1).toUpperCase()}
+                    </div>
+                    <span className="text-sm">{app.name}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Metadata</CardTitle>
+              <CardDescription>Identifiers and timestamps.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-muted-foreground">Group ID</span>
+                <code className="truncate font-mono text-xs">{group.id}</code>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Created</span>
+                <span>—</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Last updated</span>
+                <span>—</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <Card>
           <CardHeader className="flex-row items-start justify-between gap-4">
@@ -389,50 +436,6 @@ export default function GroupDetailsPage() {
               {syncConfigs.map((config, i) => (
                 <SyncConfigBlock key={i} config={config} />
               ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Linked applications</CardTitle>
-            <CardDescription>
-              Apps that grant access to members of this group via OAuth scope.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {MOCK_LINKED_APPS.map((app) => (
-                <li
-                  key={app.id}
-                  className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
-                >
-                  <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
-                    {app.name.slice(0, 1).toUpperCase()}
-                  </div>
-                  <span className="text-sm">{app.name}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Metadata</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Group ID</span>
-              <code className="font-mono text-xs">{group.id}</code>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Created</span>
-              <span>—</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Last updated</span>
-              <span>—</span>
             </div>
           </CardContent>
         </Card>
