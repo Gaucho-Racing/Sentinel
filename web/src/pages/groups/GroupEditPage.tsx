@@ -7,6 +7,13 @@ import { toast } from "sonner"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import type { Group } from "@/lib/groups"
@@ -30,6 +37,7 @@ export default function GroupEditPage() {
   const [values, setValues] = useState<GroupFormValues | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (query.data && values === null) {
@@ -67,10 +75,6 @@ export default function GroupEditPage() {
 
   async function handleDelete() {
     if (!id || deleting) return
-    const confirmed = window.confirm(
-      `Delete "${query.data?.name ?? "this group"}"? Members and join requests will be removed too.`,
-    )
-    if (!confirmed) return
     setDeleting(true)
     try {
       await api.delete(`/groups/${id}`)
@@ -83,6 +87,7 @@ export default function GroupEditPage() {
         "Couldn't delete the group."
       toast.error(message)
       setDeleting(false)
+      setConfirmOpen(false)
     }
   }
 
@@ -153,13 +158,57 @@ export default function GroupEditPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button variant="destructive" disabled={deleting} onClick={handleDelete}>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => setConfirmOpen(true)}
+            >
               <Trash2 className="mr-1 size-3.5" />
               Delete group
             </Button>
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!deleting) setConfirmOpen(open)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </div>
+            <DialogTitle>Delete {group.name}?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the group along with all member, owner, and
+              join-request rows linked to it. Linked application bindings stay (the apps
+              just stop granting access via this group). This can't be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={deleting}
+              onClick={() => setConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              {deleting ? "Deleting…" : "Delete group"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }
