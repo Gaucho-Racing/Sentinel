@@ -1,9 +1,9 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowLeft,
   Bot,
   Crown,
   Inbox,
-  MessageSquare,
   Pencil,
   Search,
   Sparkles,
@@ -11,42 +11,30 @@ import {
 } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
+import { toast } from "sonner"
 
-import { OutlineButton } from "@/components/OutlineButton"
+import { EntityChip } from "@/components/EntityChip"
 import { PageContainer } from "@/components/PageContainer"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
+import type { Application } from "@/lib/applications"
 import {
-  getMockGroup,
-  getMockPerson,
-  MOCK_JOIN_REQUESTS,
-  MOCK_LINKED_APPS,
-  MOCK_MEMBERS,
-  MOCK_OWNERS,
   SOURCE_LABEL,
-  syncConfigsFor,
+  type Group,
+  type GroupJoinRequest,
+  type GroupMember,
+  type GroupOwner,
   type GroupSource,
-  type MockMember,
-  type MockOwner,
-  type MockSyncConfig,
 } from "@/lib/groups"
 
 const MEMBER_PREVIEW_COUNT = 6
 
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
-}
-
 function formatDate(iso: string) {
+  if (!iso) return "—"
   return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
@@ -67,31 +55,6 @@ function relativeTime(iso: string) {
   return `${months}mo ago`
 }
 
-function PersonRow({
-  name,
-  username,
-  trailing,
-}: {
-  name: string
-  username: string
-  trailing?: React.ReactNode
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 py-2.5">
-      <div className="flex min-w-0 items-center gap-2.5">
-        <Avatar className="size-8">
-          <AvatarFallback className="text-xs">{initials(name)}</AvatarFallback>
-        </Avatar>
-        <div className="flex min-w-0 flex-col leading-tight">
-          <span className="truncate text-sm">{name}</span>
-          <span className="truncate text-xs text-muted-foreground">@{username}</span>
-        </div>
-      </div>
-      {trailing && <div className="flex shrink-0 items-center gap-2">{trailing}</div>}
-    </div>
-  )
-}
-
 function SourcePill({ source }: { source: GroupSource }) {
   return (
     <Badge variant="outline" className="font-mono text-[10px]">
@@ -100,66 +63,54 @@ function SourcePill({ source }: { source: GroupSource }) {
   )
 }
 
-function MemberRow({ member }: { member: MockMember }) {
+function MemberRow({ member }: { member: GroupMember }) {
   return (
-    <PersonRow
-      name={member.display_name}
-      username={member.username}
-      trailing={
-        <>
-          <SourcePill source={member.source} />
-          <span className="hidden text-xs text-muted-foreground sm:inline">
-            joined {formatDate(member.joined_at)}
-          </span>
-        </>
-      }
-    />
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <EntityChip entityId={member.entity_id} />
+      <div className="flex shrink-0 items-center gap-2">
+        {member.source && <SourcePill source={member.source as GroupSource} />}
+        <span className="hidden text-xs text-muted-foreground sm:inline">
+          joined {formatDate(member.joined_at)}
+        </span>
+      </div>
+    </div>
   )
 }
 
-function OwnerRow({ owner }: { owner: MockOwner }) {
+function OwnerRow({ owner }: { owner: GroupOwner }) {
   return (
-    <PersonRow
-      name={owner.display_name}
-      username={owner.username}
-      trailing={
-        <span className="text-xs text-muted-foreground">since {formatDate(owner.added_at)}</span>
-      }
-    />
+    <div className="flex items-center justify-between gap-3 py-2.5">
+      <EntityChip entityId={owner.entity_id} />
+      <span className="text-xs text-muted-foreground">
+        since {formatDate(owner.created_at)}
+      </span>
+    </div>
   )
 }
 
-function SyncConfigBlock({ config }: { config: MockSyncConfig }) {
-  if (config.source === "DIRECT") {
+function SyncConfigBlock({ source }: { source: GroupSource }) {
+  if (source === "DIRECT") {
     return (
       <div className="flex items-start gap-3 py-3">
         <UserPlus className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
           <p className="text-sm font-medium">Direct invitation</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Owners add members manually or approve join requests. Default for human-curated groups.
+            Owners add members manually or approve join requests.
           </p>
         </div>
       </div>
     )
   }
-  if (config.source === "DISCORD") {
-    const hex = `#${config.discord_role_color.toString(16).padStart(6, "0")}`
+  if (source === "DISCORD") {
     return (
       <div className="flex items-start gap-3 py-3">
         <Bot className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <p className="text-sm font-medium">Discord role sync</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Members with this Discord role are added automatically; removing the role removes them.
+            Members with a linked Discord role are added automatically. Role binding not yet configurable.
           </p>
-          <div className="mt-2 inline-flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1">
-            <span
-              className="size-2.5 rounded-full border border-border/60"
-              style={{ backgroundColor: hex }}
-            />
-            <span className="font-mono text-xs">@{config.discord_role_name}</span>
-          </div>
         </div>
       </div>
     )
@@ -167,14 +118,11 @@ function SyncConfigBlock({ config }: { config: MockSyncConfig }) {
   return (
     <div className="flex items-start gap-3 py-3">
       <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0">
         <p className="text-sm font-medium">Conditional rule</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Members are added automatically when their profile matches this expression.
+          Members are auto-populated by a rule against entity profiles. Rule editor not yet built.
         </p>
-        <code className="mt-2 block break-all rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 font-mono text-xs">
-          {config.rule_summary}
-        </code>
       </div>
     </div>
   )
@@ -182,10 +130,93 @@ function SyncConfigBlock({ config }: { config: MockSyncConfig }) {
 
 export default function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>()
-  const group = getMockGroup(id)
+  const qc = useQueryClient()
   const [memberSearch, setMemberSearch] = useState("")
+  const [reviewing, setReviewing] = useState<string | null>(null)
 
-  if (!group) {
+  const groupQuery = useQuery({
+    queryKey: ["group", id],
+    queryFn: async () => {
+      const res = await api.get<Group>(`/groups/${id}`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const membersQuery = useQuery({
+    queryKey: ["group", id, "members"],
+    queryFn: async () => {
+      const res = await api.get<GroupMember[]>(`/groups/${id}/members`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const ownersQuery = useQuery({
+    queryKey: ["group", id, "owners"],
+    queryFn: async () => {
+      const res = await api.get<GroupOwner[]>(`/groups/${id}/owners`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const requestsQuery = useQuery({
+    queryKey: ["group", id, "requests"],
+    queryFn: async () => {
+      const res = await api.get<GroupJoinRequest[]>(`/groups/${id}/requests`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const appsQuery = useQuery({
+    queryKey: ["group", id, "applications"],
+    queryFn: async () => {
+      const res = await api.get<Application[]>(`/groups/${id}/applications`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  async function reviewRequest(requestID: string, action: "approve" | "reject") {
+    if (reviewing) return
+    setReviewing(requestID)
+    try {
+      await api.post(`/groups/${id}/requests/${requestID}/${action}`, {
+        reviewed_by: "",
+      })
+      qc.invalidateQueries({ queryKey: ["group", id, "requests"] })
+      qc.invalidateQueries({ queryKey: ["group", id, "members"] })
+      qc.invalidateQueries({ queryKey: ["group", id] })
+      toast.success(`Request ${action === "approve" ? "approved" : "rejected"}`)
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        `Couldn't ${action} request.`
+      toast.error(message)
+    } finally {
+      setReviewing(null)
+    }
+  }
+
+  if (groupQuery.isLoading) {
+    return (
+      <PageContainer>
+        <Skeleton className="mb-4 h-4 w-24" />
+        <div className="mb-8 flex items-center gap-4">
+          <Skeleton className="size-16 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+        </div>
+        <Skeleton className="h-64" />
+      </PageContainer>
+    )
+  }
+
+  if (groupQuery.isError || !groupQuery.data) {
     return (
       <PageContainer>
         <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
@@ -199,20 +230,27 @@ export default function GroupDetailsPage() {
     )
   }
 
+  const group = groupQuery.data
+  const members = membersQuery.data ?? []
+  const owners = ownersQuery.data ?? []
+  const requests = requestsQuery.data ?? []
+  const apps = appsQuery.data ?? []
+  const pending = requests.filter((r) => r.status === "PENDING")
+
   const needle = memberSearch.trim().toLowerCase()
   const searching = needle.length > 0
   const matchedMembers = searching
-    ? MOCK_MEMBERS.filter(
-        (m) =>
-          m.display_name.toLowerCase().includes(needle) ||
-          m.username.toLowerCase().includes(needle),
-      )
-    : MOCK_MEMBERS
-  const visibleMembers = searching ? matchedMembers : matchedMembers.slice(0, MEMBER_PREVIEW_COUNT)
-  const remainingMembers = searching ? 0 : Math.max(0, group.member_count - visibleMembers.length)
-  const visibleOwners = MOCK_OWNERS.slice(0, group.owner_count)
-  const pending = group.pending_requests > 0 ? MOCK_JOIN_REQUESTS.slice(0, group.pending_requests) : []
-  const syncConfigs = syncConfigsFor(group)
+    ? members.filter((m) => m.entity_id.toLowerCase().includes(needle))
+    : members
+  const visibleMembers = searching
+    ? matchedMembers
+    : matchedMembers.slice(0, MEMBER_PREVIEW_COUNT)
+  const remainingMembers = searching
+    ? 0
+    : Math.max(0, members.length - visibleMembers.length)
+
+  const directCount = members.filter((m) => m.source === "DIRECT").length
+  const syncedCount = members.filter((m) => m.source === "DISCORD" || m.source === "CONDITIONAL").length
 
   return (
     <PageContainer>
@@ -232,21 +270,19 @@ export default function GroupDetailsPage() {
             <h1 className="text-2xl font-semibold tracking-tight">{group.name}</h1>
             <p className="mt-1 max-w-prose text-sm text-muted-foreground">{group.description}</p>
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {group.allowed_sources.map((source) => (
+              {group.allowed_sources?.map((source) => (
                 <SourcePill key={source} source={source} />
               ))}
             </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="h-10 gap-1.5 rounded-xl px-4 text-sm">
-            <Pencil className="size-3.5" />
-            Edit
+          <Button asChild variant="outline" className="h-10 gap-1.5 rounded-xl px-4 text-sm">
+            <Link to={`/groups/${group.id}/edit`}>
+              <Pencil className="size-3.5" />
+              Edit
+            </Link>
           </Button>
-          <OutlineButton type="button" className="w-auto">
-            <UserPlus className="size-3.5" />
-            Add member
-          </OutlineButton>
         </div>
       </header>
 
@@ -275,35 +311,30 @@ export default function GroupDetailsPage() {
                   className="rounded-lg border border-border/60 bg-muted/30 p-3"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <Avatar className="size-8">
-                        <AvatarFallback className="text-xs">
-                          {initials(req.requester_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium leading-none">
-                          {req.requester_name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          @{req.requester_username} · {relativeTime(req.created_at)}
-                        </p>
-                      </div>
+                    <div className="min-w-0 flex-1">
+                      <EntityChip entityId={req.entity_id} />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Requested {relativeTime(req.created_at)}
+                      </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        disabled={reviewing === req.id}
+                        onClick={() => reviewRequest(req.id, "reject")}
+                      >
                         Reject
                       </Button>
-                      <Button size="sm">Approve</Button>
+                      <Button
+                        size="sm"
+                        disabled={reviewing === req.id}
+                        onClick={() => reviewRequest(req.id, "approve")}
+                      >
+                        Approve
+                      </Button>
                     </div>
                   </div>
-                  <p className="mt-2.5 text-sm text-muted-foreground">{req.reason}</p>
-                  {req.comment_count > 0 && (
-                    <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <MessageSquare className="size-3" />
-                      {req.comment_count} {req.comment_count === 1 ? "comment" : "comments"}
-                    </div>
-                  )}
                 </div>
               ))}
             </CardContent>
@@ -324,9 +355,15 @@ export default function GroupDetailsPage() {
                   How members are added
                 </p>
                 <div className="mt-2 divide-y divide-border/60">
-                  {syncConfigs.map((config, i) => (
-                    <SyncConfigBlock key={i} config={config} />
-                  ))}
+                  {group.allowed_sources && group.allowed_sources.length > 0 ? (
+                    group.allowed_sources.map((source) => (
+                      <SyncConfigBlock key={source} source={source} />
+                    ))
+                  ) : (
+                    <p className="py-3 text-sm text-muted-foreground">
+                      No sources configured yet.
+                    </p>
+                  )}
                 </div>
               </section>
 
@@ -335,24 +372,36 @@ export default function GroupDetailsPage() {
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Linked applications
                   </p>
-                  <ul className="mt-3 space-y-2">
-                    {MOCK_LINKED_APPS.map((app) => (
-                      <li
-                        key={app.id}
-                        className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
-                      >
-                        <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
-                          {app.name.slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1 leading-tight">
-                          <p className="truncate text-sm">{app.name}</p>
-                          <p className="truncate font-mono text-xs text-muted-foreground">
-                            {app.client_id}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  {apps.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">No linked applications.</p>
+                  ) : (
+                    <ul className="mt-3 space-y-2">
+                      {apps.map((app) => (
+                        <li
+                          key={app.id}
+                          className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                        >
+                          <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
+                            {app.icon_url ? (
+                              <img
+                                src={app.icon_url}
+                                alt={app.name}
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              app.name.slice(0, 1).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1 leading-tight">
+                            <p className="truncate text-sm">{app.name}</p>
+                            <p className="truncate font-mono text-xs text-muted-foreground">
+                              {app.client_id}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </section>
 
                 <section className="border-t border-border/60 pt-6">
@@ -366,39 +415,19 @@ export default function GroupDetailsPage() {
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-muted-foreground">Created by</span>
-                      {(() => {
-                        const person = getMockPerson(group.created_by)
-                        if (!person) {
-                          return (
-                            <code className="truncate font-mono text-xs text-muted-foreground">
-                              {group.created_by}
-                            </code>
-                          )
-                        }
-                        return (
-                          <div className="flex min-w-0 items-center gap-2">
-                            <Avatar className="size-6">
-                              <AvatarFallback className="text-[10px]">
-                                {initials(person.display_name)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex min-w-0 flex-col leading-tight">
-                              <span className="truncate text-sm">{person.display_name}</span>
-                              <span className="truncate text-xs text-muted-foreground">
-                                @{person.username}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })()}
+                      {group.created_by ? (
+                        <EntityChip entityId={group.created_by} size="sm" />
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Created</span>
-                      <span>—</span>
+                      <span>{formatDate(group.created_at)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last updated</span>
-                      <span>—</span>
+                      <span>{formatDate(group.updated_at)}</span>
                     </div>
                   </div>
                 </section>
@@ -418,13 +447,19 @@ export default function GroupDetailsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="divide-y divide-border/60">
-              {visibleOwners.map((o) => (
-                <li key={o.entity_id}>
-                  <OwnerRow owner={o} />
-                </li>
-              ))}
-            </ul>
+            {ownersQuery.isLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : owners.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No owners assigned.</p>
+            ) : (
+              <ul className="divide-y divide-border/60">
+                {owners.map((o) => (
+                  <li key={o.entity_id}>
+                    <OwnerRow owner={o} />
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 
@@ -433,9 +468,7 @@ export default function GroupDetailsPage() {
             <div>
               <CardTitle>Members</CardTitle>
               <CardDescription>
-                {group.member_count} total ·{" "}
-                {MOCK_MEMBERS.filter((m) => m.source === "DIRECT").length} direct ·{" "}
-                {MOCK_MEMBERS.filter((m) => m.source === "DISCORD").length} synced
+                {members.length} total · {directCount} direct · {syncedCount} synced
               </CardDescription>
             </div>
           </CardHeader>
@@ -450,9 +483,11 @@ export default function GroupDetailsPage() {
                 className="pl-9"
               />
             </div>
-            {visibleMembers.length === 0 ? (
+            {membersQuery.isLoading ? (
+              <Skeleton className="h-10 w-full" />
+            ) : visibleMembers.length === 0 ? (
               <p className="py-6 text-center text-sm text-muted-foreground">
-                No members match "{memberSearch}".
+                {searching ? `No members match "${memberSearch}".` : "No members yet."}
               </p>
             ) : (
               <ul className="divide-y divide-border/60">

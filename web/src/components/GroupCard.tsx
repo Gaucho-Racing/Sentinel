@@ -2,13 +2,13 @@ import { Crown, Users } from "lucide-react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
-import { SOURCE_LABEL, type GroupSummary } from "@/lib/groups"
+import { SOURCE_LABEL, type Group } from "@/lib/groups"
 
 function initial(name: string) {
   return name.slice(0, 1).toUpperCase()
 }
 
-export function GroupCard({ group }: { group: GroupSummary }) {
+export function GroupCard({ group }: { group: Group }) {
   return (
     <Link
       to={`/groups/${group.id}`}
@@ -18,12 +18,12 @@ export function GroupCard({ group }: { group: GroupSummary }) {
         <div className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-gr-pink to-gr-purple text-base font-semibold text-white">
           {initial(group.name)}
         </div>
-        {group.pending_requests > 0 && (
+        {group.pending_count > 0 && (
           <Badge
             variant="outline"
             className="border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
           >
-            {group.pending_requests} pending
+            {group.pending_count} pending
           </Badge>
         )}
       </div>
@@ -45,7 +45,7 @@ export function GroupCard({ group }: { group: GroupSummary }) {
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          {group.allowed_sources.map((source) => (
+          {group.allowed_sources?.map((source) => (
             <Badge key={source} variant="outline" className="font-mono text-[10px]">
               {SOURCE_LABEL[source]}
             </Badge>

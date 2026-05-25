@@ -49,6 +49,10 @@ type Group struct {
 	CreatedBy      string      `json:"created_by" gorm:"index"`
 	UpdatedAt      time.Time   `json:"updated_at" gorm:"autoUpdateTime"`
 	CreatedAt      time.Time   `json:"created_at" gorm:"autoCreateTime"`
+
+	MemberCount  int64 `json:"member_count" gorm:"-"`
+	OwnerCount   int64 `json:"owner_count" gorm:"-"`
+	PendingCount int64 `json:"pending_count" gorm:"-"`
 }
 
 func (Group) TableName() string {

@@ -1,23 +1,36 @@
+import { useQuery } from "@tanstack/react-query"
 import { Plus, Search } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
 
 import { GroupCard } from "@/components/GroupCard"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { MOCK_GROUPS } from "@/lib/groups"
+import { Skeleton } from "@/components/ui/skeleton"
+import { api } from "@/lib/api"
+import type { Group } from "@/lib/groups"
 
 export default function GroupsPage() {
   const [query, setQuery] = useState("")
 
+  const groupsQuery = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await api.get<Group[]>("/groups")
+      return res.data
+    },
+  })
+
+  const groups = groupsQuery.data ?? []
   const needle = query.trim().toLowerCase()
   const filtered = needle
-    ? MOCK_GROUPS.filter(
+    ? groups.filter(
         (g) =>
           g.name.toLowerCase().includes(needle) ||
           g.description.toLowerCase().includes(needle),
       )
-    : MOCK_GROUPS
+    : groups
   const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
@@ -27,9 +40,11 @@ export default function GroupsPage() {
           title="Groups"
           description="Group memberships allow gating additional access across Gaucho Racing."
         />
-        <Button>
-          <Plus className="mr-1 size-3.5" />
-          New group
+        <Button asChild>
+          <Link to="/groups/new">
+            <Plus className="mr-1 size-3.5" />
+            New group
+          </Link>
         </Button>
       </div>
 
@@ -45,9 +60,13 @@ export default function GroupsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {sorted.length === 0 ? (
+        {groupsQuery.isLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-32 rounded-lg" />
+          ))
+        ) : sorted.length === 0 ? (
           <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
-            No groups match "{query}".
+            {needle ? `No groups match "${query}".` : "No groups yet."}
           </p>
         ) : (
           sorted.map((group) => <GroupCard key={group.id} group={group} />)

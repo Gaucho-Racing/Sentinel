@@ -10,6 +10,8 @@ import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginPage from "@/pages/auth/LoginPage"
 import DebugPage from "@/pages/debug/DebugPage"
 import GroupDetailsPage from "@/pages/groups/GroupDetailsPage"
+import GroupEditPage from "@/pages/groups/GroupEditPage"
+import GroupNewPage from "@/pages/groups/GroupNewPage"
 import GroupsPage from "@/pages/groups/GroupsPage"
 import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
@@ -30,7 +32,9 @@ export const router = createBrowserRouter([
           { path: "/applications/:id", element: <ApplicationDetailsPage /> },
           { path: "/applications/:id/edit", element: <ApplicationEditPage /> },
           { path: "/groups", element: <GroupsPage /> },
+          { path: "/groups/new", element: <GroupNewPage /> },
           { path: "/groups/:id", element: <GroupDetailsPage /> },
+          { path: "/groups/:id/edit", element: <GroupEditPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/debug", element: <DebugPage /> },

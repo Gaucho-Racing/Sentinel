@@ -12,6 +12,9 @@ func GetAllGroups() ([]model.Group, error) {
 	if err := database.DB.Find(&groups).Error; err != nil {
 		return []model.Group{}, err
 	}
+	for i := range groups {
+		PopulateGroup(&groups[i])
+	}
 	return groups, nil
 }
 
@@ -20,7 +23,20 @@ func GetGroupByID(id string) (model.Group, error) {
 	if err := database.DB.Where("id = ?", id).First(&group).Error; err != nil {
 		return model.Group{}, err
 	}
+	PopulateGroup(&group)
 	return group, nil
+}
+
+func PopulateGroup(group *model.Group) {
+	if err := database.DB.Model(&model.GroupMember{}).Where("group_id = ?", group.ID).Count(&group.MemberCount).Error; err != nil {
+		logger.SugarLogger.Errorf("Failed to count members for group %s: %v", group.ID, err)
+	}
+	if err := database.DB.Model(&model.GroupOwner{}).Where("group_id = ?", group.ID).Count(&group.OwnerCount).Error; err != nil {
+		logger.SugarLogger.Errorf("Failed to count owners for group %s: %v", group.ID, err)
+	}
+	if err := database.DB.Model(&model.GroupJoinRequest{}).Where("group_id = ? AND status = ?", group.ID, model.GroupJoinRequestStatusPending).Count(&group.PendingCount).Error; err != nil {
+		logger.SugarLogger.Errorf("Failed to count pending requests for group %s: %v", group.ID, err)
+	}
 }
 
 func CreateGroup(group model.Group) (model.Group, error) {

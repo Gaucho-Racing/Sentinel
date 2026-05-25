@@ -90,6 +90,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/groups", CreateOrUpdateGroup)
 	router.DELETE("/groups/:id", DeleteGroup)
 
+	router.GET("/groups/:id/applications", GetGroupApplications)
+
 	router.GET("/groups/:id/members", GetGroupMembers)
 	router.POST("/groups/:id/members", AddGroupMember)
 	router.DELETE("/groups/:id/members/:entityID", RemoveGroupMember)

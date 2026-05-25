@@ -79,6 +79,16 @@ func CreateOrUpdateGroup(c *gin.Context) {
 	c.JSON(http.StatusOK, group)
 }
 
+func GetGroupApplications(c *gin.Context) {
+	id := c.Param("id")
+	apps, err := service.GetApplicationsForGroup(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, apps)
+}
+
 func DeleteGroup(c *gin.Context) {
 	id := c.Param("id")
 	if err := service.DeleteGroup(id); err != nil {
