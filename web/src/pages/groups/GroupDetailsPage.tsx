@@ -316,56 +316,60 @@ export default function GroupDetailsPage() {
               How members are added, what this group unlocks, and identifiers.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <section>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                How members are added
-              </p>
-              <div className="mt-2 divide-y divide-border/60">
-                {syncConfigs.map((config, i) => (
-                  <SyncConfigBlock key={i} config={config} />
-                ))}
-              </div>
-            </section>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <section className="lg:col-span-2 lg:border-r lg:border-border/60 lg:pr-6">
+                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  How members are added
+                </p>
+                <div className="mt-2 divide-y divide-border/60">
+                  {syncConfigs.map((config, i) => (
+                    <SyncConfigBlock key={i} config={config} />
+                  ))}
+                </div>
+              </section>
 
-            <section className="border-t border-border/60 pt-6">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Linked applications
-              </p>
-              <ul className="mt-3 space-y-2">
-                {MOCK_LINKED_APPS.map((app) => (
-                  <li
-                    key={app.id}
-                    className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
-                  >
-                    <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
-                      {app.name.slice(0, 1).toUpperCase()}
+              <div className="space-y-6">
+                <section>
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Linked applications
+                  </p>
+                  <ul className="mt-3 space-y-2">
+                    {MOCK_LINKED_APPS.map((app) => (
+                      <li
+                        key={app.id}
+                        className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                      >
+                        <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
+                          {app.name.slice(0, 1).toUpperCase()}
+                        </div>
+                        <span className="text-sm">{app.name}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+
+                <section className="border-t border-border/60 pt-6">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                    Metadata
+                  </p>
+                  <div className="mt-3 space-y-3 text-sm">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Group ID</span>
+                      <code className="truncate font-mono text-xs">{group.id}</code>
                     </div>
-                    <span className="text-sm">{app.name}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="border-t border-border/60 pt-6">
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Metadata
-              </p>
-              <div className="mt-3 space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Group ID</span>
-                  <code className="truncate font-mono text-xs">{group.id}</code>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Created</span>
-                  <span>—</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Last updated</span>
-                  <span>—</span>
-                </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Created</span>
+                      <span>—</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Last updated</span>
+                      <span>—</span>
+                    </div>
+                  </div>
+                </section>
               </div>
-            </section>
+            </div>
           </CardContent>
         </Card>
 
