@@ -54,6 +54,16 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		return
 	}
 
+	available, err := service.IsGroupNameAvailable(req.Name, existing.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if !available {
+		c.JSON(http.StatusConflict, gin.H{"error": "a group with that name already exists"})
+		return
+	}
+
 	var group model.Group
 	if existing.ID != "" {
 		// Preserve CreatedBy and CreatedAt so updates don't overwrite the

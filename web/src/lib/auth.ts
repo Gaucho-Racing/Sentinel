@@ -61,7 +61,7 @@ export type Entity = {
     sae_registration_number: string
     avatar_url: string
     initial_role: string
-    groups: Array<{ id: string; name: string; description: string }>
+    groups: string[]
     created_at: string
     updated_at: string
   }

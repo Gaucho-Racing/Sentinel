@@ -43,7 +43,7 @@ const (
 
 type Group struct {
 	ID             string      `json:"id" gorm:"primaryKey"`
-	Name           string      `json:"name"`
+	Name           string      `json:"name" gorm:"uniqueIndex"`
 	Description    string      `json:"description"`
 	AllowedSources StringSlice `json:"allowed_sources" gorm:"type:jsonb"`
 	CreatedBy      string      `json:"created_by" gorm:"index"`

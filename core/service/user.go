@@ -79,7 +79,11 @@ func PopulateUser(user *model.User) {
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to get groups for user %s: %v", user.ID, err)
 	}
-	user.Groups = groups
+	names := make([]string, 0, len(groups))
+	for _, g := range groups {
+		names = append(names, g.Name)
+	}
+	user.Groups = names
 
 	emailAuth, err := GetEmailAuthForEntity(user.EntityID)
 	if err == nil {

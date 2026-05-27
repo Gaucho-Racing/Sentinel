@@ -20,7 +20,7 @@ type User struct {
 	SAERegistrationNumber string    `json:"sae_registration_number"`
 	AvatarURL             string    `json:"avatar_url"`
 	InitialRole           string    `json:"initial_role"`
-	Groups                []Group   `json:"groups" gorm:"-"`
+	Groups                []string  `json:"groups" gorm:"-"`
 	UpdatedAt             time.Time `json:"updated_at"`
 	CreatedAt             time.Time `json:"created_at"`
 }

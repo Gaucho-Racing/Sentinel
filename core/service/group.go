@@ -70,6 +70,21 @@ func UpdateGroup(group model.Group) (model.Group, error) {
 	return group, nil
 }
 
+// IsGroupNameAvailable reports whether the given name can be used by a new or
+// updated group. Case-insensitive. Pass excludeID to allow a group to keep its
+// own current name during an update.
+func IsGroupNameAvailable(name string, excludeID string) (bool, error) {
+	var count int64
+	q := database.DB.Model(&model.Group{}).Where("LOWER(name) = LOWER(?)", name)
+	if excludeID != "" {
+		q = q.Where("id != ?", excludeID)
+	}
+	if err := q.Count(&count).Error; err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
 func DeleteGroup(id string) error {
 	if err := database.DB.Where("id = ?", id).Delete(&model.Group{}).Error; err != nil {
 		return err
