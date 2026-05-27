@@ -353,7 +353,7 @@ export default function GroupDetailsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isMember && !isOwner && (
+          {isMember && (
             <Badge variant="outline" className="h-7 gap-1.5 px-2.5">
               <Check className="size-3" />
               Member
