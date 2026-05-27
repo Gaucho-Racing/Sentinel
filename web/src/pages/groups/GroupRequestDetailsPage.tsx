@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import { loadSession } from "@/lib/auth"
 import type { Group, GroupJoinRequest, GroupJoinRequestStatus, GroupOwner } from "@/lib/groups"
@@ -68,6 +69,7 @@ export default function GroupRequestDetailsPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const myEntityID = loadSession()?.entityId ?? ""
+  const { isAdmin } = useAdmins()
 
   const [composing, setComposing] = useState("")
   const [posting, setPosting] = useState(false)
@@ -190,7 +192,7 @@ export default function GroupRequestDetailsPage() {
   const group = groupQuery.data
   const request = requestQuery.data
   const owners = ownersQuery.data ?? []
-  const isOwner = !!myEntityID && owners.some((o) => o.entity_id === myEntityID)
+  const isOwner = (!!myEntityID && owners.some((o) => o.entity_id === myEntityID)) || isAdmin
   const isRequester = !!myEntityID && request.entity_id === myEntityID
   const isPending = request.status === "PENDING"
   const canComment = isPending && (isOwner || isRequester)

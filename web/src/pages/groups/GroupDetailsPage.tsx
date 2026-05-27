@@ -8,6 +8,7 @@ import {
   Inbox,
   Pencil,
   Search,
+  Shield,
   Sparkles,
   UserPlus,
 } from "lucide-react"
@@ -30,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
+import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
@@ -88,13 +90,32 @@ function MemberRow({ member }: { member: GroupMember }) {
   )
 }
 
-function OwnerRow({ owner }: { owner: GroupOwner }) {
+function OwnerRow({
+  entityId,
+  since,
+  isAdmin,
+}: {
+  entityId: string
+  since?: string
+  isAdmin: boolean
+}) {
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
-      <EntityChip entityId={owner.entity_id} />
-      <span className="text-xs text-muted-foreground">
-        since {formatDate(owner.created_at)}
-      </span>
+      <EntityChip entityId={entityId} />
+      <div className="flex items-center gap-2">
+        {isAdmin && (
+          <Badge
+            variant="outline"
+            className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-500"
+          >
+            <Shield className="size-3" />
+            admin
+          </Badge>
+        )}
+        {since && (
+          <span className="text-xs text-muted-foreground">since {formatDate(since)}</span>
+        )}
+      </div>
     </div>
   )
 }
@@ -143,6 +164,7 @@ export default function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
   const myEntityID = loadSession()?.entityId ?? ""
+  const { adminIds, isAdmin } = useAdmins()
   const [memberSearch, setMemberSearch] = useState("")
   const [reviewing, setReviewing] = useState<string | null>(null)
   const [joinOpen, setJoinOpen] = useState(false)
@@ -302,7 +324,8 @@ export default function GroupDetailsPage() {
   const apps = appsQuery.data ?? []
   const allPending = requests.filter((r) => r.status === "PENDING")
 
-  const isOwner = !!myEntityID && owners.some((o) => o.entity_id === myEntityID)
+  const isExplicitOwner = !!myEntityID && owners.some((o) => o.entity_id === myEntityID)
+  const isOwner = isExplicitOwner || isAdmin
   const isMember = !!myEntityID && members.some((m) => m.entity_id === myEntityID)
   const myPending = myEntityID
     ? allPending.find((r) => r.entity_id === myEntityID)
@@ -312,6 +335,27 @@ export default function GroupDetailsPage() {
   const pending = myEntityID
     ? allPending.filter((r) => r.entity_id !== myEntityID)
     : allPending
+
+  // Owners list = explicit owners + admins (who get owner-equivalent rights).
+  // Dedupe by entity_id, prefer the explicit-owner entry so we keep the
+  // "since X" date when both apply.
+  const ownerRows = (() => {
+    const seen = new Set<string>()
+    const rows: { entityId: string; since?: string; isAdmin: boolean }[] = []
+    for (const o of owners) {
+      seen.add(o.entity_id)
+      rows.push({
+        entityId: o.entity_id,
+        since: o.created_at,
+        isAdmin: adminIds.has(o.entity_id),
+      })
+    }
+    for (const adminId of adminIds) {
+      if (seen.has(adminId)) continue
+      rows.push({ entityId: adminId, isAdmin: true })
+    }
+    return rows
+  })()
 
   const needle = memberSearch.trim().toLowerCase()
   const searching = needle.length > 0
@@ -560,19 +604,23 @@ export default function GroupDetailsPage() {
               Owners
             </CardTitle>
             <CardDescription>
-              Can edit the group, manage members, and approve requests.
+              Can edit the group, manage members, and approve requests. Global admins inherit these permissions.
             </CardDescription>
           </CardHeader>
           <CardContent>
             {ownersQuery.isLoading ? (
               <Skeleton className="h-10 w-full" />
-            ) : owners.length === 0 ? (
+            ) : ownerRows.length === 0 ? (
               <p className="text-sm text-muted-foreground">No owners assigned.</p>
             ) : (
               <ul className="divide-y divide-border/60">
-                {owners.map((o) => (
-                  <li key={o.entity_id}>
-                    <OwnerRow owner={o} />
+                {ownerRows.map((row) => (
+                  <li key={row.entityId}>
+                    <OwnerRow
+                      entityId={row.entityId}
+                      since={row.since}
+                      isAdmin={row.isAdmin}
+                    />
                   </li>
                 ))}
               </ul>

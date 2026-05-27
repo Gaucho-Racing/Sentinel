@@ -1,6 +1,9 @@
 package jobs
 
 import (
+	"strings"
+
+	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -17,6 +20,7 @@ func InitializeCore() {
 	initializeDefaultApplications()
 	initializeDefaultEntities()
 	initializeDefaultServiceAccounts()
+	initializeAdminsGroup()
 	SeedDevData()
 	logger.SugarLogger.Infoln("Finished initializing sentinel-core")
 }
@@ -69,6 +73,49 @@ func initializeDefaultEntities() {
 		logger.SugarLogger.Fatalf("Failed to check for Sentinel core entity: %v", err)
 	} else {
 		logger.SugarLogger.Infoln("Sentinel core entity already exists")
+	}
+}
+
+func initializeAdminsGroup() {
+	_, err := service.GetGroupByID(service.AdminsGroupID)
+	if err == gorm.ErrRecordNotFound {
+		if _, err := service.CreateGroup(model.Group{
+			ID:             service.AdminsGroupID,
+			Name:           "Admins",
+			Description:    "Global administrators. Members get owner-equivalent permissions on every group and other admin-gated surfaces.",
+			AllowedSources: model.StringSlice{"DIRECT"},
+			CreatedBy:      SentinelCoreEntityID,
+		}); err != nil {
+			logger.SugarLogger.Fatalf("Failed to create Admins group: %v", err)
+			return
+		}
+		logger.SugarLogger.Infof("Created Admins group (id=%s)", service.AdminsGroupID)
+	} else if err != nil {
+		logger.SugarLogger.Fatalf("Failed to check for Admins group: %v", err)
+		return
+	}
+
+	if config.AdminEntityIDs == "" {
+		return
+	}
+	for _, raw := range strings.Split(config.AdminEntityIDs, ",") {
+		entityID := strings.TrimSpace(raw)
+		if entityID == "" {
+			continue
+		}
+		if _, err := service.GetGroupMember(service.AdminsGroupID, entityID); err == nil {
+			continue
+		}
+		if _, err := service.CreateGroupMember(model.GroupMember{
+			GroupID:  service.AdminsGroupID,
+			EntityID: entityID,
+			Source:   string(model.GroupMemberSourceDirect),
+			AddedBy:  SentinelCoreEntityID,
+		}); err != nil {
+			logger.SugarLogger.Errorf("Failed to add %s to Admins group: %v", entityID, err)
+			continue
+		}
+		logger.SugarLogger.Infof("Added %s to Admins group from ADMIN_ENTITY_IDS", entityID)
 	}
 }
 

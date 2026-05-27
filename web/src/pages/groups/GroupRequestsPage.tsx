@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import { loadSession } from "@/lib/auth"
 import type { Group, GroupJoinRequest, GroupJoinRequestStatus, GroupOwner } from "@/lib/groups"
@@ -46,6 +47,7 @@ function relativeTime(iso: string) {
 export default function GroupRequestsPage() {
   const { id } = useParams<{ id: string }>()
   const myEntityID = loadSession()?.entityId ?? ""
+  const { isAdmin } = useAdmins()
   const [filter, setFilter] = useState<Filter>("PENDING")
 
   const groupQuery = useQuery({
@@ -102,7 +104,7 @@ export default function GroupRequestsPage() {
   const group = groupQuery.data
   const requests = requestsQuery.data ?? []
   const owners = ownersQuery.data ?? []
-  const isOwner = !!myEntityID && owners.some((o) => o.entity_id === myEntityID)
+  const isOwner = (!!myEntityID && owners.some((o) => o.entity_id === myEntityID)) || isAdmin
 
   if (!isOwner) {
     return (
@@ -114,7 +116,7 @@ export default function GroupRequestsPage() {
           </Link>
         </Button>
         <p className="text-sm text-muted-foreground">
-          Only group owners can view the full request queue.
+          Only group owners and admins can view the full request queue.
         </p>
       </PageContainer>
     )

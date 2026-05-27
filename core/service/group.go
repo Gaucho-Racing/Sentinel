@@ -7,6 +7,20 @@ import (
 	"github.com/gaucho-racing/ulid-go"
 )
 
+// AdminsGroupID is the fixed ID of the global Admins group. Members get
+// owner-equivalent permissions on every group and other admin-gated surfaces.
+const AdminsGroupID = "grp_admins"
+
+// IsAdmin reports whether the given entity is a member of the Admins group.
+// Returns false if the lookup fails so callers can treat it as a deny-by-default.
+func IsAdmin(entityID string) bool {
+	if entityID == "" {
+		return false
+	}
+	_, err := GetGroupMember(AdminsGroupID, entityID)
+	return err == nil
+}
+
 func GetAllGroups() ([]model.Group, error) {
 	groups := []model.Group{}
 	if err := database.DB.Find(&groups).Error; err != nil {

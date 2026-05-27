@@ -147,22 +147,6 @@ func seedTestGroup() {
 		logger.SugarLogger.Errorf("Failed to check test group: %v", err)
 		return
 	}
-
-	// Always re-check dev owner promotion in case the env var was set after
-	// the group already existed from a prior boot.
-	if config.DevSeedOwnerEntityID != "" {
-		if _, err := service.GetGroupOwner(TestGroupID, config.DevSeedOwnerEntityID); err == gorm.ErrRecordNotFound {
-			if _, err := service.CreateGroupOwner(model.GroupOwner{
-				GroupID:  TestGroupID,
-				EntityID: config.DevSeedOwnerEntityID,
-				AddedBy:  owner.EntityID,
-			}); err != nil {
-				logger.SugarLogger.Errorf("Failed to promote dev user %s to owner: %v", config.DevSeedOwnerEntityID, err)
-			} else {
-				logger.SugarLogger.Infof("Promoted dev user %s to owner of test group", config.DevSeedOwnerEntityID)
-			}
-		}
-	}
 }
 
 func seedTestJoinRequests() {
