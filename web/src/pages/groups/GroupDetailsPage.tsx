@@ -125,10 +125,12 @@ function OwnerRow({
         {isAdmin && (
           <Badge
             variant="outline"
-            className="gap-1 border-transparent bg-gradient-to-br from-gr-pink to-gr-purple text-white"
+            className="gap-1 border-gr-pink/40 bg-gr-pink/10"
           >
-            <Shield className="size-3" />
-            admin
+            <Shield className="size-3 text-gr-pink" />
+            <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
+              admin
+            </span>
           </Badge>
         )}
         {since && (
