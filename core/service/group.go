@@ -9,7 +9,7 @@ import (
 
 // AdminsGroupID is the fixed ID of the global Admins group. Members get
 // owner-equivalent permissions on every group and other admin-gated surfaces.
-const AdminsGroupID = "grp_admins"
+const AdminsGroupID = "grp_01kqs3w6h82xkdnft94vpj7qrm"
 
 // IsAdmin reports whether the given entity is a member of the Admins group.
 // Returns false if the lookup fails so callers can treat it as a deny-by-default.

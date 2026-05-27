@@ -5,7 +5,7 @@ import { loadSession } from "@/lib/auth"
 import type { GroupMember } from "@/lib/groups"
 
 // Fixed ID of the global Admins group on the backend (service.AdminsGroupID).
-export const ADMINS_GROUP_ID = "grp_admins"
+export const ADMINS_GROUP_ID = "grp_01kqs3w6h82xkdnft94vpj7qrm"
 
 // Returns the list of entity IDs in the Admins group plus a helper boolean
 // for the current session. Members are cached for 5 minutes since admin
