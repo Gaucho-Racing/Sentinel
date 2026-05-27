@@ -21,7 +21,7 @@ import { EntityChip } from "@/components/EntityChip"
 import { PageContainer } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -529,22 +529,20 @@ export default function GroupDetailsPage() {
           const reason = myPending.comments?.find((c) => c.entity_id === myEntityID)?.comment
           return (
             <Card>
-              <CardHeader className="flex-row flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <CardTitle className="flex items-center gap-2">
-                    <Hourglass className="size-4 text-gr-pink" />
-                    Your request is pending
-                  </CardTitle>
-                  <CardDescription>
-                    Submitted {relativeTime(myPending.created_at)}
-                    {myPending.has_expiration && (
-                      <> · {formatDurationBetween(myPending.created_at, myPending.expires_at)} of access</>
-                    )}
-                    . Owners haven't reviewed it yet.
-                  </CardDescription>
-                </div>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Hourglass className="size-4 text-gr-pink" />
+                  Your request is pending
+                </CardTitle>
+                <CardDescription>
+                  Submitted {relativeTime(myPending.created_at)}
+                  {myPending.has_expiration && (
+                    <> · {formatDurationBetween(myPending.created_at, myPending.expires_at)} of access</>
+                  )}
+                  . Owners haven't reviewed it yet.
+                </CardDescription>
                 {myPending.has_expiration && (
-                  <div className="shrink-0 text-right">
+                  <CardAction className="text-right">
                     <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
                       Would expire
                     </p>
@@ -554,7 +552,7 @@ export default function GroupDetailsPage() {
                     <p className="text-xs text-muted-foreground">
                       {formatExpiresIn(myPending.expires_at)}
                     </p>
-                  </div>
+                  </CardAction>
                 )}
               </CardHeader>
               <CardContent className="space-y-4">
@@ -590,25 +588,25 @@ export default function GroupDetailsPage() {
 
         {isOwner && pending.length > 0 && (
           <Card>
-            <CardHeader className="flex-row items-start justify-between gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Inbox className="size-4 text-gr-pink" />
-                  Pending join requests
-                  <Badge
-                    variant="outline"
-                    className="ml-1 border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
-                  >
-                    {pending.length}
-                  </Badge>
-                </CardTitle>
-                <CardDescription>
-                  Awaiting owner review. Approving creates a member with <code className="font-mono">source=DIRECT</code>.
-                </CardDescription>
-              </div>
-              <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
-                <Link to={`/groups/${group.id}/requests`}>View all</Link>
-              </Button>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Inbox className="size-4 text-gr-pink" />
+                Pending join requests
+                <Badge
+                  variant="outline"
+                  className="ml-1 border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
+                >
+                  {pending.length}
+                </Badge>
+              </CardTitle>
+              <CardDescription>
+                Awaiting owner review. Approving creates a member with <code className="font-mono">source=DIRECT</code>.
+              </CardDescription>
+              <CardAction>
+                <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+                  <Link to={`/groups/${group.id}/requests`}>View all</Link>
+                </Button>
+              </CardAction>
             </CardHeader>
             <CardContent className="space-y-3">
               {pending.map((req) => {
@@ -802,13 +800,11 @@ export default function GroupDetailsPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex-row items-start justify-between gap-4">
-            <div>
-              <CardTitle>Members</CardTitle>
-              <CardDescription>
-                {members.length} total · {directCount} direct · {syncedCount} synced
-              </CardDescription>
-            </div>
+          <CardHeader>
+            <CardTitle>Members</CardTitle>
+            <CardDescription>
+              {members.length} total · {directCount} direct · {syncedCount} synced
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative mb-4">
