@@ -10,6 +10,7 @@ import {
   Search,
   Shield,
   Sparkles,
+  Trash2,
   UserPlus,
 } from "lucide-react"
 import { useState } from "react"
@@ -171,6 +172,7 @@ export default function GroupDetailsPage() {
   const [joinReason, setJoinReason] = useState("")
   const [submittingJoin, setSubmittingJoin] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
   const groupQuery = useQuery({
     queryKey: ["group", id],
@@ -275,6 +277,7 @@ export default function GroupDetailsPage() {
       qc.invalidateQueries({ queryKey: ["group", id, "requests"] })
       qc.invalidateQueries({ queryKey: ["group", id] })
       toast.success("Request cancelled")
+      setCancelConfirmOpen(false)
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
@@ -463,9 +466,9 @@ export default function GroupDetailsPage() {
                     type="button"
                     variant="destructive"
                     disabled={cancelling}
-                    onClick={() => cancelMyRequest(myPending.id)}
+                    onClick={() => setCancelConfirmOpen(true)}
                   >
-                    {cancelling ? "Cancelling…" : "Cancel request"}
+                    Cancel request
                   </Button>
                   <Button asChild variant="outline">
                     <Link to={`/groups/${group.id}/requests/${myPending.id}`}>
@@ -771,6 +774,44 @@ export default function GroupDetailsPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={cancelConfirmOpen}
+        onOpenChange={(open) => {
+          if (!cancelling) setCancelConfirmOpen(open)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </div>
+            <DialogTitle>Cancel your request?</DialogTitle>
+            <DialogDescription>
+              This permanently removes your request to join {group.name}, along with any
+              comments on it. You can submit a new one later.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={cancelling}
+              onClick={() => setCancelConfirmOpen(false)}
+            >
+              Keep request
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={cancelling || !myPending}
+              onClick={() => myPending && cancelMyRequest(myPending.id)}
+            >
+              {cancelling ? "Cancelling…" : "Cancel request"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, CheckCircle2, Send, UserPlus, XCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Send, Trash2, UserPlus, XCircle } from "lucide-react"
 import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -9,6 +9,13 @@ import { PageContainer } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useAdmins } from "@/lib/admin"
@@ -75,6 +82,7 @@ export default function GroupRequestDetailsPage() {
   const [posting, setPosting] = useState(false)
   const [reviewing, setReviewing] = useState<"approve" | "reject" | null>(null)
   const [cancelling, setCancelling] = useState(false)
+  const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
   const groupQuery = useQuery({
     queryKey: ["group", id],
@@ -274,8 +282,12 @@ export default function GroupRequestDetailsPage() {
               </>
             )}
             {isRequester && !isOwner && (
-              <Button variant="destructive" disabled={cancelling} onClick={cancelRequest}>
-                {cancelling ? "Cancelling…" : "Cancel request"}
+              <Button
+                variant="destructive"
+                disabled={cancelling}
+                onClick={() => setCancelConfirmOpen(true)}
+              >
+                Cancel request
               </Button>
             )}
           </div>
@@ -345,6 +357,45 @@ export default function GroupRequestDetailsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={cancelConfirmOpen}
+        onOpenChange={(open) => {
+          if (!cancelling) setCancelConfirmOpen(open)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </div>
+            <DialogTitle>Cancel your request?</DialogTitle>
+            <DialogDescription>
+              This permanently removes your request to join {group.name}, along with any
+              comments on it. You can submit a new one later.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={cancelling}
+              onClick={() => setCancelConfirmOpen(false)}
+            >
+              Keep request
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={cancelling}
+              onClick={cancelRequest}
+            >
+              {cancelling ? "Cancelling…" : "Cancel request"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }
