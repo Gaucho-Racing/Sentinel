@@ -9,10 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
-import { loadSession } from "@/lib/auth"
-import type { Group, GroupJoinRequest, GroupJoinRequestStatus, GroupOwner } from "@/lib/groups"
+import type { Group, GroupJoinRequest, GroupJoinRequestStatus } from "@/lib/groups"
 
 type Filter = "ALL" | GroupJoinRequestStatus
 
@@ -46,8 +44,6 @@ function relativeTime(iso: string) {
 
 export default function GroupRequestsPage() {
   const { id } = useParams<{ id: string }>()
-  const myEntityID = loadSession()?.entityId ?? ""
-  const { isAdmin } = useAdmins()
   const [filter, setFilter] = useState<Filter>("PENDING")
 
   const groupQuery = useQuery({
@@ -63,15 +59,6 @@ export default function GroupRequestsPage() {
     queryKey: ["group", id, "requests"],
     queryFn: async () => {
       const res = await api.get<GroupJoinRequest[]>(`/groups/${id}/requests`)
-      return res.data
-    },
-    enabled: !!id,
-  })
-
-  const ownersQuery = useQuery({
-    queryKey: ["group", id, "owners"],
-    queryFn: async () => {
-      const res = await api.get<GroupOwner[]>(`/groups/${id}/owners`)
       return res.data
     },
     enabled: !!id,
@@ -103,24 +90,6 @@ export default function GroupRequestsPage() {
 
   const group = groupQuery.data
   const requests = requestsQuery.data ?? []
-  const owners = ownersQuery.data ?? []
-  const isOwner = (!!myEntityID && owners.some((o) => o.entity_id === myEntityID)) || isAdmin
-
-  if (!isOwner) {
-    return (
-      <PageContainer>
-        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
-          <Link to={`/groups/${id}`}>
-            <ArrowLeft className="mr-1 size-3.5" />
-            Back to {group.name}
-          </Link>
-        </Button>
-        <p className="text-sm text-muted-foreground">
-          Only group owners and admins can view the full request queue.
-        </p>
-      </PageContainer>
-    )
-  }
 
   const counts: Record<Filter, number> = {
     ALL: requests.length,
