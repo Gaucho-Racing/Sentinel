@@ -123,8 +123,8 @@ function OwnerRow({
       <EntityChip entityId={entityId} />
       <div className="flex items-center gap-2">
         {isAdmin && (
-          <span className="inline-flex h-5 items-center rounded-4xl bg-gradient-to-r from-gr-pink to-gr-purple p-px text-xs font-medium">
-            <span className="inline-flex h-full items-center gap-1 rounded-4xl bg-card px-2">
+          <span className="inline-flex h-5 items-center rounded-md bg-gradient-to-r from-gr-pink to-gr-purple p-px text-xs font-medium">
+            <span className="inline-flex h-full items-center gap-1 rounded-[7px] bg-card px-2">
               <Shield className="size-3 text-gr-pink" />
               <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
                 admin
