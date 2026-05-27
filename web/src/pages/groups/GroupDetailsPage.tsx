@@ -89,6 +89,28 @@ function SourcePill({ source }: { source: GroupSource }) {
   )
 }
 
+// h-10 OutlineButton-style display pill: gradient ring + bg-card interior +
+// gradient text. Used for non-interactive role markers (Member, Owner) in
+// the group header.
+function GradientOutlinePill({
+  icon: Icon,
+  label,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+}) {
+  return (
+    <span className="inline-flex h-10 items-center rounded-xl bg-gradient-to-r from-gr-pink to-gr-purple p-0.5 text-sm font-medium">
+      <span className="inline-flex h-full items-center gap-1.5 rounded-[10px] bg-card px-4">
+        <Icon className="size-3.5 text-gr-pink" />
+        <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
+          {label}
+        </span>
+      </span>
+    </span>
+  )
+}
+
 function MemberRow({ member }: { member: GroupMember }) {
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
@@ -487,12 +509,8 @@ export default function GroupDetailsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isMember && (
-            <Badge variant="outline" className="h-7 gap-1.5 px-2.5">
-              <Check className="size-3" />
-              Member
-            </Badge>
-          )}
+          {isExplicitOwner && <GradientOutlinePill icon={Crown} label="Owner" />}
+          {isMember && <GradientOutlinePill icon={Check} label="Member" />}
           {myPending && (
             <Button
               asChild
