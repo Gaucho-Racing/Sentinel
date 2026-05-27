@@ -170,7 +170,6 @@ export default function GroupDetailsPage() {
   const [joinOpen, setJoinOpen] = useState(false)
   const [joinReason, setJoinReason] = useState("")
   const [submittingJoin, setSubmittingJoin] = useState(false)
-  const [pendingOpen, setPendingOpen] = useState(false)
   const [cancelling, setCancelling] = useState(false)
 
   const groupQuery = useQuery({
@@ -276,7 +275,6 @@ export default function GroupDetailsPage() {
       qc.invalidateQueries({ queryKey: ["group", id, "requests"] })
       qc.invalidateQueries({ queryKey: ["group", id] })
       toast.success("Request cancelled")
-      setPendingOpen(false)
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
@@ -405,12 +403,14 @@ export default function GroupDetailsPage() {
           )}
           {myPending && (
             <Button
+              asChild
               variant="outline"
               className="h-10 gap-1.5 rounded-xl px-4 text-sm"
-              onClick={() => setPendingOpen(true)}
             >
-              <Hourglass className="size-3.5" />
-              Request pending
+              <Link to={`/groups/${group.id}/requests/${myPending.id}`}>
+                <Hourglass className="size-3.5" />
+                Request pending
+              </Link>
             </Button>
           )}
           {!isOwner && !isMember && !myPending && (
@@ -434,6 +434,50 @@ export default function GroupDetailsPage() {
       </header>
 
       <div className="space-y-4">
+        {myPending && (() => {
+          const reason = myPending.comments?.find((c) => c.entity_id === myEntityID)?.comment
+          return (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Hourglass className="size-4 text-gr-pink" />
+                  Your request is pending
+                </CardTitle>
+                <CardDescription>
+                  Submitted {relativeTime(myPending.created_at)}. Owners haven't reviewed it yet.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {reason && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Your note
+                    </p>
+                    <p className="mt-2 rounded-md border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+                      {reason}
+                    </p>
+                  </div>
+                )}
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={cancelling}
+                    onClick={() => cancelMyRequest(myPending.id)}
+                  >
+                    {cancelling ? "Cancelling…" : "Cancel request"}
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link to={`/groups/${group.id}/requests/${myPending.id}`}>
+                      View details
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        })()}
+
         {isOwner && pending.length > 0 && (
           <Card>
             <CardHeader className="flex-row items-start justify-between gap-4">
@@ -590,6 +634,15 @@ export default function GroupDetailsPage() {
                       <span className="text-muted-foreground">Last updated</span>
                       <span>{formatDate(group.updated_at)}</span>
                     </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-muted-foreground">Pending requests</span>
+                      <Link
+                        to={`/groups/${group.id}/requests`}
+                        className="text-foreground hover:text-gr-pink"
+                      >
+                        {group.pending_count} <span className="text-muted-foreground">— View all</span>
+                      </Link>
+                    </div>
                   </div>
                 </section>
               </div>
@@ -714,58 +767,6 @@ export default function GroupDetailsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={pendingOpen}
-        onOpenChange={(open) => {
-          if (!cancelling) setPendingOpen(open)
-        }}
-      >
-        <DialogContent className="gap-5 sm:max-w-md">
-          <DialogHeader className="gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-gr-pink/10 text-gr-pink">
-              <Hourglass className="size-5" />
-            </div>
-            <DialogTitle>Your request is pending</DialogTitle>
-            <DialogDescription>
-              Submitted {myPending ? relativeTime(myPending.created_at) : ""}. Owners haven't reviewed it yet.
-            </DialogDescription>
-          </DialogHeader>
-
-          {myPending && (() => {
-            const reason = myPending.comments?.find((c) => c.entity_id === myEntityID)?.comment
-            if (!reason) return null
-            return (
-              <div className="space-y-2">
-                <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Your note
-                </p>
-                <p className="rounded-md border border-border/60 bg-muted/40 p-3 text-sm text-muted-foreground">
-                  {reason}
-                </p>
-              </div>
-            )
-          })()}
-
-          <div className="flex justify-end gap-2 pt-1">
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={cancelling}
-              onClick={() => setPendingOpen(false)}
-            >
-              Close
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={cancelling || !myPending}
-              onClick={() => myPending && cancelMyRequest(myPending.id)}
-            >
-              {cancelling ? "Cancelling…" : "Cancel request"}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </PageContainer>
   )
 }
