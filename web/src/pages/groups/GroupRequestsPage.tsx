@@ -134,7 +134,7 @@ export default function GroupRequestsPage() {
               type="button"
               onClick={() => setFilter(f)}
               className={
-                "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs transition-colors " +
+                "inline-flex h-6 items-center gap-1 rounded-md border bg-clip-padding px-2 text-xs font-medium transition-colors " +
                 (active
                   ? "border-foreground/30 bg-foreground/10 text-foreground"
                   : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
