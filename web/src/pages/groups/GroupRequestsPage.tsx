@@ -10,7 +10,11 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
-import { formatDurationBetween } from "@/lib/duration"
+import {
+  formatAbsoluteDate,
+  formatDurationBetween,
+  formatExpiresIn,
+} from "@/lib/duration"
 import type { Group, GroupJoinRequest, GroupJoinRequestStatus } from "@/lib/groups"
 
 type Filter = "ALL" | GroupJoinRequestStatus
@@ -182,6 +186,19 @@ export default function GroupRequestsPage() {
                     <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{reason}</p>
                   )}
                 </div>
+                {req.has_expiration && status !== "REJECTED" && (
+                  <div className="shrink-0 text-right">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      {status === "PENDING" ? "Would expire" : "Expires"}
+                    </p>
+                    <p className="mt-0.5 text-sm font-semibold">
+                      {formatAbsoluteDate(req.expires_at)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatExpiresIn(req.expires_at)}
+                    </p>
+                  </div>
+                )}
                 <ChevronRight className="mt-1 size-4 shrink-0 text-muted-foreground" />
               </Link>
             )

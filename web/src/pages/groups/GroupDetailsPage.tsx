@@ -43,7 +43,11 @@ import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
-import { formatAbsoluteDate, formatDurationBetween } from "@/lib/duration"
+import {
+  formatAbsoluteDate,
+  formatDurationBetween,
+  formatExpiresIn,
+} from "@/lib/duration"
 import {
   SOURCE_LABEL,
   type Group,
@@ -525,30 +529,35 @@ export default function GroupDetailsPage() {
           const reason = myPending.comments?.find((c) => c.entity_id === myEntityID)?.comment
           return (
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Hourglass className="size-4 text-gr-pink" />
-                  Your request is pending
-                </CardTitle>
-                <CardDescription>
-                  Submitted {relativeTime(myPending.created_at)}. Owners haven't reviewed it yet.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+              <CardHeader className="flex-row flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <CardTitle className="flex items-center gap-2">
+                    <Hourglass className="size-4 text-gr-pink" />
+                    Your request is pending
+                  </CardTitle>
+                  <CardDescription>
+                    Submitted {relativeTime(myPending.created_at)}
+                    {myPending.has_expiration && (
+                      <> · {formatDurationBetween(myPending.created_at, myPending.expires_at)} of access</>
+                    )}
+                    . Owners haven't reviewed it yet.
+                  </CardDescription>
+                </div>
                 {myPending.has_expiration && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Requested membership
+                  <div className="shrink-0 text-right">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Would expire
                     </p>
-                    <p className="mt-2 text-sm">
-                      {formatDurationBetween(myPending.created_at, myPending.expires_at)}
-                      {" — "}
-                      <span className="text-muted-foreground">
-                        until {formatAbsoluteDate(myPending.expires_at)}
-                      </span>
+                    <p className="mt-0.5 text-base font-semibold">
+                      {formatAbsoluteDate(myPending.expires_at)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatExpiresIn(myPending.expires_at)}
                     </p>
                   </div>
                 )}
+              </CardHeader>
+              <CardContent className="space-y-4">
                 {reason && (
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
