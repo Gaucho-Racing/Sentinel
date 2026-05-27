@@ -509,7 +509,7 @@ export default function GroupDetailsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isExplicitOwner && <GradientOutlinePill icon={Crown} label="Owner" />}
+          {isOwner && <GradientOutlinePill icon={Crown} label="Owner" />}
           {isMember && <GradientOutlinePill icon={Check} label="Member" />}
           {myPending && (
             <Button
