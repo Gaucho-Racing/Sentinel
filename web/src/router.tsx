@@ -12,6 +12,8 @@ import DebugPage from "@/pages/debug/DebugPage"
 import GroupDetailsPage from "@/pages/groups/GroupDetailsPage"
 import GroupEditPage from "@/pages/groups/GroupEditPage"
 import GroupNewPage from "@/pages/groups/GroupNewPage"
+import GroupRequestDetailsPage from "@/pages/groups/GroupRequestDetailsPage"
+import GroupRequestsPage from "@/pages/groups/GroupRequestsPage"
 import GroupsPage from "@/pages/groups/GroupsPage"
 import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
@@ -35,6 +37,8 @@ export const router = createBrowserRouter([
           { path: "/groups/new", element: <GroupNewPage /> },
           { path: "/groups/:id", element: <GroupDetailsPage /> },
           { path: "/groups/:id/edit", element: <GroupEditPage /> },
+          { path: "/groups/:id/requests", element: <GroupRequestsPage /> },
+          { path: "/groups/:id/requests/:requestID", element: <GroupRequestDetailsPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/settings", element: <SettingsPage /> },
           { path: "/debug", element: <DebugPage /> },

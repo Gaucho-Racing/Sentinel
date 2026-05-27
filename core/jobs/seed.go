@@ -121,33 +121,48 @@ func seedMockUsers() {
 }
 
 func seedTestGroup() {
-	if _, err := service.GetGroupByID(TestGroupID); err == nil {
-		return
-	} else if err != gorm.ErrRecordNotFound {
+	owner := mockUsers[0]
+
+	_, err := service.GetGroupByID(TestGroupID)
+	if err == gorm.ErrRecordNotFound {
+		if _, err := service.CreateGroup(model.Group{
+			ID:             TestGroupID,
+			Name:           "Suspension Team",
+			Description:    "Test group for review queue UX — geometry, dampers, kinematics.",
+			AllowedSources: model.StringSlice{"DIRECT", "DISCORD"},
+			CreatedBy:      owner.EntityID,
+		}); err != nil {
+			logger.SugarLogger.Errorf("Failed to create test group: %v", err)
+			return
+		}
+		if _, err := service.CreateGroupOwner(model.GroupOwner{
+			GroupID:  TestGroupID,
+			EntityID: owner.EntityID,
+			AddedBy:  owner.EntityID,
+		}); err != nil {
+			logger.SugarLogger.Errorf("Failed to add owner to test group: %v", err)
+		}
+		logger.SugarLogger.Infof("Seeded test group %s (owner=%s)", TestGroupID, owner.EntityID)
+	} else if err != nil {
 		logger.SugarLogger.Errorf("Failed to check test group: %v", err)
 		return
 	}
 
-	owner := mockUsers[0]
-	if _, err := service.CreateGroup(model.Group{
-		ID:             TestGroupID,
-		Name:           "Suspension Team",
-		Description:    "Test group for review queue UX — geometry, dampers, kinematics.",
-		AllowedSources: model.StringSlice{"DIRECT", "DISCORD"},
-		CreatedBy:      owner.EntityID,
-	}); err != nil {
-		logger.SugarLogger.Errorf("Failed to create test group: %v", err)
-		return
+	// Always re-check dev owner promotion in case the env var was set after
+	// the group already existed from a prior boot.
+	if config.DevSeedOwnerEntityID != "" {
+		if _, err := service.GetGroupOwner(TestGroupID, config.DevSeedOwnerEntityID); err == gorm.ErrRecordNotFound {
+			if _, err := service.CreateGroupOwner(model.GroupOwner{
+				GroupID:  TestGroupID,
+				EntityID: config.DevSeedOwnerEntityID,
+				AddedBy:  owner.EntityID,
+			}); err != nil {
+				logger.SugarLogger.Errorf("Failed to promote dev user %s to owner: %v", config.DevSeedOwnerEntityID, err)
+			} else {
+				logger.SugarLogger.Infof("Promoted dev user %s to owner of test group", config.DevSeedOwnerEntityID)
+			}
+		}
 	}
-
-	if _, err := service.CreateGroupOwner(model.GroupOwner{
-		GroupID:  TestGroupID,
-		EntityID: owner.EntityID,
-		AddedBy:  owner.EntityID,
-	}); err != nil {
-		logger.SugarLogger.Errorf("Failed to add owner to test group: %v", err)
-	}
-	logger.SugarLogger.Infof("Seeded test group %s (owner=%s)", TestGroupID, owner.EntityID)
 }
 
 func seedTestJoinRequests() {

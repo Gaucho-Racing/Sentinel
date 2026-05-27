@@ -40,6 +40,10 @@ var Routes = []rincon.Route{
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 
+// Optional dev convenience: when set, the seed promotes this entity to owner
+// of the seeded test group so the developer can act on the inbox UI.
+var DevSeedOwnerEntityID = os.Getenv("DEV_SEED_OWNER_ENTITY_ID")
+
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")

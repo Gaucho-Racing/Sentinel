@@ -390,62 +390,68 @@ export default function GroupDetailsPage() {
       </header>
 
       <div className="space-y-4">
-        {pending.length > 0 && (
+        {isOwner && pending.length > 0 && (
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Inbox className="size-4 text-gr-pink" />
-                Pending join requests
-                <Badge
-                  variant="outline"
-                  className="ml-1 border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
-                >
-                  {pending.length}
-                </Badge>
-              </CardTitle>
-              <CardDescription>
-                Awaiting owner review. Approving creates a member with <code className="font-mono">source=DIRECT</code>.
-              </CardDescription>
+            <CardHeader className="flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Inbox className="size-4 text-gr-pink" />
+                  Pending join requests
+                  <Badge
+                    variant="outline"
+                    className="ml-1 border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
+                  >
+                    {pending.length}
+                  </Badge>
+                </CardTitle>
+                <CardDescription>
+                  Awaiting owner review. Approving creates a member with <code className="font-mono">source=DIRECT</code>.
+                </CardDescription>
+              </div>
+              <Button asChild variant="ghost" size="sm" className="text-muted-foreground">
+                <Link to={`/groups/${group.id}/requests`}>View all</Link>
+              </Button>
             </CardHeader>
             <CardContent className="space-y-3">
               {pending.map((req) => {
                 const reason = req.comments?.find((c) => c.entity_id === req.entity_id)?.comment
                 return (
-                <div
-                  key={req.id}
-                  className="rounded-lg border border-border/60 bg-muted/30 p-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <EntityChip entityId={req.entity_id} />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Requested {relativeTime(req.created_at)}
-                      </p>
-                      {reason && (
-                        <p className="mt-2 rounded-md border border-border/60 bg-background/60 p-2.5 text-sm text-muted-foreground">
-                          {reason}
+                  <Link
+                    key={req.id}
+                    to={`/groups/${group.id}/requests/${req.id}`}
+                    className="block rounded-lg border border-border/60 bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <EntityChip entityId={req.entity_id} />
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Requested {relativeTime(req.created_at)}
                         </p>
-                      )}
+                        {reason && (
+                          <p className="mt-2 rounded-md border border-border/60 bg-background/60 p-2.5 text-sm text-muted-foreground">
+                            {reason}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={reviewing === req.id}
+                          onClick={() => reviewRequest(req.id, "reject")}
+                        >
+                          Reject
+                        </Button>
+                        <Button
+                          size="sm"
+                          disabled={reviewing === req.id}
+                          onClick={() => reviewRequest(req.id, "approve")}
+                        >
+                          Approve
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        disabled={reviewing === req.id}
-                        onClick={() => reviewRequest(req.id, "reject")}
-                      >
-                        Reject
-                      </Button>
-                      <Button
-                        size="sm"
-                        disabled={reviewing === req.id}
-                        onClick={() => reviewRequest(req.id, "approve")}
-                      >
-                        Approve
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+                  </Link>
                 )
               })}
             </CardContent>
