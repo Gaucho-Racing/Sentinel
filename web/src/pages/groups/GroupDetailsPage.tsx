@@ -89,30 +89,38 @@ function SourcePill({ source }: { source: GroupSource }) {
   )
 }
 
-// h-10 OutlineButton-style display pill: gradient ring + bg-card interior +
-// gradient text. Used for non-interactive role markers (Member, Owner) in
-// the group header.
-function GradientOutlinePill({
+// h-10 OutlineButton-style display pill: colored ring + bg-card interior +
+// colored text. Brand tone uses the gradient; gold/green use solid accents.
+function OutlinePill({
   icon: Icon,
   label,
   tone = "brand",
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
-  tone?: "brand" | "gold"
+  tone?: "brand" | "gold" | "green"
 }) {
-  const gradient =
-    tone === "gold"
-      ? "bg-gradient-to-r from-amber-300 to-amber-600"
-      : "bg-gradient-to-r from-gr-pink to-gr-purple"
-  const iconColor = tone === "gold" ? "text-amber-400" : "text-gr-pink"
+  const ring = {
+    brand: "bg-gradient-to-r from-gr-pink to-gr-purple",
+    gold: "bg-amber-400",
+    green: "bg-emerald-500",
+  }[tone]
+  const accent = {
+    brand: "text-gr-pink",
+    gold: "text-amber-400",
+    green: "text-emerald-500",
+  }[tone]
   return (
-    <span className={`inline-flex h-10 items-center rounded-xl ${gradient} p-0.5 text-sm font-medium`}>
+    <span className={`inline-flex h-10 items-center rounded-xl ${ring} p-0.5 text-sm font-medium`}>
       <span className="inline-flex h-full items-center gap-1.5 rounded-[10px] bg-card px-4">
-        <Icon className={`size-3.5 ${iconColor}`} />
-        <span className={`${gradient} bg-clip-text text-transparent`}>
-          {label}
-        </span>
+        <Icon className={`size-3.5 ${accent}`} />
+        {tone === "brand" ? (
+          <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
+            {label}
+          </span>
+        ) : (
+          <span className={accent}>{label}</span>
+        )}
       </span>
     </span>
   )
@@ -516,8 +524,8 @@ export default function GroupDetailsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isOwner && <GradientOutlinePill icon={Crown} label="Owner" tone="gold" />}
-          {isMember && <GradientOutlinePill icon={Check} label="Member" />}
+          {isOwner && <OutlinePill icon={Crown} label="Owner" tone="gold" />}
+          {isMember && <OutlinePill icon={Check} label="Member" tone="green" />}
           {myPending && (
             <Button
               asChild
