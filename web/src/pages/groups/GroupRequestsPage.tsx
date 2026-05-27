@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
+import { formatDurationBetween } from "@/lib/duration"
 import type { Group, GroupJoinRequest, GroupJoinRequestStatus } from "@/lib/groups"
 
 type Filter = "ALL" | GroupJoinRequestStatus
@@ -170,6 +171,9 @@ export default function GroupRequestsPage() {
                     {req.status === "PENDING"
                       ? `Requested ${relativeTime(req.created_at)}`
                       : `Reviewed ${relativeTime(req.reviewed_at)}`}
+                    {req.has_expiration && (
+                      <span> · {formatDurationBetween(req.created_at, req.expires_at)} of access</span>
+                    )}
                     {req.comments && req.comments.length > 0 && (
                       <span> · {req.comments.length} {req.comments.length === 1 ? "comment" : "comments"}</span>
                     )}

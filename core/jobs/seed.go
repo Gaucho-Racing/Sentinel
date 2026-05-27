@@ -60,15 +60,16 @@ var mockUsers = []mockUserSeed{
 }
 
 type joinRequestSeed struct {
-	RequestID  string
-	EntityIdx  int // index into mockUsers
-	Reason     string
+	RequestID string
+	EntityIdx int // index into mockUsers
+	Reason    string
+	Duration  time.Duration // how long of access the requester wants
 }
 
 var seedJoinRequests = []joinRequestSeed{
-	{RequestID: "gjr_mock00000000000000000001", EntityIdx: 1, Reason: "Joining the suspension subteam this quarter — VP Wilson asked me to request access."},
-	{RequestID: "gjr_mock00000000000000000002", EntityIdx: 2, Reason: "Working on the damper test rig and need access to the team Drive and Trackside."},
-	{RequestID: "gjr_mock00000000000000000003", EntityIdx: 3, Reason: ""},
+	{RequestID: "gjr_mock00000000000000000001", EntityIdx: 1, Reason: "Joining the suspension subteam this quarter — VP Wilson asked me to request access.", Duration: 90 * 24 * time.Hour},
+	{RequestID: "gjr_mock00000000000000000002", EntityIdx: 2, Reason: "Working on the damper test rig and need access to the team Drive and Trackside.", Duration: 14 * 24 * time.Hour},
+	{RequestID: "gjr_mock00000000000000000003", EntityIdx: 3, Reason: "", Duration: 365 * 24 * time.Hour},
 }
 
 func SeedDevData() {
@@ -162,10 +163,12 @@ func seedTestJoinRequests() {
 	for _, jr := range seedJoinRequests {
 		user := mockUsers[jr.EntityIdx]
 		req, err := service.CreateJoinRequest(model.GroupJoinRequest{
-			ID:       jr.RequestID,
-			GroupID:  TestGroupID,
-			EntityID: user.EntityID,
-			Status:   string(model.GroupJoinRequestStatusPending),
+			ID:            jr.RequestID,
+			GroupID:       TestGroupID,
+			EntityID:      user.EntityID,
+			Status:        string(model.GroupJoinRequestStatusPending),
+			HasExpiration: true,
+			ExpiresAt:     time.Now().Add(jr.Duration),
 		})
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to create mock join request %s: %v", jr.RequestID, err)

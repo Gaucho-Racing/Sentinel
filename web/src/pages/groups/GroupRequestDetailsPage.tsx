@@ -21,6 +21,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import { loadSession } from "@/lib/auth"
+import {
+  formatAbsoluteDate,
+  formatDurationBetween,
+  formatExpiresIn,
+} from "@/lib/duration"
 import type { Group, GroupJoinRequest, GroupJoinRequestStatus, GroupOwner } from "@/lib/groups"
 
 const STATUS_BADGE: Record<GroupJoinRequestStatus, string> = {
@@ -208,13 +213,16 @@ export default function GroupRequestDetailsPage() {
 
   // Build the timeline: synthesized creation entry, comments in order, optional review entry.
   const timeline: TimelineEntry[] = []
+  const submittedText = request.has_expiration
+    ? `submitted this request for ${formatDurationBetween(request.created_at, request.expires_at)} of access`
+    : "submitted this request"
   timeline.push({
     kind: "system",
     key: "created",
     icon: UserPlus,
     iconClass: "text-muted-foreground",
     entityID: request.entity_id,
-    text: "submitted this request",
+    text: submittedText,
     time: request.created_at,
   })
   const sortedComments = [...(request.comments ?? [])].sort(
@@ -261,6 +269,13 @@ export default function GroupRequestDetailsPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             For <Link to={`/groups/${id}`} className="text-foreground hover:text-gr-pink">{group.name}</Link>.
           </p>
+          {request.has_expiration && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isPending ? "Would expire" : "Expires"}{" "}
+              <span className="text-foreground">{formatAbsoluteDate(request.expires_at)}</span>{" "}
+              ({formatExpiresIn(request.expires_at)})
+            </p>
+          )}
         </div>
         {isPending && (
           <div className="flex gap-2">

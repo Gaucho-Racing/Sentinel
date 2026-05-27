@@ -43,6 +43,7 @@ import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
+import { formatAbsoluteDate, formatDurationBetween } from "@/lib/duration"
 import {
   SOURCE_LABEL,
   type Group,
@@ -90,9 +91,15 @@ function MemberRow({ member }: { member: GroupMember }) {
       <EntityChip entityId={member.entity_id} />
       <div className="flex shrink-0 items-center gap-2">
         {member.source && <SourcePill source={member.source as GroupSource} />}
-        <span className="hidden text-xs text-muted-foreground sm:inline">
-          joined {formatDate(member.joined_at)}
-        </span>
+        {member.has_expiration ? (
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            expires {formatAbsoluteDate(member.expires_at)}
+          </span>
+        ) : (
+          <span className="hidden text-xs text-muted-foreground sm:inline">
+            joined {formatDate(member.joined_at)}
+          </span>
+        )}
       </div>
     </div>
   )
@@ -528,6 +535,20 @@ export default function GroupDetailsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {myPending.has_expiration && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Requested membership
+                    </p>
+                    <p className="mt-2 text-sm">
+                      {formatDurationBetween(myPending.created_at, myPending.expires_at)}
+                      {" — "}
+                      <span className="text-muted-foreground">
+                        until {formatAbsoluteDate(myPending.expires_at)}
+                      </span>
+                    </p>
+                  </div>
+                )}
                 {reason && (
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -594,6 +615,12 @@ export default function GroupDetailsPage() {
                         <EntityChip entityId={req.entity_id} />
                         <p className="mt-2 text-xs text-muted-foreground">
                           Requested {relativeTime(req.created_at)}
+                          {req.has_expiration && (
+                            <>
+                              {" · "}
+                              {formatDurationBetween(req.created_at, req.expires_at)} of access
+                            </>
+                          )}
                         </p>
                         {reason && (
                           <p className="mt-2 rounded-md border border-border/60 bg-background/60 p-2.5 text-sm text-muted-foreground">
