@@ -30,6 +30,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { useAdmins } from "@/lib/admin"
@@ -161,6 +168,55 @@ function SyncConfigBlock({ source }: { source: GroupSource }) {
   )
 }
 
+type DurationPreset = "1w" | "1mo" | "6mo" | "1y"
+type DurationUnit = "hours" | "days" | "weeks" | "months"
+
+const DURATION_PRESETS: { value: DurationPreset; label: string }[] = [
+  { value: "1w", label: "1 week" },
+  { value: "1mo", label: "1 month" },
+  { value: "6mo", label: "6 months" },
+  { value: "1y", label: "1 year" },
+]
+
+const MAX_BY_UNIT: Record<DurationUnit, number> = {
+  hours: 8760,
+  days: 365,
+  weeks: 52,
+  months: 12,
+}
+
+function addPreset(now: Date, preset: DurationPreset): Date {
+  const d = new Date(now)
+  switch (preset) {
+    case "1w":
+      return new Date(d.getTime() + 7 * 86_400_000)
+    case "1mo":
+      d.setMonth(d.getMonth() + 1)
+      return d
+    case "6mo":
+      d.setMonth(d.getMonth() + 6)
+      return d
+    case "1y":
+      d.setFullYear(d.getFullYear() + 1)
+      return d
+  }
+}
+
+function addCustom(now: Date, amount: number, unit: DurationUnit): Date {
+  const d = new Date(now)
+  switch (unit) {
+    case "hours":
+      return new Date(d.getTime() + amount * 3_600_000)
+    case "days":
+      return new Date(d.getTime() + amount * 86_400_000)
+    case "weeks":
+      return new Date(d.getTime() + amount * 7 * 86_400_000)
+    case "months":
+      d.setMonth(d.getMonth() + amount)
+      return d
+  }
+}
+
 export default function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
@@ -171,6 +227,9 @@ export default function GroupDetailsPage() {
   const [joinOpen, setJoinOpen] = useState(false)
   const [joinReason, setJoinReason] = useState("")
   const [submittingJoin, setSubmittingJoin] = useState(false)
+  const [joinDuration, setJoinDuration] = useState<DurationPreset | "custom">("1mo")
+  const [customAmount, setCustomAmount] = useState(7)
+  const [customUnit, setCustomUnit] = useState<DurationUnit>("days")
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
@@ -242,10 +301,28 @@ export default function GroupDetailsPage() {
 
   async function submitJoinRequest() {
     if (!id || !myEntityID || submittingJoin) return
+
+    let expires: Date
+    if (joinDuration === "custom") {
+      if (
+        !Number.isFinite(customAmount) ||
+        customAmount <= 0 ||
+        customAmount > MAX_BY_UNIT[customUnit]
+      ) {
+        toast.error(`Pick between 1 and ${MAX_BY_UNIT[customUnit]} ${customUnit}.`)
+        return
+      }
+      expires = addCustom(new Date(), customAmount, customUnit)
+    } else {
+      expires = addPreset(new Date(), joinDuration)
+    }
+
     setSubmittingJoin(true)
     try {
       const res = await api.post<GroupJoinRequest>(`/groups/${id}/requests`, {
         entity_id: myEntityID,
+        has_expiration: true,
+        expires_at: expires.toISOString(),
       })
       const reason = joinReason.trim()
       if (reason) {
@@ -745,11 +822,81 @@ export default function GroupDetailsPage() {
             </div>
             <DialogTitle>Request to join {group.name}</DialogTitle>
             <DialogDescription>
-              Owners will review your request. Add an optional note to give them context.
+              Owners will review your request. Direct memberships are time-boxed — pick how long you need access.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Membership duration
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              {DURATION_PRESETS.map((p) => {
+                const active = joinDuration === p.value
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setJoinDuration(p.value)}
+                    className={
+                      "rounded-full border px-3 py-1.5 text-sm transition-colors " +
+                      (active
+                        ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
+                    }
+                  >
+                    {p.label}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                onClick={() => setJoinDuration("custom")}
+                className={
+                  "rounded-full border px-3 py-1.5 text-sm transition-colors " +
+                  (joinDuration === "custom"
+                    ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
+                    : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
+                }
+              >
+                Custom
+              </button>
+            </div>
+            {joinDuration === "custom" && (
+              <div className="flex items-center gap-2 pt-2">
+                <Input
+                  type="number"
+                  min={1}
+                  max={MAX_BY_UNIT[customUnit]}
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(parseInt(e.target.value, 10) || 0)}
+                  className="w-24"
+                />
+                <Select
+                  value={customUnit}
+                  onValueChange={(v) => setCustomUnit(v as DurationUnit)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hours">Hours</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="weeks">Weeks</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Max {MAX_BY_UNIT[customUnit]}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Note
+            </p>
             <Textarea
               placeholder="Why do you want to join? (optional)"
               value={joinReason}
