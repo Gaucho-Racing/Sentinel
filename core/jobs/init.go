@@ -17,6 +17,7 @@ func InitializeCore() {
 	initializeDefaultApplications()
 	initializeDefaultEntities()
 	initializeDefaultServiceAccounts()
+	SeedDevData()
 	logger.SugarLogger.Infoln("Finished initializing sentinel-core")
 }
 
