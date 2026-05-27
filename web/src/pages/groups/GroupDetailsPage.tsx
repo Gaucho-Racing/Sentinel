@@ -125,7 +125,7 @@ function OwnerRow({
         {isAdmin && (
           <Badge
             variant="outline"
-            className="gap-1 border-gr-pink/40 bg-gr-pink/10"
+            className="gap-1 border-transparent [background:linear-gradient(to_right,color-mix(in_srgb,var(--color-gr-pink)_12%,transparent),color-mix(in_srgb,var(--color-gr-purple)_12%,transparent))_padding-box,linear-gradient(to_right,var(--color-gr-pink),var(--color-gr-purple))_border-box]"
           >
             <Shield className="size-3 text-gr-pink" />
             <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
