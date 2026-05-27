@@ -125,12 +125,14 @@ function OwnerRow({
         {isAdmin && (
           <Badge
             variant="outline"
-            className="gap-1 border-transparent [background:linear-gradient(to_right,color-mix(in_srgb,var(--color-gr-pink)_12%,transparent),color-mix(in_srgb,var(--color-gr-purple)_12%,transparent))_padding-box,linear-gradient(to_right,var(--color-gr-pink),var(--color-gr-purple))_border-box]"
+            className="gap-1 border-transparent text-foreground"
+            style={{
+              background:
+                "linear-gradient(to right, color-mix(in srgb, var(--color-gr-pink) 8%, transparent), color-mix(in srgb, var(--color-gr-purple) 8%, transparent)) padding-box, linear-gradient(to right, var(--color-gr-pink), var(--color-gr-purple)) border-box",
+            }}
           >
             <Shield className="size-3 text-gr-pink" />
-            <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
-              admin
-            </span>
+            admin
           </Badge>
         )}
         {since && (
