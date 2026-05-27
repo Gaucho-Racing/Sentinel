@@ -125,7 +125,7 @@ function OwnerRow({
         {isAdmin && (
           <Badge
             variant="outline"
-            className="gap-1 border-amber-500/40 bg-amber-500/10 text-amber-500"
+            className="gap-1 border-transparent bg-gradient-to-br from-gr-pink to-gr-purple text-white"
           >
             <Shield className="size-3" />
             admin
