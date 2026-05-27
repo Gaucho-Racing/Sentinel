@@ -310,6 +310,13 @@ func CreateGroupJoinRequest(c *gin.Context) {
 
 type reviewJoinRequestRequest struct {
 	ReviewedBy string `json:"reviewed_by" binding:"required"`
+	// Optional approval-time overrides. When provided, they replace the
+	// expiration that the requester originally chose — used by reviewers
+	// who want to grant a shorter/longer membership than what was asked
+	// for. Both fields propagate to the created GroupMember and the
+	// request row is updated for audit lineage.
+	HasExpiration *bool      `json:"has_expiration,omitempty"`
+	ExpiresAt     *time.Time `json:"expires_at,omitempty"`
 }
 
 func ApproveGroupJoinRequest(c *gin.Context) {
@@ -328,9 +335,25 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	hasExpiration := request.HasExpiration
+	expiresAt := request.ExpiresAt
+	if req.HasExpiration != nil {
+		hasExpiration = *req.HasExpiration
+	}
+	if req.ExpiresAt != nil {
+		expiresAt = *req.ExpiresAt
+	}
+	if err := validateMembershipExpiration(hasExpiration, expiresAt); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	request.Status = string(model.GroupJoinRequestStatusApproved)
 	request.ReviewedBy = req.ReviewedBy
 	request.ReviewedAt = time.Now()
+	request.HasExpiration = hasExpiration
+	request.ExpiresAt = expiresAt
 	request, err = service.UpdateJoinRequest(request)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -341,8 +364,8 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 		EntityID:      request.EntityID,
 		Source:        string(model.GroupMemberSourceDirect),
 		AddedBy:       req.ReviewedBy,
-		HasExpiration: request.HasExpiration,
-		ExpiresAt:     request.ExpiresAt,
+		HasExpiration: hasExpiration,
+		ExpiresAt:     expiresAt,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

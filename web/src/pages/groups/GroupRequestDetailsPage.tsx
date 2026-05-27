@@ -28,6 +28,8 @@ import {
 } from "@/lib/duration"
 import type { Group, GroupJoinRequest, GroupJoinRequestStatus, GroupOwner } from "@/lib/groups"
 
+import { ReviewRequestDialog } from "./ReviewRequestDialog"
+
 const STATUS_BADGE: Record<GroupJoinRequestStatus, string> = {
   PENDING: "border-gr-pink/40 bg-gr-pink/10 text-gr-pink",
   APPROVED: "border-green-500/40 bg-green-500/10 text-green-500",
@@ -85,7 +87,7 @@ export default function GroupRequestDetailsPage() {
 
   const [composing, setComposing] = useState("")
   const [posting, setPosting] = useState(false)
-  const [reviewing, setReviewing] = useState<"approve" | "reject" | null>(null)
+  const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null)
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
 
@@ -135,28 +137,6 @@ export default function GroupRequestDetailsPage() {
       toast.error(message)
     } finally {
       setPosting(false)
-    }
-  }
-
-  async function reviewRequest(action: "approve" | "reject") {
-    if (!id || !requestID || reviewing) return
-    setReviewing(action)
-    try {
-      await api.post(`/groups/${id}/requests/${requestID}/${action}`, {
-        reviewed_by: myEntityID,
-      })
-      qc.invalidateQueries({ queryKey: ["group", id, "requests", requestID] })
-      qc.invalidateQueries({ queryKey: ["group", id, "requests"] })
-      qc.invalidateQueries({ queryKey: ["group", id, "members"] })
-      qc.invalidateQueries({ queryKey: ["group", id] })
-      toast.success(`Request ${action === "approve" ? "approved" : "rejected"}`)
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        `Couldn't ${action} request.`
-      toast.error(message)
-    } finally {
-      setReviewing(null)
     }
   }
 
@@ -281,19 +261,10 @@ export default function GroupRequestDetailsPage() {
           <div className="flex gap-2">
             {isOwner && (
               <>
-                <Button
-                  variant="ghost"
-                  disabled={reviewing !== null}
-                  onClick={() => reviewRequest("reject")}
-                >
-                  {reviewing === "reject" ? "Rejecting…" : "Reject"}
+                <Button variant="ghost" onClick={() => setReviewAction("reject")}>
+                  Reject
                 </Button>
-                <Button
-                  disabled={reviewing !== null}
-                  onClick={() => reviewRequest("approve")}
-                >
-                  {reviewing === "approve" ? "Approving…" : "Approve"}
-                </Button>
+                <Button onClick={() => setReviewAction("approve")}>Approve</Button>
               </>
             )}
             {isRequester && !isOwner && (
@@ -411,6 +382,17 @@ export default function GroupRequestDetailsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ReviewRequestDialog
+        open={reviewAction !== null}
+        onOpenChange={(o) => {
+          if (!o) setReviewAction(null)
+        }}
+        groupID={id ?? ""}
+        request={request}
+        action={reviewAction ?? "approve"}
+        reviewerEntityID={myEntityID}
+      />
     </PageContainer>
   )
 }

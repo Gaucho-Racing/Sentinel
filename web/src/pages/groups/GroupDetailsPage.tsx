@@ -44,9 +44,15 @@ import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
 import {
+  addCustom,
+  addPreset,
+  DURATION_PRESETS,
   formatAbsoluteDate,
   formatDurationBetween,
   formatExpiresIn,
+  MAX_BY_UNIT,
+  type DurationPreset,
+  type DurationUnit,
 } from "@/lib/duration"
 import {
   SOURCE_LABEL,
@@ -56,6 +62,8 @@ import {
   type GroupOwner,
   type GroupSource,
 } from "@/lib/groups"
+
+import { ReviewRequestDialog } from "./ReviewRequestDialog"
 
 const MEMBER_PREVIEW_COUNT = 6
 
@@ -217,62 +225,16 @@ function SyncConfigBlock({ source }: { source: GroupSource }) {
   )
 }
 
-type DurationPreset = "1w" | "1mo" | "6mo" | "1y"
-type DurationUnit = "hours" | "days" | "weeks" | "months"
-
-const DURATION_PRESETS: { value: DurationPreset; label: string }[] = [
-  { value: "1w", label: "1 week" },
-  { value: "1mo", label: "1 month" },
-  { value: "6mo", label: "6 months" },
-  { value: "1y", label: "1 year" },
-]
-
-const MAX_BY_UNIT: Record<DurationUnit, number> = {
-  hours: 8760,
-  days: 365,
-  weeks: 52,
-  months: 12,
-}
-
-function addPreset(now: Date, preset: DurationPreset): Date {
-  const d = new Date(now)
-  switch (preset) {
-    case "1w":
-      return new Date(d.getTime() + 7 * 86_400_000)
-    case "1mo":
-      d.setMonth(d.getMonth() + 1)
-      return d
-    case "6mo":
-      d.setMonth(d.getMonth() + 6)
-      return d
-    case "1y":
-      d.setFullYear(d.getFullYear() + 1)
-      return d
-  }
-}
-
-function addCustom(now: Date, amount: number, unit: DurationUnit): Date {
-  const d = new Date(now)
-  switch (unit) {
-    case "hours":
-      return new Date(d.getTime() + amount * 3_600_000)
-    case "days":
-      return new Date(d.getTime() + amount * 86_400_000)
-    case "weeks":
-      return new Date(d.getTime() + amount * 7 * 86_400_000)
-    case "months":
-      d.setMonth(d.getMonth() + amount)
-      return d
-  }
-}
-
 export default function GroupDetailsPage() {
   const { id } = useParams<{ id: string }>()
   const qc = useQueryClient()
   const myEntityID = loadSession()?.entityId ?? ""
   const { adminIds, isAdmin } = useAdmins()
   const [memberSearch, setMemberSearch] = useState("")
-  const [reviewing, setReviewing] = useState<string | null>(null)
+  const [reviewTarget, setReviewTarget] = useState<{
+    request: GroupJoinRequest
+    action: "approve" | "reject"
+  } | null>(null)
   const [joinOpen, setJoinOpen] = useState(false)
   const [joinReason, setJoinReason] = useState("")
   const [submittingJoin, setSubmittingJoin] = useState(false)
@@ -327,26 +289,6 @@ export default function GroupDetailsPage() {
     enabled: !!id,
   })
 
-  async function reviewRequest(requestID: string, action: "approve" | "reject") {
-    if (reviewing) return
-    setReviewing(requestID)
-    try {
-      await api.post(`/groups/${id}/requests/${requestID}/${action}`, {
-        reviewed_by: myEntityID,
-      })
-      qc.invalidateQueries({ queryKey: ["group", id, "requests"] })
-      qc.invalidateQueries({ queryKey: ["group", id, "members"] })
-      qc.invalidateQueries({ queryKey: ["group", id] })
-      toast.success(`Request ${action === "approve" ? "approved" : "rejected"}`)
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        `Couldn't ${action} request.`
-      toast.error(message)
-    } finally {
-      setReviewing(null)
-    }
-  }
 
   async function submitJoinRequest() {
     if (!id || !myEntityID || submittingJoin) return
@@ -673,15 +615,13 @@ export default function GroupDetailsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          disabled={reviewing === req.id}
-                          onClick={() => reviewRequest(req.id, "reject")}
+                          onClick={() => setReviewTarget({ request: req, action: "reject" })}
                         >
                           Reject
                         </Button>
                         <Button
                           size="sm"
-                          disabled={reviewing === req.id}
-                          onClick={() => reviewRequest(req.id, "approve")}
+                          onClick={() => setReviewTarget({ request: req, action: "approve" })}
                         >
                           Approve
                         </Button>
@@ -1025,6 +965,17 @@ export default function GroupDetailsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ReviewRequestDialog
+        open={reviewTarget !== null}
+        onOpenChange={(o) => {
+          if (!o) setReviewTarget(null)
+        }}
+        groupID={id ?? ""}
+        request={reviewTarget?.request ?? null}
+        action={reviewTarget?.action ?? "approve"}
+        reviewerEntityID={myEntityID}
+      />
     </PageContainer>
   )
 }
