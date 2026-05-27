@@ -95,15 +95,22 @@ function SourcePill({ source }: { source: GroupSource }) {
 function GradientOutlinePill({
   icon: Icon,
   label,
+  tone = "brand",
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string
+  tone?: "brand" | "gold"
 }) {
+  const gradient =
+    tone === "gold"
+      ? "bg-gradient-to-r from-amber-300 to-amber-600"
+      : "bg-gradient-to-r from-gr-pink to-gr-purple"
+  const iconColor = tone === "gold" ? "text-amber-400" : "text-gr-pink"
   return (
-    <span className="inline-flex h-10 items-center rounded-xl bg-gradient-to-r from-gr-pink to-gr-purple p-0.5 text-sm font-medium">
+    <span className={`inline-flex h-10 items-center rounded-xl ${gradient} p-0.5 text-sm font-medium`}>
       <span className="inline-flex h-full items-center gap-1.5 rounded-[10px] bg-card px-4">
-        <Icon className="size-3.5 text-gr-pink" />
-        <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
+        <Icon className={`size-3.5 ${iconColor}`} />
+        <span className={`${gradient} bg-clip-text text-transparent`}>
           {label}
         </span>
       </span>
@@ -509,7 +516,7 @@ export default function GroupDetailsPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {isOwner && <GradientOutlinePill icon={Crown} label="Owner" />}
+          {isOwner && <GradientOutlinePill icon={Crown} label="Owner" tone="gold" />}
           {isMember && <GradientOutlinePill icon={Check} label="Member" />}
           {myPending && (
             <Button
