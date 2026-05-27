@@ -123,17 +123,14 @@ function OwnerRow({
       <EntityChip entityId={entityId} />
       <div className="flex items-center gap-2">
         {isAdmin && (
-          <Badge
-            variant="outline"
-            className="gap-1 border-transparent text-foreground"
-            style={{
-              background:
-                "linear-gradient(to right, color-mix(in srgb, var(--color-gr-pink) 8%, transparent), color-mix(in srgb, var(--color-gr-purple) 8%, transparent)) padding-box, linear-gradient(to right, var(--color-gr-pink), var(--color-gr-purple)) border-box",
-            }}
-          >
-            <Shield className="size-3 text-gr-pink" />
-            admin
-          </Badge>
+          <span className="inline-flex h-5 items-center rounded-4xl bg-gradient-to-r from-gr-pink to-gr-purple p-px text-xs font-medium">
+            <span className="inline-flex h-full items-center gap-1 rounded-4xl bg-card px-2">
+              <Shield className="size-3 text-gr-pink" />
+              <span className="bg-gradient-to-r from-gr-pink to-gr-purple bg-clip-text text-transparent">
+                admin
+              </span>
+            </span>
+          </span>
         )}
         {since && (
           <span className="text-xs text-muted-foreground">since {formatDate(since)}</span>
