@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -10,6 +11,28 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// validateMembershipExpiration enforces the 1-year cap on time-boxed
+// memberships and join requests. Uses AddDate(1, 0, 0) so leap years are
+// handled correctly, with a small slack for clock drift between client and
+// server.
+func validateMembershipExpiration(hasExpiration bool, expiresAt time.Time) error {
+	if !hasExpiration {
+		return nil
+	}
+	if expiresAt.IsZero() {
+		return errors.New("expires_at is required when has_expiration is true")
+	}
+	now := time.Now()
+	if !expiresAt.After(now) {
+		return errors.New("expires_at must be in the future")
+	}
+	maxAllowed := now.AddDate(1, 0, 0).Add(1 * time.Minute)
+	if expiresAt.After(maxAllowed) {
+		return errors.New("maximum membership duration is 1 year")
+	}
+	return nil
+}
 
 func GetAllGroups(c *gin.Context) {
 	groups, err := service.GetAllGroups()
@@ -148,6 +171,10 @@ func AddGroupMember(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if err := validateMembershipExpiration(req.HasExpiration, req.ExpiresAt); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	member, err := service.CreateGroupMember(model.GroupMember{
 		GroupID:       id,
 		EntityID:      req.EntityID,
@@ -255,6 +282,10 @@ func CreateGroupJoinRequest(c *gin.Context) {
 	id := c.Param("id")
 	var req createJoinRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := validateMembershipExpiration(req.HasExpiration, req.ExpiresAt); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
