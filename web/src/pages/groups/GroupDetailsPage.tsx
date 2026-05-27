@@ -570,6 +570,19 @@ export default function GroupDetailsPage() {
                     </p>
                   )}
                 </div>
+                <Link
+                  to={`/groups/${group.id}/requests`}
+                  className="mt-4 flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-2.5 text-sm transition-colors hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Inbox className="size-4" />
+                    <span>
+                      <span className="font-medium text-foreground">{group.pending_count}</span>{" "}
+                      pending {group.pending_count === 1 ? "request" : "requests"}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">View all →</span>
+                </Link>
               </section>
 
               <div className="space-y-6">
@@ -633,15 +646,6 @@ export default function GroupDetailsPage() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Last updated</span>
                       <span>{formatDate(group.updated_at)}</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <span className="text-muted-foreground">Pending requests</span>
-                      <Link
-                        to={`/groups/${group.id}/requests`}
-                        className="text-foreground hover:text-gr-pink"
-                      >
-                        {group.pending_count} <span className="text-muted-foreground">— View all</span>
-                      </Link>
                     </div>
                   </div>
                 </section>
