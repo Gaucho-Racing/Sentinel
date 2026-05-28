@@ -44,6 +44,13 @@ import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
 import {
+  discordRoleColorHex,
+  useDiscordRoles,
+  useGroupDiscordBindings,
+  type DiscordRole,
+  type GroupDiscordRoleBinding,
+} from "@/lib/discord"
+import {
   addCustom,
   addPreset,
   DURATION_PRESETS,
@@ -186,7 +193,15 @@ function OwnerRow({
   )
 }
 
-function SyncConfigBlock({ source }: { source: GroupSource }) {
+function SyncConfigBlock({
+  source,
+  discordBindings,
+  discordRoles,
+}: {
+  source: GroupSource
+  discordBindings?: GroupDiscordRoleBinding[]
+  discordRoles?: DiscordRole[]
+}) {
   if (source === "DIRECT") {
     return (
       <div className="flex items-start gap-3 py-3">
@@ -201,14 +216,53 @@ function SyncConfigBlock({ source }: { source: GroupSource }) {
     )
   }
   if (source === "DISCORD") {
+    const bindings = discordBindings ?? []
     return (
       <div className="flex items-start gap-3 py-3">
         <Bot className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-medium">Discord role sync</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Members with a linked Discord role are added automatically. Role binding not yet configurable.
+            Members of any of the role sets below are added automatically.
           </p>
+          {bindings.length === 0 ? (
+            <p className="mt-2 text-xs italic text-muted-foreground">
+              No role bindings configured yet.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-1.5">
+              {bindings.map((binding) => (
+                <li key={binding.id} className="flex flex-wrap items-center gap-1.5">
+                  {binding.discord_role_ids.map((roleID, idx) => {
+                    const role = discordRoles?.find((r) => r.id === roleID)
+                    const hex = role ? discordRoleColorHex(role.color) : null
+                    return (
+                      <span key={roleID} className="flex items-center gap-1.5">
+                        {idx > 0 && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            AND
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
+                          <span
+                            className="size-2 shrink-0 rounded-full border border-border/60"
+                            style={{ backgroundColor: hex ?? "transparent" }}
+                          />
+                          <span className="text-sm">
+                            {role ? `@${role.name}` : (
+                              <code className="font-mono text-xs text-muted-foreground">
+                                {roleID}
+                              </code>
+                            )}
+                          </span>
+                        </span>
+                      </span>
+                    )
+                  })}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     )
@@ -289,6 +343,9 @@ export default function GroupDetailsPage() {
     },
     enabled: !!id,
   })
+
+  const discordBindingsQuery = useGroupDiscordBindings(id ?? "")
+  const discordRolesQuery = useDiscordRoles()
 
 
   async function submitJoinRequest() {
@@ -651,7 +708,12 @@ export default function GroupDetailsPage() {
                 <div className="mt-2 divide-y divide-border/60">
                   {group.allowed_sources && group.allowed_sources.length > 0 ? (
                     group.allowed_sources.map((source) => (
-                      <SyncConfigBlock key={source} source={source} />
+                      <SyncConfigBlock
+                        key={source}
+                        source={source}
+                        discordBindings={discordBindingsQuery.data}
+                        discordRoles={discordRolesQuery.data}
+                      />
                     ))
                   ) : (
                     <p className="py-3 text-sm text-muted-foreground">

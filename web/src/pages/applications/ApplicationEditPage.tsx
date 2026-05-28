@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Plus, ShieldAlert, X } from "lucide-react"
+import { ArrowLeft, Plus, ShieldAlert, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -22,40 +22,25 @@ import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
 import { redirectURIWildcardExamples, type Application } from "@/lib/applications"
 
-function BasicInfoCard({ id, app }: { id: string; app: Application }) {
-  const qc = useQueryClient()
-  const navigate = useNavigate()
-  const [name, setName] = useState(app.name)
-  const [description, setDescription] = useState(app.description)
-  const [iconURL, setIconURL] = useState(app.icon_url)
-  const [launchURL, setLaunchURL] = useState(app.launch_url)
-  const [submitting, setSubmitting] = useState(false)
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (submitting) return
-    setSubmitting(true)
-    try {
-      await api.put(`/applications/${id}`, {
-        name,
-        description,
-        icon_url: iconURL,
-        launch_url: launchURL,
-      })
-      qc.invalidateQueries({ queryKey: ["application", "id", id] })
-      qc.invalidateQueries({ queryKey: ["applications"] })
-      toast.success("Application updated")
-      navigate(`/applications/${id}`)
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't save the application."
-      toast.error(message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
+function BasicInfoCard({
+  name,
+  description,
+  iconURL,
+  launchURL,
+  onChangeName,
+  onChangeDescription,
+  onChangeIconURL,
+  onChangeLaunchURL,
+}: {
+  name: string
+  description: string
+  iconURL: string
+  launchURL: string
+  onChangeName: (v: string) => void
+  onChangeDescription: (v: string) => void
+  onChangeIconURL: (v: string) => void
+  onChangeLaunchURL: (v: string) => void
+}) {
   return (
     <Card>
       <CardHeader>
@@ -63,17 +48,17 @@ function BasicInfoCard({ id, app }: { id: string; app: Application }) {
         <CardDescription>Name, description, branding, and where the launch button sends users.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="name">Name</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <Input id="name" value={name} onChange={(e) => onChangeName(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => onChangeDescription(e.target.value)}
               rows={2}
             />
           </div>
@@ -83,7 +68,7 @@ function BasicInfoCard({ id, app }: { id: string; app: Application }) {
               id="launch_url"
               type="url"
               value={launchURL}
-              onChange={(e) => setLaunchURL(e.target.value)}
+              onChange={(e) => onChangeLaunchURL(e.target.value)}
               placeholder="https://app.gauchoracing.com"
             />
           </div>
@@ -93,31 +78,25 @@ function BasicInfoCard({ id, app }: { id: string; app: Application }) {
               id="icon_url"
               type="url"
               value={iconURL}
-              onChange={(e) => setIconURL(e.target.value)}
+              onChange={(e) => onChangeIconURL(e.target.value)}
             />
           </div>
-          <div className="flex justify-end pt-2">
-            <OutlineButton
-              type="submit"
-              className="w-auto"
-              innerClassName="bg-card"
-              loading={submitting}
-              disabled={!name}
-            >
-              Save changes
-            </OutlineButton>
-          </div>
-        </form>
+        </div>
       </CardContent>
     </Card>
   )
 }
 
-function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
-  const qc = useQueryClient()
+function RedirectURIsCard({
+  uris,
+  onAddURI,
+  onRemoveURI,
+}: {
+  uris: string[]
+  onAddURI: (uri: string) => void
+  onRemoveURI: (uri: string) => void
+}) {
   const [draft, setDraft] = useState("")
-  const [adding, setAdding] = useState(false)
-  const [removing, setRemoving] = useState<string | null>(null)
   const [wildcardConfirm, setWildcardConfirm] = useState<string | null>(null)
 
   const wildcardExamples = useMemo(
@@ -125,47 +104,24 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
     [wildcardConfirm],
   )
 
-  async function addURI(uri: string) {
-    setAdding(true)
-    try {
-      await api.post(`/applications/${id}/redirect-uris`, { redirect_uri: uri })
-      qc.invalidateQueries({ queryKey: ["application", "id", id] })
-      setDraft("")
-      setWildcardConfirm(null)
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't add redirect URI."
-      toast.error(message)
-    } finally {
-      setAdding(false)
+  function stageURI(uri: string) {
+    if (uris.includes(uri)) {
+      toast.error("That URI is already in the list.")
+      return
     }
+    onAddURI(uri)
+    setDraft("")
+    setWildcardConfirm(null)
   }
 
   function handleSubmit() {
     const uri = draft.trim()
-    if (!uri || adding) return
+    if (!uri) return
     if (uri.includes("*")) {
       setWildcardConfirm(uri)
       return
     }
-    addURI(uri)
-  }
-
-  async function remove(uri: string) {
-    if (removing) return
-    setRemoving(uri)
-    try {
-      await api.delete(`/applications/${id}/redirect-uris`, { params: { uri } })
-      qc.invalidateQueries({ queryKey: ["application", "id", id] })
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't remove redirect URI."
-      toast.error(message)
-    } finally {
-      setRemoving(null)
-    }
+    stageURI(uri)
   }
 
   return (
@@ -178,11 +134,11 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {app.redirect_uris.length === 0 ? (
+        {uris.length === 0 ? (
           <p className="text-sm text-muted-foreground">No redirect URIs registered yet.</p>
         ) : (
           <ul className="space-y-2">
-            {app.redirect_uris.map((uri) => (
+            {uris.map((uri) => (
               <li
                 key={uri}
                 className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5"
@@ -191,8 +147,7 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  disabled={removing === uri}
-                  onClick={() => remove(uri)}
+                  onClick={() => onRemoveURI(uri)}
                 >
                   <X className="size-3.5" />
                 </Button>
@@ -212,7 +167,7 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
           />
-          <Button type="submit" disabled={!draft.trim() || adding}>
+          <Button type="submit" disabled={!draft.trim()}>
             <Plus className="mr-1 size-3.5" />
             Add
           </Button>
@@ -222,7 +177,7 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
       <Dialog
         open={wildcardConfirm !== null}
         onOpenChange={(open) => {
-          if (!open && !adding) setWildcardConfirm(null)
+          if (!open) setWildcardConfirm(null)
         }}
       >
         <DialogContent className="gap-5 sm:max-w-md">
@@ -268,15 +223,13 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
             <Button
               type="button"
               variant="ghost"
-              disabled={adding}
               onClick={() => setWildcardConfirm(null)}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              disabled={adding}
-              onClick={() => wildcardConfirm && addURI(wildcardConfirm)}
+              onClick={() => wildcardConfirm && stageURI(wildcardConfirm)}
             >
               Add anyway
             </Button>
@@ -289,6 +242,8 @@ function RedirectURIsCard({ id, app }: { id: string; app: Application }) {
 
 export default function ApplicationEditPage() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const qc = useQueryClient()
 
   const query = useQuery({
     queryKey: ["application", "id", id],
@@ -299,14 +254,103 @@ export default function ApplicationEditPage() {
     enabled: !!id,
   })
 
-  // We hold a stable copy of the loaded app so child forms can prefill from
-  // it without re-reading from the query on every render.
-  const [appData, setAppData] = useState<Application | null>(null)
-  useEffect(() => {
-    if (query.data) setAppData(query.data)
-  }, [query.data])
+  // Basics form state.
+  const [name, setName] = useState("")
+  const [description, setDescription] = useState("")
+  const [iconURL, setIconURL] = useState("")
+  const [launchURL, setLaunchURL] = useState("")
+  const [initialized, setInitialized] = useState(false)
 
-  if (query.isLoading || !appData) {
+  // Staged redirect URI changes — applied on Save.
+  const [pendingURIAdds, setPendingURIAdds] = useState<string[]>([])
+  const [pendingURIRemoves, setPendingURIRemoves] = useState<Set<string>>(new Set())
+
+  // Dialog / in-flight state.
+  const [submitting, setSubmitting] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  useEffect(() => {
+    if (query.data && !initialized) {
+      setName(query.data.name)
+      setDescription(query.data.description)
+      setIconURL(query.data.icon_url)
+      setLaunchURL(query.data.launch_url)
+      setInitialized(true)
+    }
+  }, [query.data, initialized])
+
+  const serverURIs = query.data?.redirect_uris ?? []
+  const effectiveURIs = [
+    ...serverURIs.filter((u) => !pendingURIRemoves.has(u)),
+    ...pendingURIAdds,
+  ]
+
+  function handleAddURI(uri: string) {
+    setPendingURIAdds((prev) => (prev.includes(uri) ? prev : [...prev, uri]))
+  }
+
+  function handleRemoveURI(uri: string) {
+    if (pendingURIAdds.includes(uri)) {
+      setPendingURIAdds((prev) => prev.filter((u) => u !== uri))
+      return
+    }
+    setPendingURIRemoves((prev) => {
+      const next = new Set(prev)
+      next.add(uri)
+      return next
+    })
+  }
+
+  async function commitSave() {
+    if (!id) return
+    setSubmitting(true)
+    try {
+      for (const uri of pendingURIRemoves) {
+        await api.delete(`/applications/${id}/redirect-uris`, { params: { uri } })
+      }
+      for (const uri of pendingURIAdds) {
+        await api.post(`/applications/${id}/redirect-uris`, { redirect_uri: uri })
+      }
+      await api.put(`/applications/${id}`, {
+        name,
+        description,
+        icon_url: iconURL,
+        launch_url: launchURL,
+      })
+      qc.invalidateQueries({ queryKey: ["application", "id", id] })
+      qc.invalidateQueries({ queryKey: ["applications"] })
+      toast.success("Application updated")
+      navigate(`/applications/${id}`)
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Couldn't save the application."
+      toast.error(message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function handleDelete() {
+    if (!id || deleting) return
+    setDeleting(true)
+    try {
+      await api.delete(`/applications/${id}`)
+      qc.invalidateQueries({ queryKey: ["applications"] })
+      toast.success("Application deleted")
+      navigate("/applications")
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Couldn't delete the application."
+      toast.error(message)
+      setDeleting(false)
+      setDeleteConfirmOpen(false)
+    }
+  }
+
+  if (query.isLoading || !initialized) {
     return (
       <PageContainer>
         <Skeleton className="mb-4 h-4 w-24" />
@@ -319,7 +363,7 @@ export default function ApplicationEditPage() {
     )
   }
 
-  if (query.isError) {
+  if (query.isError || !query.data) {
     return (
       <PageContainer>
         <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
@@ -333,26 +377,112 @@ export default function ApplicationEditPage() {
     )
   }
 
+  const app = query.data
+
   return (
     <PageContainer>
       <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
         <Link to={`/applications/${id}`}>
           <ArrowLeft className="mr-1 size-3.5" />
-          Back to {appData.name}
+          Back to {app.name}
         </Link>
       </Button>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Edit {appData.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Application metadata and OAuth redirect URIs.
-        </p>
-      </div>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Edit {app.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Update metadata and redirect URIs. Nothing is saved until you click Save changes.
+          </p>
+        </div>
+        <OutlineButton
+          type="button"
+          className="w-auto"
+          loading={submitting}
+          disabled={!name.trim()}
+          onClick={commitSave}
+        >
+          Save changes
+        </OutlineButton>
+      </header>
 
       <div className="space-y-4">
-        <BasicInfoCard id={id!} app={appData} />
-        <RedirectURIsCard id={id!} app={query.data ?? appData} />
+        <BasicInfoCard
+          name={name}
+          description={description}
+          iconURL={iconURL}
+          launchURL={launchURL}
+          onChangeName={setName}
+          onChangeDescription={setDescription}
+          onChangeIconURL={setIconURL}
+          onChangeLaunchURL={setLaunchURL}
+        />
+        <RedirectURIsCard
+          uris={effectiveURIs}
+          onAddURI={handleAddURI}
+          onRemoveURI={handleRemoveURI}
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Danger zone</CardTitle>
+            <CardDescription>
+              Deleting an application removes its OAuth client credentials and all redirect
+              URIs. Existing access tokens and refresh tokens issued under this client will
+              stop working immediately.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="destructive"
+              disabled={deleting}
+              onClick={() => setDeleteConfirmOpen(true)}
+            >
+              <Trash2 className="mr-1 size-3.5" />
+              Delete application
+            </Button>
+          </CardContent>
+        </Card>
       </div>
+
+      <Dialog
+        open={deleteConfirmOpen}
+        onOpenChange={(open) => {
+          if (!deleting) setDeleteConfirmOpen(open)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </div>
+            <DialogTitle>Delete {app.name}?</DialogTitle>
+            <DialogDescription>
+              This permanently removes the application along with its OAuth credentials and
+              redirect URIs. Any tokens already issued under this client stop validating
+              immediately. This can't be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={deleting}
+              onClick={() => setDeleteConfirmOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={handleDelete}
+            >
+              {deleting ? "Deleting…" : "Delete application"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   )
 }
