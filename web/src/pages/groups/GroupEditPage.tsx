@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -373,14 +374,15 @@ export default function GroupEditPage() {
             you click Save changes.
           </p>
         </div>
-        <Button
+        <OutlineButton
           type="button"
-          className="h-10 gap-1.5 rounded-xl px-4 text-sm"
-          disabled={submitting || !values.name.trim()}
+          className="w-auto"
+          loading={submitting}
+          disabled={!values.name.trim()}
           onClick={handleSubmit}
         >
-          {submitting ? "Saving…" : "Save changes"}
-        </Button>
+          Save changes
+        </OutlineButton>
       </header>
 
       <div className="space-y-4">
