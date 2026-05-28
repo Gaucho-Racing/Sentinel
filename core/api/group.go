@@ -43,6 +43,33 @@ func GetAllGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
+// cascadeRemovedSources deletes sync configuration + auto-synced members for
+// any source that was previously allowed but is no longer in the update.
+// DIRECT members are never touched. Best-effort: logs and continues on
+// per-source errors rather than rolling back the group update.
+func cascadeRemovedSources(groupID string, before model.StringSlice, after []string) {
+	wanted := map[string]bool{}
+	for _, s := range after {
+		wanted[s] = true
+	}
+	for _, src := range before {
+		if wanted[src] || src == string(model.GroupMemberSourceDirect) {
+			continue
+		}
+		switch src {
+		case string(model.GroupMemberSourceDiscord):
+			if err := service.DeleteAllDiscordBindingsForGroup(groupID); err != nil {
+				logger.SugarLogger.Errorf("Failed to delete Discord bindings on source removal for %s: %v", groupID, err)
+			}
+		case string(model.GroupMemberSourceConditional):
+			// Future: delete the conditional rule when storage lands.
+		}
+		if err := service.DeleteMembersBySource(groupID, src); err != nil {
+			logger.SugarLogger.Errorf("Failed to delete %s members on source removal for %s: %v", src, groupID, err)
+		}
+	}
+}
+
 func GetGroupByID(c *gin.Context) {
 	id := c.Param("id")
 	group, err := service.GetGroupByID(id)
@@ -96,6 +123,9 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		group.Description = req.Description
 		group.AllowedSources = model.StringSlice(req.AllowedSources)
 		group, err = service.UpdateGroup(group)
+		if err == nil {
+			cascadeRemovedSources(existing.ID, existing.AllowedSources, req.AllowedSources)
+		}
 	} else {
 		group = model.Group{
 			ID:             req.ID,

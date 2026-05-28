@@ -24,7 +24,7 @@ import {
   useGroupDiscordBindings,
   useRemoveGroupDiscordBinding,
 } from "@/lib/discord"
-import type { Group, GroupOwner } from "@/lib/groups"
+import type { Group, GroupMember, GroupOwner, GroupSource } from "@/lib/groups"
 
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
 import { GroupForm, type GroupFormValues } from "./GroupForm"
@@ -156,10 +156,22 @@ export default function GroupEditPage() {
     enabled: !!id,
   })
 
+  const membersQuery = useQuery({
+    queryKey: ["group", id, "members"],
+    queryFn: async () => {
+      const res = await api.get<GroupMember[]>(`/groups/${id}/members`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const bindingsQuery = useGroupDiscordBindings(id ?? "")
+
   const [values, setValues] = useState<GroupFormValues | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [cascadeConfirmOpen, setCascadeConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (query.data && values === null) {
@@ -171,7 +183,7 @@ export default function GroupEditPage() {
     }
   }, [query.data, values])
 
-  async function handleSubmit() {
+  async function commitSave() {
     if (!values || !id) return
     setSubmitting(true)
     try {
@@ -183,6 +195,8 @@ export default function GroupEditPage() {
       })
       qc.invalidateQueries({ queryKey: ["groups"] })
       qc.invalidateQueries({ queryKey: ["group", id] })
+      qc.invalidateQueries({ queryKey: ["group", id, "members"] })
+      qc.invalidateQueries({ queryKey: ["group", id, "discord-bindings"] })
       toast.success("Group updated")
       navigate(`/groups/${id}`)
     } catch (err: unknown) {
@@ -192,7 +206,32 @@ export default function GroupEditPage() {
       toast.error(message)
     } finally {
       setSubmitting(false)
+      setCascadeConfirmOpen(false)
     }
+  }
+
+  function handleSubmit() {
+    if (!values || !id || !query.data) return
+    const savedSources = new Set(query.data.allowed_sources ?? [])
+    const draftSources = new Set(values.allowed_sources)
+    const removed: GroupSource[] = []
+    for (const s of savedSources) {
+      if (!draftSources.has(s)) removed.push(s)
+    }
+    const removingDiscord = removed.includes("DISCORD")
+    const removingConditional = removed.includes("CONDITIONAL")
+    const discordBindingCount = bindingsQuery.data?.length ?? 0
+    const members = membersQuery.data ?? []
+    const discordMemberCount = members.filter((m) => m.source === "DISCORD").length
+    const conditionalMemberCount = members.filter((m) => m.source === "CONDITIONAL").length
+    const hasDestructiveImpact =
+      (removingDiscord && (discordBindingCount > 0 || discordMemberCount > 0)) ||
+      (removingConditional && conditionalMemberCount > 0)
+    if (hasDestructiveImpact) {
+      setCascadeConfirmOpen(true)
+      return
+    }
+    void commitSave()
   }
 
   async function handleDelete() {
@@ -217,6 +256,8 @@ export default function GroupEditPage() {
     query.isLoading ||
     !values ||
     ownersQuery.isLoading ||
+    membersQuery.isLoading ||
+    bindingsQuery.isLoading ||
     adminsLoading
   ) {
     return (
@@ -355,6 +396,85 @@ export default function GroupEditPage() {
               onClick={handleDelete}
             >
               {deleting ? "Deleting…" : "Delete group"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={cascadeConfirmOpen}
+        onOpenChange={(open) => {
+          if (!submitting) setCascadeConfirmOpen(open)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-md">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </div>
+            <DialogTitle>Save changes?</DialogTitle>
+            <DialogDescription>
+              You're removing sources that currently have configuration or synced members.
+              Saving will also wipe the items below. Direct members are not affected.
+            </DialogDescription>
+          </DialogHeader>
+
+          {(() => {
+            const savedSources = new Set(query.data?.allowed_sources ?? [])
+            const draftSources = new Set(values.allowed_sources)
+            const removingDiscord =
+              savedSources.has("DISCORD") && !draftSources.has("DISCORD")
+            const removingConditional =
+              savedSources.has("CONDITIONAL") && !draftSources.has("CONDITIONAL")
+            const bindingCount = bindingsQuery.data?.length ?? 0
+            const members = membersQuery.data ?? []
+            const discordMembers = members.filter((m) => m.source === "DISCORD").length
+            const conditionalMembers = members.filter(
+              (m) => m.source === "CONDITIONAL",
+            ).length
+            return (
+              <ul className="space-y-2 text-sm">
+                {removingDiscord && (
+                  <li className="rounded-md border border-border/60 bg-muted/30 p-3">
+                    <p className="font-medium">Discord sync</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {bindingCount} role binding{bindingCount === 1 ? "" : "s"} will be
+                      deleted ·{" "}
+                      {discordMembers} synced member{discordMembers === 1 ? "" : "s"} will be
+                      removed from the group.
+                    </p>
+                  </li>
+                )}
+                {removingConditional && (
+                  <li className="rounded-md border border-border/60 bg-muted/30 p-3">
+                    <p className="font-medium">Conditional rule</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      The rule will be deleted ·{" "}
+                      {conditionalMembers} synced member
+                      {conditionalMembers === 1 ? "" : "s"} will be removed from the group.
+                    </p>
+                  </li>
+                )}
+              </ul>
+            )
+          })()}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={submitting}
+              onClick={() => setCascadeConfirmOpen(false)}
+            >
+              Keep editing
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={submitting}
+              onClick={commitSave}
+            >
+              {submitting ? "Saving…" : "Save anyway"}
             </Button>
           </div>
         </DialogContent>

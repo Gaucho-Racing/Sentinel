@@ -277,3 +277,21 @@ func DeleteGroupDiscordBinding(groupID string, bindingID string) error {
 	}
 	return nil
 }
+
+func DeleteAllDiscordBindingsForGroup(groupID string) error {
+	if err := database.DB.Where("group_id = ?", groupID).Delete(&model.GroupDiscordRoleBinding{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteMembersBySource removes all GroupMember rows in the given group that
+// were added via the given source. Used when a group revokes a source (e.g.
+// DISCORD is unchecked) — anyone who was only there because of that source
+// loses access; DIRECT members are untouched.
+func DeleteMembersBySource(groupID string, source string) error {
+	if err := database.DB.Where("group_id = ? AND source = ?", groupID, source).Delete(&model.GroupMember{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
