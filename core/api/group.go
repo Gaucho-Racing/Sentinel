@@ -116,6 +116,10 @@ func CreateOrUpdateGroup(c *gin.Context) {
 
 	var group model.Group
 	if existing.ID != "" {
+		if existing.ID == service.AdminsGroupID && req.Name != existing.Name {
+			c.JSON(http.StatusForbidden, gin.H{"error": "the Admins group cannot be renamed"})
+			return
+		}
 		// Preserve CreatedBy and CreatedAt so updates don't overwrite the
 		// original creator lineage.
 		group = existing
@@ -167,6 +171,10 @@ func GetGroupApplications(c *gin.Context) {
 
 func DeleteGroup(c *gin.Context) {
 	id := c.Param("id")
+	if id == service.AdminsGroupID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "the Admins group cannot be deleted"})
+		return
+	}
 	if err := service.DeleteGroup(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
