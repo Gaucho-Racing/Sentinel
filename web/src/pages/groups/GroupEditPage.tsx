@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Trash2 } from "lucide-react"
+import { ArrowLeft, Bot, Plus, Trash2, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -18,9 +18,122 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import { loadSession } from "@/lib/auth"
+import {
+  discordRoleColorHex,
+  useDiscordRoles,
+  useGroupDiscordBindings,
+  useRemoveGroupDiscordBinding,
+} from "@/lib/discord"
 import type { Group, GroupOwner } from "@/lib/groups"
 
+import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
 import { GroupForm, type GroupFormValues } from "./GroupForm"
+
+function DiscordSyncCard({
+  groupID,
+  discordAllowed,
+}: {
+  groupID: string
+  discordAllowed: boolean
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const bindingsQuery = useGroupDiscordBindings(groupID)
+  const rolesQuery = useDiscordRoles()
+  const removeBinding = useRemoveGroupDiscordBinding(groupID)
+
+  const bindings = bindingsQuery.data ?? []
+  const roles = rolesQuery.data ?? []
+  const boundIDs = new Set(bindings.map((b) => b.discord_role_id))
+
+  async function handleRemove(roleID: string) {
+    if (removeBinding.isPending) return
+    try {
+      await removeBinding.mutateAsync(roleID)
+      toast.success("Discord role unbound")
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Couldn't remove role."
+      toast.error(message)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Bot className="size-4 text-muted-foreground" />
+          Discord role sync
+        </CardTitle>
+        <CardDescription>
+          Members of the bound Discord role(s) are added to this group automatically. Removing the role removes them.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {!discordAllowed && (
+          <p className="rounded-md border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
+            Enable Discord under allowed sources in Basics and save before binding any roles.
+          </p>
+        )}
+        {discordAllowed && (
+          <>
+            {bindings.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No Discord roles bound yet.</p>
+            ) : (
+              <ul className="space-y-2">
+                {bindings.map((b) => {
+                  const role = roles.find((r) => r.id === b.discord_role_id)
+                  const hex = role ? discordRoleColorHex(role.color) : null
+                  return (
+                    <li
+                      key={b.discord_role_id}
+                      className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                    >
+                      <span className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full border border-border/60"
+                          style={{ backgroundColor: hex ?? "transparent" }}
+                        />
+                        <span className="truncate text-sm">
+                          {role ? `@${role.name}` : (
+                            <code className="font-mono text-xs text-muted-foreground">
+                              {b.discord_role_id}
+                            </code>
+                          )}
+                        </span>
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        disabled={removeBinding.isPending}
+                        onClick={() => handleRemove(b.discord_role_id)}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+            <div className="pt-1">
+              <Button type="button" onClick={() => setPickerOpen(true)}>
+                <Plus className="mr-1 size-3.5" />
+                Add Discord role
+              </Button>
+            </div>
+          </>
+        )}
+      </CardContent>
+
+      <DiscordRolePickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        groupID={groupID}
+        alreadyBoundRoleIDs={boundIDs}
+      />
+    </Card>
+  )
+}
 
 export default function GroupEditPage() {
   const { id } = useParams<{ id: string }>()
@@ -186,6 +299,11 @@ export default function GroupEditPage() {
             />
           </CardContent>
         </Card>
+
+        <DiscordSyncCard
+          groupID={id!}
+          discordAllowed={(group.allowed_sources ?? []).includes("DISCORD")}
+        />
 
         <Card>
           <CardHeader>
