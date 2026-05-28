@@ -29,13 +29,7 @@ import type { Group, GroupOwner } from "@/lib/groups"
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
 import { GroupForm, type GroupFormValues } from "./GroupForm"
 
-function DiscordSyncCard({
-  groupID,
-  discordAllowed,
-}: {
-  groupID: string
-  discordAllowed: boolean
-}) {
+function DiscordSyncCard({ groupID }: { groupID: string }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const bindingsQuery = useGroupDiscordBindings(groupID)
   const rolesQuery = useDiscordRoles()
@@ -71,70 +65,61 @@ function DiscordSyncCard({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {!discordAllowed && (
-          <p className="rounded-md border border-border/60 bg-muted/30 p-3 text-sm text-muted-foreground">
-            Enable Discord under allowed sources in Basics and save before binding any roles.
-          </p>
-        )}
-        {discordAllowed && (
-          <>
-            {bindings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No Discord role bindings yet.</p>
-            ) : (
-              <ul className="space-y-2">
-                {bindings.map((binding) => (
-                  <li
-                    key={binding.id}
-                    className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
-                  >
-                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                      {binding.discord_role_ids.map((roleID, idx) => {
-                        const role = roles.find((r) => r.id === roleID)
-                        const hex = role ? discordRoleColorHex(role.color) : null
-                        return (
-                          <span key={roleID} className="flex items-center gap-1.5">
-                            {idx > 0 && (
-                              <span className="text-xs font-medium text-muted-foreground">
-                                AND
-                              </span>
-                            )}
-                            <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/60 px-2 py-0.5">
-                              <span
-                                className="size-2 shrink-0 rounded-full border border-border/60"
-                                style={{ backgroundColor: hex ?? "transparent" }}
-                              />
-                              <span className="text-sm">
-                                {role ? `@${role.name}` : (
-                                  <code className="font-mono text-xs text-muted-foreground">
-                                    {roleID}
-                                  </code>
-                                )}
-                              </span>
-                            </span>
+        {bindings.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No Discord role bindings yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {bindings.map((binding) => (
+              <li
+                key={binding.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {binding.discord_role_ids.map((roleID, idx) => {
+                    const role = roles.find((r) => r.id === roleID)
+                    const hex = role ? discordRoleColorHex(role.color) : null
+                    return (
+                      <span key={roleID} className="flex items-center gap-1.5">
+                        {idx > 0 && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            AND
                           </span>
-                        )
-                      })}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      disabled={removeBinding.isPending}
-                      onClick={() => handleRemove(binding.id)}
-                    >
-                      <X className="size-3.5" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <div className="pt-1">
-              <Button type="button" onClick={() => setPickerOpen(true)}>
-                <Plus className="mr-1 size-3.5" />
-                Add role binding
-              </Button>
-            </div>
-          </>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/60 px-2 py-0.5">
+                          <span
+                            className="size-2 shrink-0 rounded-full border border-border/60"
+                            style={{ backgroundColor: hex ?? "transparent" }}
+                          />
+                          <span className="text-sm">
+                            {role ? `@${role.name}` : (
+                              <code className="font-mono text-xs text-muted-foreground">
+                                {roleID}
+                              </code>
+                            )}
+                          </span>
+                        </span>
+                      </span>
+                    )
+                  })}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  disabled={removeBinding.isPending}
+                  onClick={() => handleRemove(binding.id)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
         )}
+        <div className="pt-1">
+          <Button type="button" onClick={() => setPickerOpen(true)}>
+            <Plus className="mr-1 size-3.5" />
+            Add role binding
+          </Button>
+        </div>
       </CardContent>
 
       <DiscordRolePickerDialog
@@ -311,10 +296,9 @@ export default function GroupEditPage() {
           </CardContent>
         </Card>
 
-        <DiscordSyncCard
-          groupID={id!}
-          discordAllowed={(group.allowed_sources ?? []).includes("DISCORD")}
-        />
+        {values.allowed_sources.includes("DISCORD") && (
+          <DiscordSyncCard groupID={id!} />
+        )}
 
         <Card>
           <CardHeader>
