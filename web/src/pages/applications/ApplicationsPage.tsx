@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
+import { fuzzyFilter } from "@/lib/fuzzy"
 
 export default function ApplicationsPage() {
   const [query, setQuery] = useState("")
@@ -23,16 +24,10 @@ export default function ApplicationsPage() {
   })
 
   const apps = appsQuery.data ?? []
-  const needle = query.trim().toLowerCase()
-  const filtered = needle
-    ? apps.filter(
-        (a) =>
-          a.name.toLowerCase().includes(needle) ||
-          a.description.toLowerCase().includes(needle) ||
-          a.client_id.toLowerCase().includes(needle),
-      )
-    : apps
-  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
+  const needle = query.trim()
+  const sorted = needle
+    ? fuzzyFilter(apps, needle, (a) => [a.name, a.description, a.client_id])
+    : [...apps].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <PageContainer>

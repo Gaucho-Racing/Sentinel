@@ -54,6 +54,7 @@ import {
   type DurationPreset,
   type DurationUnit,
 } from "@/lib/duration"
+import { fuzzyFilter } from "@/lib/fuzzy"
 import {
   SOURCE_LABEL,
   type Group,
@@ -426,10 +427,10 @@ export default function GroupDetailsPage() {
     return rows
   })()
 
-  const needle = memberSearch.trim().toLowerCase()
+  const needle = memberSearch.trim()
   const searching = needle.length > 0
   const matchedMembers = searching
-    ? members.filter((m) => m.entity_id.toLowerCase().includes(needle))
+    ? fuzzyFilter(members, needle, (m) => [m.entity_id])
     : members
   const visibleMembers = searching
     ? matchedMembers

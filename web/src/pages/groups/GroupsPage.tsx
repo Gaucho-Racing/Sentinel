@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
+import { fuzzyFilter } from "@/lib/fuzzy"
 import type { Group } from "@/lib/groups"
 
 export default function GroupsPage() {
@@ -23,15 +24,11 @@ export default function GroupsPage() {
   })
 
   const groups = groupsQuery.data ?? []
-  const needle = query.trim().toLowerCase()
-  const filtered = needle
-    ? groups.filter(
-        (g) =>
-          g.name.toLowerCase().includes(needle) ||
-          g.description.toLowerCase().includes(needle),
-      )
-    : groups
-  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name))
+  const needle = query.trim()
+  // Empty query → alphabetical; fuzzy filter sorts by relevance score.
+  const sorted = needle
+    ? fuzzyFilter(groups, needle, (g) => [g.name, g.description])
+    : [...groups].sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <PageContainer>

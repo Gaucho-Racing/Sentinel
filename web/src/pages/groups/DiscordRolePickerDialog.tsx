@@ -17,6 +17,7 @@ import {
   useAddGroupDiscordBinding,
   useDiscordRoles,
 } from "@/lib/discord"
+import { fuzzyFilter } from "@/lib/fuzzy"
 
 export function DiscordRolePickerDialog({
   open,
@@ -45,9 +46,7 @@ export function DiscordRolePickerDialog({
     const filtered = rolesQuery.data
       .filter((r) => r.position > 0 && !r.managed)
       .sort((a, b) => b.position - a.position)
-    const needle = search.trim().toLowerCase()
-    if (!needle) return filtered
-    return filtered.filter((r) => r.name.toLowerCase().includes(needle))
+    return fuzzyFilter(filtered, search, (r) => [r.name])
   }, [rolesQuery.data, search])
 
   function toggle(roleID: string) {
