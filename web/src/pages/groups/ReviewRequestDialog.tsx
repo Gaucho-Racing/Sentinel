@@ -53,8 +53,7 @@ export function ReviewRequestDialog({
   const qc = useQueryClient()
   const [comment, setComment] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [overrideDuration, setOverrideDuration] = useState(false)
-  const [durationChoice, setDurationChoice] = useState<DurationPreset | "custom">("1mo")
+  const [durationChoice, setDurationChoice] = useState<"keep" | DurationPreset | "custom">("keep")
   const [customAmount, setCustomAmount] = useState(7)
   const [customUnit, setCustomUnit] = useState<DurationUnit>("days")
 
@@ -62,8 +61,7 @@ export function ReviewRequestDialog({
   useEffect(() => {
     if (open) {
       setComment("")
-      setOverrideDuration(false)
-      setDurationChoice("1mo")
+      setDurationChoice("keep")
       setCustomAmount(7)
       setCustomUnit("days")
     }
@@ -80,7 +78,7 @@ export function ReviewRequestDialog({
     if (!request || submitting) return
 
     let overrideExpiresAt: Date | null = null
-    if (isApprove && overrideDuration) {
+    if (isApprove && durationChoice !== "keep") {
       if (durationChoice === "custom") {
         if (
           !Number.isFinite(customAmount) ||
@@ -174,95 +172,100 @@ export function ReviewRequestDialog({
 
         {isApprove && (
           <div className="space-y-2">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-border accent-gr-pink"
-                checked={overrideDuration}
-                onChange={(e) => setOverrideDuration(e.target.checked)}
-              />
-              Override membership duration
-              {requestedDuration && (
-                <span className="text-xs text-muted-foreground">
-                  (they asked for {requestedDuration})
-                </span>
-              )}
-            </label>
-            {overrideDuration && (
-              <div className="space-y-2 pt-1">
-                <div className="flex flex-wrap gap-2">
-                  {DURATION_PRESETS.map((p) => {
-                    const active = durationChoice === p.value
-                    return (
-                      <button
-                        key={p.value}
-                        type="button"
-                        onClick={() => setDurationChoice(p.value)}
-                        className={
-                          "rounded-md border px-3 py-1.5 text-sm transition-colors " +
-                          (active
-                            ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
-                            : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
-                        }
-                      >
-                        {p.label}
-                      </button>
-                    )
-                  })}
+            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Membership duration
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setDurationChoice("keep")}
+                className={
+                  "rounded-md border px-3 py-1.5 text-sm transition-colors " +
+                  (durationChoice === "keep"
+                    ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
+                    : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
+                }
+              >
+                Keep as requested
+                {requestedDuration && (
+                  <span className="ml-1.5 text-xs text-muted-foreground">
+                    · {requestedDuration}
+                  </span>
+                )}
+              </button>
+              {DURATION_PRESETS.map((p) => {
+                const active = durationChoice === p.value
+                return (
                   <button
+                    key={p.value}
                     type="button"
-                    onClick={() => setDurationChoice("custom")}
+                    onClick={() => setDurationChoice(p.value)}
                     className={
                       "rounded-md border px-3 py-1.5 text-sm transition-colors " +
-                      (durationChoice === "custom"
+                      (active
                         ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
                         : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
                     }
                   >
-                    Custom
+                    {p.label}
                   </button>
-                </div>
-                {durationChoice === "custom" && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Input
-                      type="number"
-                      min={1}
-                      max={MAX_BY_UNIT[customUnit]}
-                      value={customAmount}
-                      onChange={(e) =>
-                        setCustomAmount(parseInt(e.target.value, 10) || 0)
-                      }
-                      className="w-24"
-                    />
-                    <Select
-                      value={customUnit}
-                      onValueChange={(v) => setCustomUnit(v as DurationUnit)}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hours">Hours</SelectItem>
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="weeks">Weeks</SelectItem>
-                        <SelectItem value="months">Months</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Max {MAX_BY_UNIT[customUnit]}
-                    </p>
-                  </div>
-                )}
+                )
+              })}
+              <button
+                type="button"
+                onClick={() => setDurationChoice("custom")}
+                className={
+                  "rounded-md border px-3 py-1.5 text-sm transition-colors " +
+                  (durationChoice === "custom"
+                    ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
+                    : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
+                }
+              >
+                Custom
+              </button>
+            </div>
+            {durationChoice === "custom" && (
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  type="number"
+                  min={1}
+                  max={MAX_BY_UNIT[customUnit]}
+                  value={customAmount}
+                  onChange={(e) =>
+                    setCustomAmount(parseInt(e.target.value, 10) || 0)
+                  }
+                  className="w-24"
+                />
+                <Select
+                  value={customUnit}
+                  onValueChange={(v) => setCustomUnit(v as DurationUnit)}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hours">Hours</SelectItem>
+                    <SelectItem value="days">Days</SelectItem>
+                    <SelectItem value="weeks">Weeks</SelectItem>
+                    <SelectItem value="months">Months</SelectItem>
+                  </SelectContent>
+                </Select>
                 <p className="text-xs text-muted-foreground">
-                  Ends {formatAbsoluteDate(
-                    (durationChoice === "custom"
-                      ? addCustom(new Date(), customAmount, customUnit)
-                      : addPreset(new Date(), durationChoice)
-                    ).toISOString(),
-                  )}
+                  Max {MAX_BY_UNIT[customUnit]}
                 </p>
               </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Ends{" "}
+              {formatAbsoluteDate(
+                durationChoice === "keep"
+                  ? request.expires_at
+                  : (durationChoice === "custom"
+                      ? addCustom(new Date(), customAmount, customUnit)
+                      : addPreset(new Date(), durationChoice)
+                    ).toISOString(),
+              )}
+            </p>
           </div>
         )}
 
