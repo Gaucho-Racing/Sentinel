@@ -22,34 +22,25 @@ import {
   discordRoleColorHex,
   useDiscordRoles,
   useGroupDiscordBindings,
-  useRemoveGroupDiscordBinding,
+  type GroupDiscordRoleBinding,
 } from "@/lib/discord"
 import type { Group, GroupMember, GroupOwner, GroupSource } from "@/lib/groups"
 
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
 import { GroupForm, type GroupFormValues } from "./GroupForm"
 
-function DiscordSyncCard({ groupID }: { groupID: string }) {
+function DiscordSyncCard({
+  bindings,
+  onAddBinding,
+  onRemoveBinding,
+}: {
+  bindings: GroupDiscordRoleBinding[]
+  onAddBinding: (roleIDs: string[]) => void
+  onRemoveBinding: (bindingID: string) => void
+}) {
   const [pickerOpen, setPickerOpen] = useState(false)
-  const bindingsQuery = useGroupDiscordBindings(groupID)
   const rolesQuery = useDiscordRoles()
-  const removeBinding = useRemoveGroupDiscordBinding(groupID)
-
-  const bindings = bindingsQuery.data ?? []
   const roles = rolesQuery.data ?? []
-
-  async function handleRemove(bindingID: string) {
-    if (removeBinding.isPending) return
-    try {
-      await removeBinding.mutateAsync(bindingID)
-      toast.success("Binding removed")
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't remove binding."
-      toast.error(message)
-    }
-  }
 
   return (
     <Card>
@@ -105,8 +96,7 @@ function DiscordSyncCard({ groupID }: { groupID: string }) {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  disabled={removeBinding.isPending}
-                  onClick={() => handleRemove(binding.id)}
+                  onClick={() => onRemoveBinding(binding.id)}
                 >
                   <X className="size-3.5" />
                 </Button>
@@ -125,7 +115,7 @@ function DiscordSyncCard({ groupID }: { groupID: string }) {
       <DiscordRolePickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
-        groupID={groupID}
+        onAddBinding={onAddBinding}
       />
     </Card>
   )
@@ -172,6 +162,51 @@ export default function GroupEditPage() {
   const [deleting, setDeleting] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [cascadeConfirmOpen, setCascadeConfirmOpen] = useState(false)
+  // Pending binding state — staged changes are applied to the server in
+  // commitSave alongside the basics, so the Save button is the single commit
+  // point for the entire page.
+  const [pendingBindingAdds, setPendingBindingAdds] = useState<
+    { tempID: string; discord_role_ids: string[] }[]
+  >([])
+  const [pendingBindingRemoves, setPendingBindingRemoves] = useState<Set<string>>(
+    new Set(),
+  )
+
+  const serverBindings = bindingsQuery.data ?? []
+  const effectiveBindings: GroupDiscordRoleBinding[] = [
+    ...serverBindings.filter((b) => !pendingBindingRemoves.has(b.id)),
+    ...pendingBindingAdds.map((p) => ({
+      id: p.tempID,
+      group_id: id ?? "",
+      discord_role_ids: p.discord_role_ids,
+      created_at: "",
+    })),
+  ]
+
+  function handleAddBinding(roleIDs: string[]) {
+    if (roleIDs.length === 0) return
+    setPendingBindingAdds((prev) => [
+      ...prev,
+      {
+        tempID: `pending_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        discord_role_ids: roleIDs,
+      },
+    ])
+  }
+
+  function handleRemoveBinding(bindingID: string) {
+    // A pending add gets dropped from the pendingAdds list. A server-side
+    // binding goes into pendingRemoves so commitSave can issue the DELETE.
+    if (bindingID.startsWith("pending_")) {
+      setPendingBindingAdds((prev) => prev.filter((p) => p.tempID !== bindingID))
+      return
+    }
+    setPendingBindingRemoves((prev) => {
+      const next = new Set(prev)
+      next.add(bindingID)
+      return next
+    })
+  }
 
   useEffect(() => {
     if (query.data && values === null) {
@@ -187,6 +222,21 @@ export default function GroupEditPage() {
     if (!values || !id) return
     setSubmitting(true)
     try {
+      // Apply staged binding changes only if Discord is staying enabled.
+      // When DISCORD is being unchecked the backend cascade in
+      // CreateOrUpdateGroup wipes every binding for the group, so any pending
+      // adds/removes here are wasted work.
+      const keepingDiscord = values.allowed_sources.includes("DISCORD")
+      if (keepingDiscord) {
+        for (const bindingID of pendingBindingRemoves) {
+          await api.delete(`/groups/${id}/discord-bindings/${bindingID}`)
+        }
+        for (const add of pendingBindingAdds) {
+          await api.post(`/groups/${id}/discord-bindings`, {
+            discord_role_ids: add.discord_role_ids,
+          })
+        }
+      }
       await api.post<Group>("/groups", {
         id,
         name: values.name.trim(),
@@ -216,16 +266,18 @@ export default function GroupEditPage() {
     const draftSources = new Set(values.allowed_sources)
     const removed: GroupSource[] = []
     for (const s of savedSources) {
-      if (!draftSources.has(s)) removed.push(s)
+      if (!draftSources.has(s) && s !== "DIRECT") removed.push(s as GroupSource)
     }
     const removingDiscord = removed.includes("DISCORD")
     const removingConditional = removed.includes("CONDITIONAL")
-    const discordBindingCount = bindingsQuery.data?.length ?? 0
+    // Effective binding count = what the user sees in the UI right now
+    // (server bindings minus staged removes plus staged adds).
+    const effectiveBindingCount = effectiveBindings.length
     const members = membersQuery.data ?? []
     const discordMemberCount = members.filter((m) => m.source === "DISCORD").length
     const conditionalMemberCount = members.filter((m) => m.source === "CONDITIONAL").length
     const hasDestructiveImpact =
-      (removingDiscord && (discordBindingCount > 0 || discordMemberCount > 0)) ||
+      (removingDiscord && (effectiveBindingCount > 0 || discordMemberCount > 0)) ||
       (removingConditional && conditionalMemberCount > 0)
     if (hasDestructiveImpact) {
       setCascadeConfirmOpen(true)
@@ -313,12 +365,23 @@ export default function GroupEditPage() {
         </Link>
       </Button>
 
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Edit {group.name}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Update the group's basics and allowed sources.
-        </p>
-      </div>
+      <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-semibold tracking-tight">Edit {group.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Update the group's basics, sync sources, and rules. Nothing is saved until
+            you click Save changes.
+          </p>
+        </div>
+        <Button
+          type="button"
+          className="h-10 gap-1.5 rounded-xl px-4 text-sm"
+          disabled={submitting || !values.name.trim()}
+          onClick={handleSubmit}
+        >
+          {submitting ? "Saving…" : "Save changes"}
+        </Button>
+      </header>
 
       <div className="space-y-4">
         <Card>
@@ -333,12 +396,17 @@ export default function GroupEditPage() {
               onSubmit={handleSubmit}
               submitting={submitting}
               submitLabel="Save changes"
+              hideSubmit
             />
           </CardContent>
         </Card>
 
         {values.allowed_sources.includes("DISCORD") && (
-          <DiscordSyncCard groupID={id!} />
+          <DiscordSyncCard
+            bindings={effectiveBindings}
+            onAddBinding={handleAddBinding}
+            onRemoveBinding={handleRemoveBinding}
+          />
         )}
 
         <Card>
@@ -426,7 +494,7 @@ export default function GroupEditPage() {
               savedSources.has("DISCORD") && !draftSources.has("DISCORD")
             const removingConditional =
               savedSources.has("CONDITIONAL") && !draftSources.has("CONDITIONAL")
-            const bindingCount = bindingsQuery.data?.length ?? 0
+            const bindingCount = effectiveBindings.length
             const members = membersQuery.data ?? []
             const discordMembers = members.filter((m) => m.source === "DISCORD").length
             const conditionalMembers = members.filter(

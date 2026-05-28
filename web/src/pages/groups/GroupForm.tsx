@@ -25,6 +25,7 @@ export function GroupForm({
   submitting,
   submitLabel,
   innerSurface = "card",
+  hideSubmit = false,
 }: {
   values: GroupFormValues
   onChange: (next: GroupFormValues) => void
@@ -32,6 +33,7 @@ export function GroupForm({
   submitting: boolean
   submitLabel: string
   innerSurface?: "card" | "background"
+  hideSubmit?: boolean
 }) {
   function toggleSource(source: GroupSource) {
     const has = values.allowed_sources.includes(source)
@@ -108,17 +110,19 @@ export function GroupForm({
           })}
         </div>
       </div>
-      <div className="flex justify-end pt-2">
-        <OutlineButton
-          type="submit"
-          className="w-auto"
-          innerClassName={innerSurface === "card" ? "bg-card" : undefined}
-          loading={submitting}
-          disabled={!values.name.trim()}
-        >
-          {submitLabel}
-        </OutlineButton>
-      </div>
+      {!hideSubmit && (
+        <div className="flex justify-end pt-2">
+          <OutlineButton
+            type="submit"
+            className="w-auto"
+            innerClassName={innerSurface === "card" ? "bg-card" : undefined}
+            loading={submitting}
+            disabled={!values.name.trim()}
+          >
+            {submitLabel}
+          </OutlineButton>
+        </div>
+      )}
     </form>
   )
 }

@@ -1,6 +1,5 @@
 import { Bot, Check, Search } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
-import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,24 +11,19 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  discordRoleColorHex,
-  useAddGroupDiscordBinding,
-  useDiscordRoles,
-} from "@/lib/discord"
+import { discordRoleColorHex, useDiscordRoles } from "@/lib/discord"
 import { fuzzyFilter } from "@/lib/fuzzy"
 
 export function DiscordRolePickerDialog({
   open,
   onOpenChange,
-  groupID,
+  onAddBinding,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  groupID: string
+  onAddBinding: (roleIDs: string[]) => void
 }) {
   const rolesQuery = useDiscordRoles()
-  const addBinding = useAddGroupDiscordBinding(groupID)
   const [search, setSearch] = useState("")
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
@@ -58,29 +52,14 @@ export function DiscordRolePickerDialog({
     })
   }
 
-  async function commit() {
-    if (selected.size === 0 || addBinding.isPending) return
-    try {
-      await addBinding.mutateAsync([...selected])
-      toast.success(
-        selected.size === 1 ? "Role binding added" : `Binding added with ${selected.size} roles`,
-      )
-      onOpenChange(false)
-    } catch (err: unknown) {
-      const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't add binding."
-      toast.error(message)
-    }
+  function commit() {
+    if (selected.size === 0) return
+    onAddBinding([...selected])
+    onOpenChange(false)
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => {
-        if (!addBinding.isPending) onOpenChange(o)
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="gap-5 sm:max-w-md">
         <DialogHeader className="gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
@@ -170,17 +149,16 @@ export function DiscordRolePickerDialog({
             <Button
               type="button"
               variant="ghost"
-              disabled={addBinding.isPending}
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
             <Button
               type="button"
-              disabled={selected.size === 0 || addBinding.isPending}
+              disabled={selected.size === 0}
               onClick={commit}
             >
-              {addBinding.isPending ? "Adding…" : "Add binding"}
+              Add binding
             </Button>
           </div>
         </div>
