@@ -444,3 +444,51 @@ func DeleteJoinRequestComment(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "comment deleted"})
 }
+
+// Discord role bindings
+
+func GetGroupDiscordBindings(c *gin.Context) {
+	id := c.Param("id")
+	bindings, err := service.GetDiscordBindingsForGroup(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, bindings)
+}
+
+type addDiscordBindingRequest struct {
+	DiscordRoleIDs []string `json:"discord_role_ids" binding:"required"`
+}
+
+func AddGroupDiscordBinding(c *gin.Context) {
+	id := c.Param("id")
+	var req addDiscordBindingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if len(req.DiscordRoleIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "discord_role_ids must be non-empty"})
+		return
+	}
+	binding, err := service.CreateGroupDiscordBinding(model.GroupDiscordRoleBinding{
+		GroupID:        id,
+		DiscordRoleIDs: model.StringSlice(req.DiscordRoleIDs),
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, binding)
+}
+
+func RemoveGroupDiscordBinding(c *gin.Context) {
+	id := c.Param("id")
+	bindingID := c.Param("bindingID")
+	if err := service.DeleteGroupDiscordBinding(id, bindingID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "discord binding removed"})
+}

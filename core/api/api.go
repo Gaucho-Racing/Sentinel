@@ -109,6 +109,10 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/groups/:id/requests/:requestID/comments", CreateJoinRequestComment)
 	router.DELETE("/groups/:id/requests/:requestID/comments/:commentID", DeleteJoinRequestComment)
+
+	router.GET("/groups/:id/discord-bindings", GetGroupDiscordBindings)
+	router.POST("/groups/:id/discord-bindings", AddGroupDiscordBinding)
+	router.DELETE("/groups/:id/discord-bindings/:bindingID", RemoveGroupDiscordBinding)
 }
 
 func AuthChecker() gin.HandlerFunc {

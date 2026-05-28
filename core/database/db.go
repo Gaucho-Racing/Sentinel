@@ -48,6 +48,7 @@ func Init() {
 			&model.GroupJoinRequest{},
 			&model.GroupJoinRequestComment{},
 			&model.GroupOwner{},
+			&model.GroupDiscordRoleBinding{},
 			&model.SigningKey{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")

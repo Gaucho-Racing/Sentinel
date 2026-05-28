@@ -112,3 +112,18 @@ type GroupJoinRequestComment struct {
 func (GroupJoinRequestComment) TableName() string {
 	return "group_join_request_comment"
 }
+
+// GroupDiscordRoleBinding ties a group to a set of Discord role IDs. A user
+// matches the binding only if they hold ALL DiscordRoleIDs on Discord (AND
+// within a binding). Group membership is the OR across all bindings — so
+// adding multiple bindings expresses "either-or" rules.
+type GroupDiscordRoleBinding struct {
+	ID             string      `json:"id" gorm:"primaryKey"`
+	GroupID        string      `json:"group_id" gorm:"index"`
+	DiscordRoleIDs StringSlice `json:"discord_role_ids" gorm:"type:jsonb"`
+	CreatedAt      time.Time   `json:"created_at" gorm:"autoCreateTime"`
+}
+
+func (GroupDiscordRoleBinding) TableName() string {
+	return "group_discord_role_binding"
+}

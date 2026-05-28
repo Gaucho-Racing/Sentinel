@@ -248,3 +248,32 @@ func DeleteJoinRequestComment(id string) error {
 	}
 	return nil
 }
+
+// Discord role bindings
+
+func GetDiscordBindingsForGroup(groupID string) ([]model.GroupDiscordRoleBinding, error) {
+	bindings := []model.GroupDiscordRoleBinding{}
+	if err := database.DB.Where("group_id = ?", groupID).Find(&bindings).Error; err != nil {
+		return []model.GroupDiscordRoleBinding{}, err
+	}
+	return bindings, nil
+}
+
+func CreateGroupDiscordBinding(binding model.GroupDiscordRoleBinding) (model.GroupDiscordRoleBinding, error) {
+	if binding.ID == "" {
+		binding.ID = ulid.Make().Prefixed("gdrb")
+	}
+	if err := database.DB.Create(&binding).Error; err != nil {
+		return model.GroupDiscordRoleBinding{}, err
+	}
+	return binding, nil
+}
+
+// DeleteGroupDiscordBinding scopes the delete to (groupID, bindingID) so a
+// URL-tampered request can't drop a binding from a different group.
+func DeleteGroupDiscordBinding(groupID string, bindingID string) error {
+	if err := database.DB.Where("group_id = ? AND id = ?", groupID, bindingID).Delete(&model.GroupDiscordRoleBinding{}).Error; err != nil {
+		return err
+	}
+	return nil
+}
