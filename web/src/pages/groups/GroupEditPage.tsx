@@ -43,17 +43,16 @@ function DiscordSyncCard({
 
   const bindings = bindingsQuery.data ?? []
   const roles = rolesQuery.data ?? []
-  const boundIDs = new Set(bindings.map((b) => b.discord_role_id))
 
-  async function handleRemove(roleID: string) {
+  async function handleRemove(bindingID: string) {
     if (removeBinding.isPending) return
     try {
-      await removeBinding.mutateAsync(roleID)
-      toast.success("Discord role unbound")
+      await removeBinding.mutateAsync(bindingID)
+      toast.success("Binding removed")
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't remove role."
+        "Couldn't remove binding."
       toast.error(message)
     }
   }
@@ -66,7 +65,9 @@ function DiscordSyncCard({
           Discord role sync
         </CardTitle>
         <CardDescription>
-          Members of the bound Discord role(s) are added to this group automatically. Removing the role removes them.
+          Each binding is an AND-group of Discord roles — users must have every role
+          in the binding to be synced through it. Group membership is the OR across
+          all bindings, so add multiple bindings for either-or rules.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -78,47 +79,58 @@ function DiscordSyncCard({
         {discordAllowed && (
           <>
             {bindings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No Discord roles bound yet.</p>
+              <p className="text-sm text-muted-foreground">No Discord role bindings yet.</p>
             ) : (
               <ul className="space-y-2">
-                {bindings.map((b) => {
-                  const role = roles.find((r) => r.id === b.discord_role_id)
-                  const hex = role ? discordRoleColorHex(role.color) : null
-                  return (
-                    <li
-                      key={b.discord_role_id}
-                      className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                {bindings.map((binding) => (
+                  <li
+                    key={binding.id}
+                    className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+                  >
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                      {binding.discord_role_ids.map((roleID, idx) => {
+                        const role = roles.find((r) => r.id === roleID)
+                        const hex = role ? discordRoleColorHex(role.color) : null
+                        return (
+                          <span key={roleID} className="flex items-center gap-1.5">
+                            {idx > 0 && (
+                              <span className="text-xs font-medium text-muted-foreground">
+                                AND
+                              </span>
+                            )}
+                            <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/60 px-2 py-0.5">
+                              <span
+                                className="size-2 shrink-0 rounded-full border border-border/60"
+                                style={{ backgroundColor: hex ?? "transparent" }}
+                              />
+                              <span className="text-sm">
+                                {role ? `@${role.name}` : (
+                                  <code className="font-mono text-xs text-muted-foreground">
+                                    {roleID}
+                                  </code>
+                                )}
+                              </span>
+                            </span>
+                          </span>
+                        )
+                      })}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      disabled={removeBinding.isPending}
+                      onClick={() => handleRemove(binding.id)}
                     >
-                      <span className="flex min-w-0 items-center gap-2.5">
-                        <span
-                          className="size-2.5 shrink-0 rounded-full border border-border/60"
-                          style={{ backgroundColor: hex ?? "transparent" }}
-                        />
-                        <span className="truncate text-sm">
-                          {role ? `@${role.name}` : (
-                            <code className="font-mono text-xs text-muted-foreground">
-                              {b.discord_role_id}
-                            </code>
-                          )}
-                        </span>
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={removeBinding.isPending}
-                        onClick={() => handleRemove(b.discord_role_id)}
-                      >
-                        <X className="size-3.5" />
-                      </Button>
-                    </li>
-                  )
-                })}
+                      <X className="size-3.5" />
+                    </Button>
+                  </li>
+                ))}
               </ul>
             )}
             <div className="pt-1">
               <Button type="button" onClick={() => setPickerOpen(true)}>
                 <Plus className="mr-1 size-3.5" />
-                Add Discord role
+                Add role binding
               </Button>
             </div>
           </>
@@ -129,7 +141,6 @@ function DiscordSyncCard({
         open={pickerOpen}
         onOpenChange={setPickerOpen}
         groupID={groupID}
-        alreadyBoundRoleIDs={boundIDs}
       />
     </Card>
   )

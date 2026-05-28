@@ -1,5 +1,5 @@
-import { Bot, Search } from "lucide-react"
-import { useMemo, useState } from "react"
+import { Bot, Check, Search } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -22,22 +22,26 @@ export function DiscordRolePickerDialog({
   open,
   onOpenChange,
   groupID,
-  alreadyBoundRoleIDs,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   groupID: string
-  alreadyBoundRoleIDs: Set<string>
 }) {
   const rolesQuery = useDiscordRoles()
   const addBinding = useAddGroupDiscordBinding(groupID)
   const [search, setSearch] = useState("")
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+
+  // Reset transient state every time the dialog reopens.
+  useEffect(() => {
+    if (open) {
+      setSearch("")
+      setSelected(new Set())
+    }
+  }, [open])
 
   const eligibleRoles = useMemo(() => {
     if (!rolesQuery.data) return []
-    // Drop @everyone (position 0) and managed roles (integration-owned —
-    // assigning them via our bot would silently no-op). Sort highest
-    // position first to match Discord's own listing.
     const filtered = rolesQuery.data
       .filter((r) => r.position > 0 && !r.managed)
       .sort((a, b) => b.position - a.position)
@@ -46,17 +50,27 @@ export function DiscordRolePickerDialog({
     return filtered.filter((r) => r.name.toLowerCase().includes(needle))
   }, [rolesQuery.data, search])
 
-  async function pick(roleID: string) {
-    if (addBinding.isPending) return
+  function toggle(roleID: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(roleID)) next.delete(roleID)
+      else next.add(roleID)
+      return next
+    })
+  }
+
+  async function commit() {
+    if (selected.size === 0 || addBinding.isPending) return
     try {
-      await addBinding.mutateAsync(roleID)
-      toast.success("Discord role added")
+      await addBinding.mutateAsync([...selected])
+      toast.success(
+        selected.size === 1 ? "Role binding added" : `Binding added with ${selected.size} roles`,
+      )
       onOpenChange(false)
-      setSearch("")
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't add role."
+        "Couldn't add binding."
       toast.error(message)
     }
   }
@@ -65,10 +79,7 @@ export function DiscordRolePickerDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!addBinding.isPending) {
-          onOpenChange(o)
-          if (!o) setSearch("")
-        }
+        if (!addBinding.isPending) onOpenChange(o)
       }}
     >
       <DialogContent className="gap-5 sm:max-w-md">
@@ -76,10 +87,10 @@ export function DiscordRolePickerDialog({
           <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
             <Bot className="size-5" />
           </div>
-          <DialogTitle>Add Discord role</DialogTitle>
+          <DialogTitle>Add Discord role binding</DialogTitle>
           <DialogDescription>
-            Members of the selected role will be synced into this group automatically.
-            @everyone and integration-managed roles are hidden.
+            Pick one or more roles. Users must have <strong>all</strong> selected roles to be
+            synced through this binding. To express "either-or", add a second binding.
           </DialogDescription>
         </DialogHeader>
 
@@ -113,17 +124,26 @@ export function DiscordRolePickerDialog({
           ) : (
             <ul className="divide-y divide-border/60">
               {eligibleRoles.map((role) => {
-                const bound = alreadyBoundRoleIDs.has(role.id)
+                const checked = selected.has(role.id)
                 const hex = discordRoleColorHex(role.color)
                 return (
                   <li key={role.id}>
                     <button
                       type="button"
-                      onClick={() => pick(role.id)}
-                      disabled={bound || addBinding.isPending}
-                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => toggle(role.id)}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors hover:bg-muted/40"
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
+                        <span
+                          className={
+                            "flex size-4 shrink-0 items-center justify-center rounded border " +
+                            (checked
+                              ? "border-gr-pink bg-gr-pink text-white"
+                              : "border-border bg-background")
+                          }
+                        >
+                          {checked && <Check className="size-3" />}
+                        </span>
                         <span
                           className="size-2.5 shrink-0 rounded-full border border-border/60"
                           style={{ backgroundColor: hex ?? "transparent" }}
@@ -131,9 +151,6 @@ export function DiscordRolePickerDialog({
                         />
                         <span className="truncate text-sm">{role.name}</span>
                       </span>
-                      {bound && (
-                        <span className="text-xs text-muted-foreground">already bound</span>
-                      )}
                     </button>
                   </li>
                 )
@@ -142,15 +159,31 @@ export function DiscordRolePickerDialog({
           )}
         </div>
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={addBinding.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            Close
-          </Button>
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <p className="text-xs text-muted-foreground">
+            {selected.size === 0
+              ? "Select at least one role."
+              : selected.size === 1
+                ? "1 role selected."
+                : `${selected.size} roles selected — all required.`}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={addBinding.isPending}
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={selected.size === 0 || addBinding.isPending}
+              onClick={commit}
+            >
+              {addBinding.isPending ? "Adding…" : "Add binding"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
