@@ -53,7 +53,8 @@ export function ReviewRequestDialog({
   const qc = useQueryClient()
   const [comment, setComment] = useState("")
   const [submitting, setSubmitting] = useState(false)
-  const [durationChoice, setDurationChoice] = useState<"keep" | DurationPreset | "custom">("keep")
+  const [durationMode, setDurationMode] = useState<"keep" | "override">("keep")
+  const [overridePreset, setOverridePreset] = useState<DurationPreset | "custom">("1mo")
   const [customAmount, setCustomAmount] = useState(7)
   const [customUnit, setCustomUnit] = useState<DurationUnit>("days")
 
@@ -61,7 +62,8 @@ export function ReviewRequestDialog({
   useEffect(() => {
     if (open) {
       setComment("")
-      setDurationChoice("keep")
+      setDurationMode("keep")
+      setOverridePreset("1mo")
       setCustomAmount(7)
       setCustomUnit("days")
     }
@@ -78,8 +80,8 @@ export function ReviewRequestDialog({
     if (!request || submitting) return
 
     let overrideExpiresAt: Date | null = null
-    if (isApprove && durationChoice !== "keep") {
-      if (durationChoice === "custom") {
+    if (isApprove && durationMode === "override") {
+      if (overridePreset === "custom") {
         if (
           !Number.isFinite(customAmount) ||
           customAmount <= 0 ||
@@ -90,7 +92,7 @@ export function ReviewRequestDialog({
         }
         overrideExpiresAt = addCustom(new Date(), customAmount, customUnit)
       } else {
-        overrideExpiresAt = addPreset(new Date(), durationChoice)
+        overrideExpiresAt = addPreset(new Date(), overridePreset)
       }
     }
 
@@ -178,10 +180,10 @@ export function ReviewRequestDialog({
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                onClick={() => setDurationChoice("keep")}
+                onClick={() => setDurationMode("keep")}
                 className={
                   "rounded-md border px-3 py-1.5 text-sm transition-colors " +
-                  (durationChoice === "keep"
+                  (durationMode === "keep"
                     ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
                     : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
                 }
@@ -193,76 +195,94 @@ export function ReviewRequestDialog({
                   </span>
                 )}
               </button>
-              {DURATION_PRESETS.map((p) => {
-                const active = durationChoice === p.value
-                return (
-                  <button
-                    key={p.value}
-                    type="button"
-                    onClick={() => setDurationChoice(p.value)}
-                    className={
-                      "rounded-md border px-3 py-1.5 text-sm transition-colors " +
-                      (active
-                        ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
-                        : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
-                    }
-                  >
-                    {p.label}
-                  </button>
-                )
-              })}
               <button
                 type="button"
-                onClick={() => setDurationChoice("custom")}
+                onClick={() => setDurationMode("override")}
                 className={
                   "rounded-md border px-3 py-1.5 text-sm transition-colors " +
-                  (durationChoice === "custom"
+                  (durationMode === "override"
                     ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
                     : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
                 }
               >
-                Custom
+                Override
               </button>
             </div>
-            {durationChoice === "custom" && (
-              <div className="flex items-center gap-2 pt-1">
-                <Input
-                  type="number"
-                  min={1}
-                  max={MAX_BY_UNIT[customUnit]}
-                  value={customAmount}
-                  onChange={(e) =>
-                    setCustomAmount(parseInt(e.target.value, 10) || 0)
-                  }
-                  className="w-24"
-                />
-                <Select
-                  value={customUnit}
-                  onValueChange={(v) => setCustomUnit(v as DurationUnit)}
-                >
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hours">Hours</SelectItem>
-                    <SelectItem value="days">Days</SelectItem>
-                    <SelectItem value="weeks">Weeks</SelectItem>
-                    <SelectItem value="months">Months</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Max {MAX_BY_UNIT[customUnit]}
-                </p>
+            {durationMode === "override" && (
+              <div className="space-y-2 pt-1">
+                <div className="flex flex-wrap gap-2">
+                  {DURATION_PRESETS.map((p) => {
+                    const active = overridePreset === p.value
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setOverridePreset(p.value)}
+                        className={
+                          "rounded-md border px-3 py-1.5 text-sm transition-colors " +
+                          (active
+                            ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
+                            : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
+                        }
+                      >
+                        {p.label}
+                      </button>
+                    )
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => setOverridePreset("custom")}
+                    className={
+                      "rounded-md border px-3 py-1.5 text-sm transition-colors " +
+                      (overridePreset === "custom"
+                        ? "border-gr-pink/40 bg-gr-pink/10 text-foreground"
+                        : "border-border/60 bg-muted/30 text-muted-foreground hover:bg-muted/50")
+                    }
+                  >
+                    Custom
+                  </button>
+                </div>
+                {overridePreset === "custom" && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={MAX_BY_UNIT[customUnit]}
+                      value={customAmount}
+                      onChange={(e) =>
+                        setCustomAmount(parseInt(e.target.value, 10) || 0)
+                      }
+                      className="w-24"
+                    />
+                    <Select
+                      value={customUnit}
+                      onValueChange={(v) => setCustomUnit(v as DurationUnit)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hours">Hours</SelectItem>
+                        <SelectItem value="days">Days</SelectItem>
+                        <SelectItem value="weeks">Weeks</SelectItem>
+                        <SelectItem value="months">Months</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Max {MAX_BY_UNIT[customUnit]}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
             <p className="text-xs text-muted-foreground">
               Ends{" "}
               {formatAbsoluteDate(
-                durationChoice === "keep"
+                durationMode === "keep"
                   ? request.expires_at
-                  : (durationChoice === "custom"
+                  : (overridePreset === "custom"
                       ? addCustom(new Date(), customAmount, customUnit)
-                      : addPreset(new Date(), durationChoice)
+                      : addPreset(new Date(), overridePreset)
                     ).toISOString(),
               )}
             </p>
