@@ -15,8 +15,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
-import type { Group } from "@/lib/groups"
+import { loadSession } from "@/lib/auth"
+import type { Group, GroupOwner } from "@/lib/groups"
 
 import { GroupForm, type GroupFormValues } from "./GroupForm"
 
@@ -24,11 +26,22 @@ export default function GroupEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const qc = useQueryClient()
+  const myEntityID = loadSession()?.entityId ?? ""
+  const { isAdmin, isLoading: adminsLoading } = useAdmins()
 
   const query = useQuery({
     queryKey: ["group", id],
     queryFn: async () => {
       const res = await api.get<Group>(`/groups/${id}`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const ownersQuery = useQuery({
+    queryKey: ["group", id, "owners"],
+    queryFn: async () => {
+      const res = await api.get<GroupOwner[]>(`/groups/${id}/owners`)
       return res.data
     },
     enabled: !!id,
@@ -91,7 +104,12 @@ export default function GroupEditPage() {
     }
   }
 
-  if (query.isLoading || !values) {
+  if (
+    query.isLoading ||
+    !values ||
+    ownersQuery.isLoading ||
+    adminsLoading
+  ) {
     return (
       <PageContainer>
         <Skeleton className="mb-4 h-4 w-24" />
@@ -116,6 +134,25 @@ export default function GroupEditPage() {
   }
 
   const group = query.data
+  const owners = ownersQuery.data ?? []
+  const isOwner = !!myEntityID && owners.some((o) => o.entity_id === myEntityID)
+  const canEdit = isOwner || isAdmin
+
+  if (!canEdit) {
+    return (
+      <PageContainer>
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
+          <Link to={`/groups/${id}`}>
+            <ArrowLeft className="mr-1 size-3.5" />
+            Back to {group.name}
+          </Link>
+        </Button>
+        <p className="text-sm text-muted-foreground">
+          Only group owners and admins can edit this group.
+        </p>
+      </PageContainer>
+    )
+  }
 
   return (
     <PageContainer>
