@@ -17,7 +17,7 @@ const FALLBACK_TEXT_CLASS: Record<EntityChipSize, string> = {
   md: "text-xs",
 }
 
-function initials(name: string) {
+export function entityInitials(name: string) {
   return name
     .split(/\s+/)
     .map((p) => p[0])
@@ -27,14 +27,26 @@ function initials(name: string) {
     .toUpperCase()
 }
 
-type ResolvedPerson = {
+export type ResolvedPerson = {
   name: string
   username: string | null
   avatarUrl?: string
   isServiceAccount: boolean
 }
 
-function resolveEntity(entity: Entity): ResolvedPerson | null {
+export function useEntity(entityId: string) {
+  return useQuery({
+    queryKey: ["entity", entityId],
+    queryFn: async () => {
+      const res = await api.get<Entity>(`/entities/${entityId}`)
+      return res.data
+    },
+    enabled: !!entityId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function resolveEntity(entity: Entity): ResolvedPerson | null {
   if (entity.type === "USER" && entity.user) {
     const full = `${entity.user.first_name} ${entity.user.last_name}`.trim()
     return {
@@ -61,15 +73,7 @@ export function EntityChip({
   entityId: string
   size?: EntityChipSize
 }) {
-  const query = useQuery({
-    queryKey: ["entity", entityId],
-    queryFn: async () => {
-      const res = await api.get<Entity>(`/entities/${entityId}`)
-      return res.data
-    },
-    enabled: !!entityId,
-    staleTime: 5 * 60 * 1000,
-  })
+  const query = useEntity(entityId)
 
   if (!entityId) {
     return <span className="text-sm text-muted-foreground">—</span>
@@ -108,7 +112,7 @@ export function EntityChip({
               : "")
           }
         >
-          {initials(person.name) || person.name.slice(0, 1).toUpperCase()}
+          {entityInitials(person.name) || person.name.slice(0, 1).toUpperCase()}
         </AvatarFallback>
       </Avatar>
       <div className="flex min-w-0 flex-col leading-tight">

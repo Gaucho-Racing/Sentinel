@@ -4,7 +4,8 @@ import { useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
-import { EntityChip } from "@/components/EntityChip"
+import { entityInitials, resolveEntity, useEntity } from "@/components/EntityChip"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PageContainer } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -77,6 +78,60 @@ type TimelineEntry =
       body: string
       time: string
     }
+
+function TimelineRow({ entry }: { entry: TimelineEntry }) {
+  const { data: entity } = useEntity(entry.entityID)
+  const person = entity ? resolveEntity(entity) : null
+
+  return (
+    <li className="flex items-start gap-3">
+      <Avatar className="size-6 shrink-0">
+        {person?.avatarUrl && <AvatarImage src={person.avatarUrl} alt={person.name} />}
+        <AvatarFallback
+          className={
+            "text-[10px]" +
+            (person?.isServiceAccount
+              ? " bg-gradient-to-br from-gr-pink to-gr-purple text-white"
+              : "")
+          }
+        >
+          {person ? entityInitials(person.name) || person.name.slice(0, 1).toUpperCase() : "?"}
+        </AvatarFallback>
+      </Avatar>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 text-sm">
+          {person ? (
+            <>
+              <span className="font-medium">{person.name}</span>
+              {person.username && (
+                <span className="text-xs text-muted-foreground">@{person.username}</span>
+              )}
+            </>
+          ) : (
+            <code className="font-mono text-xs text-muted-foreground">{entry.entityID}</code>
+          )}
+          <span className="text-xs text-muted-foreground">·</span>
+          <span
+            className="text-xs text-muted-foreground"
+            title={formatTimestamp(entry.time)}
+          >
+            {relativeTime(entry.time)}
+          </span>
+        </div>
+        {entry.kind === "system" ? (
+          <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+            <entry.icon className={"size-3.5 shrink-0 " + entry.iconClass} />
+            {entry.text}
+          </p>
+        ) : (
+          <div className="mt-2 rounded-md border border-border/60 bg-muted/30 p-3">
+            <p className="whitespace-pre-wrap text-sm">{entry.body}</p>
+          </div>
+        )}
+      </div>
+    </li>
+  )
+}
 
 export default function GroupRequestDetailsPage() {
   const { id, requestID } = useParams<{ id: string; requestID: string }>()
@@ -284,35 +339,7 @@ export default function GroupRequestDetailsPage() {
         <CardContent className="space-y-5">
           <ol className="space-y-4">
             {timeline.map((entry) => (
-              <li key={entry.key} className="flex items-start gap-3">
-                <EntityChip entityId={entry.entityID} size="sm" />
-                <div className="min-w-0 flex-1">
-                  {entry.kind === "system" ? (
-                    <div className="flex items-center justify-between gap-3 py-1">
-                      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <entry.icon className={"size-3.5 shrink-0 " + entry.iconClass} />
-                        {entry.text}
-                      </span>
-                      <span
-                        className="shrink-0 whitespace-nowrap text-xs text-muted-foreground"
-                        title={formatTimestamp(entry.time)}
-                      >
-                        {relativeTime(entry.time)}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="rounded-md border border-border/60 bg-muted/30 p-3">
-                      <span
-                        className="text-xs text-muted-foreground"
-                        title={formatTimestamp(entry.time)}
-                      >
-                        {relativeTime(entry.time)}
-                      </span>
-                      <p className="mt-1 whitespace-pre-wrap text-sm">{entry.body}</p>
-                    </div>
-                  )}
-                </div>
-              </li>
+              <TimelineRow key={entry.key} entry={entry} />
             ))}
           </ol>
 
