@@ -282,33 +282,36 @@ export default function GroupRequestDetailsPage() {
 
       <Card>
         <CardContent className="space-y-5">
-          <ol className="space-y-5">
+          <ol className="space-y-4">
             {timeline.map((entry) => (
-              <li key={entry.key}>
-                {entry.kind === "system" ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <entry.icon className={"size-4 shrink-0 " + entry.iconClass} />
-                    <EntityChip entityId={entry.entityID} size="sm" />
-                    <span>{entry.text}</span>
-                    <span className="ml-auto whitespace-nowrap text-xs" title={formatTimestamp(entry.time)}>
-                      {relativeTime(entry.time)}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="flex items-start gap-3">
-                    <div className="pt-1">
-                      <EntityChip entityId={entry.entityID} size="sm" />
+              <li key={entry.key} className="flex items-start gap-3">
+                <EntityChip entityId={entry.entityID} size="sm" />
+                <div className="min-w-0 flex-1">
+                  {entry.kind === "system" ? (
+                    <div className="flex items-center justify-between gap-3 py-1">
+                      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <entry.icon className={"size-3.5 shrink-0 " + entry.iconClass} />
+                        {entry.text}
+                      </span>
+                      <span
+                        className="shrink-0 whitespace-nowrap text-xs text-muted-foreground"
+                        title={formatTimestamp(entry.time)}
+                      >
+                        {relativeTime(entry.time)}
+                      </span>
                     </div>
-                    <div className="flex-1 rounded-md border border-border/60 bg-muted/30 p-3">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="text-xs text-muted-foreground" title={formatTimestamp(entry.time)}>
-                          {relativeTime(entry.time)}
-                        </span>
-                      </div>
+                  ) : (
+                    <div className="rounded-md border border-border/60 bg-muted/30 p-3">
+                      <span
+                        className="text-xs text-muted-foreground"
+                        title={formatTimestamp(entry.time)}
+                      >
+                        {relativeTime(entry.time)}
+                      </span>
                       <p className="mt-1 whitespace-pre-wrap text-sm">{entry.body}</p>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </li>
             ))}
           </ol>
