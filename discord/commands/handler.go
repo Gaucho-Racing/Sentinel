@@ -17,6 +17,9 @@ func InitializeBot() {
 	}
 	service.Discord.AddHandler(OnDiscordMessage)
 	service.Discord.AddHandler(OnDiscordReaction)
+	service.Discord.AddHandler(OnGuildMemberAdd)
+	service.Discord.AddHandler(OnGuildMemberUpdate)
+	service.Discord.AddHandler(OnGuildMemberRemove)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
