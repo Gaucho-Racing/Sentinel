@@ -22,12 +22,10 @@ func main() {
 	service.ConnectDiscord()
 	service.InitializeRoles()
 	service.InitializeSubteams()
-	go service.SyncRolesForAllUsers()
 	commands.InitializeDiscordBot()
 
 	jobs.RegisterDriveCronJob()
 	jobs.RegisterGithubCronJob()
-	jobs.RegisterDiscordCronJob()
 
 	router := controller.SetupRouter()
 	controller.InitializeRoutes(router)

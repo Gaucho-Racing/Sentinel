@@ -76,7 +76,6 @@ func isRangeInCode(spoilerRange []int, codeRanges [][]int) bool {
 
 func InitializeDiscordBot() {
 	service.Discord.AddHandler(OnDiscordMessage)
-	service.Discord.AddHandler(OnGuildMemberUpdate)
 	service.Discord.AddHandler(LogUserMessage)
 	service.Discord.AddHandler(LogUserReaction)
 	service.Discord.AddHandler(OnMessageUpdate)
@@ -103,12 +102,6 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Ping(args, s, m)
 	case "say":
 		Say(args, s, m)
-	case "verify":
-		Verify(args, s, m)
-	case "subteam":
-		Subteam(args, s, m)
-	case "rs":
-		RemoveSubteam(args, s, m)
 	case "github":
 		Github(args, s, m)
 	case "drive":
@@ -117,8 +110,6 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Whois(args, s, m)
 	case "users":
 		Users(args, s, m)
-	case "alumni":
-		Alumni(args, s, m)
 	default:
 		utils.SugarLogger.Infof("Command not found: %s", command)
 	}
