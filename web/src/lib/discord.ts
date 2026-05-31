@@ -29,10 +29,10 @@ export function discordRoleColorHex(color: number): string | null {
   return `#${color.toString(16).padStart(6, "0")}`
 }
 
-// Mirror of core/model/group.go::GroupDiscordRoleBinding. Each binding is an
-// AND-group of Discord role IDs; group membership is OR across the bindings.
-// So `[{discord_role_ids: [A, B]}, {discord_role_ids: [C]}]` means: any user
-// who has BOTH roles A and B, OR has role C.
+// Mirror of discord/model/group_binding.go::GroupDiscordRoleBinding. Each
+// binding is an AND-group of Discord role IDs; group membership is OR across
+// the bindings. So `[{discord_role_ids: [A, B]}, {discord_role_ids: [C]}]`
+// means: any user who has BOTH roles A and B, OR has role C.
 export type GroupDiscordRoleBinding = {
   id: string
   group_id: string
@@ -45,7 +45,8 @@ export function useGroupDiscordBindings(groupID: string) {
     queryKey: ["group", groupID, "discord-bindings"],
     queryFn: async () => {
       const res = await api.get<GroupDiscordRoleBinding[]>(
-        `/groups/${groupID}/discord-bindings`,
+        `/discord/role-bindings`,
+        { params: { group_id: groupID } },
       )
       return res.data
     },
@@ -58,8 +59,8 @@ export function useAddGroupDiscordBinding(groupID: string) {
   return useMutation({
     mutationFn: async (discordRoleIDs: string[]) => {
       const res = await api.post<GroupDiscordRoleBinding>(
-        `/groups/${groupID}/discord-bindings`,
-        { discord_role_ids: discordRoleIDs },
+        `/discord/role-bindings`,
+        { group_id: groupID, discord_role_ids: discordRoleIDs },
       )
       return res.data
     },
@@ -73,7 +74,9 @@ export function useRemoveGroupDiscordBinding(groupID: string) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async (bindingID: string) => {
-      await api.delete(`/groups/${groupID}/discord-bindings/${bindingID}`)
+      await api.delete(`/discord/role-bindings/${bindingID}`, {
+        params: { group_id: groupID },
+      })
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["group", groupID, "discord-bindings"] })

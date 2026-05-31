@@ -223,17 +223,19 @@ export default function GroupEditPage() {
     if (!values || !id) return
     setSubmitting(true)
     try {
-      // Apply staged binding changes only if Discord is staying enabled.
-      // When DISCORD is being unchecked the backend cascade in
-      // CreateOrUpdateGroup wipes every binding for the group, so any pending
-      // adds/removes here are wasted work.
+      // Only apply staged binding changes if Discord is staying enabled.
+      // If DISCORD is being unchecked the group will stop honoring bindings
+      // regardless, so any pending edits would just create orphans.
       const keepingDiscord = values.allowed_sources.includes("DISCORD")
       if (keepingDiscord) {
         for (const bindingID of pendingBindingRemoves) {
-          await api.delete(`/groups/${id}/discord-bindings/${bindingID}`)
+          await api.delete(`/discord/role-bindings/${bindingID}`, {
+            params: { group_id: id },
+          })
         }
         for (const add of pendingBindingAdds) {
-          await api.post(`/groups/${id}/discord-bindings`, {
+          await api.post(`/discord/role-bindings`, {
+            group_id: id,
             discord_role_ids: add.discord_role_ids,
           })
         }

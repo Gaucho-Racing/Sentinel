@@ -43,10 +43,11 @@ func GetAllGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
-// cascadeRemovedSources deletes sync configuration + auto-synced members for
-// any source that was previously allowed but is no longer in the update.
-// DIRECT members are never touched. Best-effort: logs and continues on
-// per-source errors rather than rolling back the group update.
+// cascadeRemovedSources deletes auto-synced members for any source that was
+// previously allowed but is no longer in the update. DIRECT members are
+// never touched. Sync configuration (e.g. Discord role bindings) is owned by
+// the integration service and cleaned up via its own orphan sweep — core
+// only handles its own membership data here.
 func cascadeRemovedSources(groupID string, before model.StringSlice, after []string) {
 	wanted := map[string]bool{}
 	for _, s := range after {
@@ -55,14 +56,6 @@ func cascadeRemovedSources(groupID string, before model.StringSlice, after []str
 	for _, src := range before {
 		if wanted[src] || src == string(model.GroupMemberSourceDirect) {
 			continue
-		}
-		switch src {
-		case string(model.GroupMemberSourceDiscord):
-			if err := service.DeleteAllDiscordBindingsForGroup(groupID); err != nil {
-				logger.SugarLogger.Errorf("Failed to delete Discord bindings on source removal for %s: %v", groupID, err)
-			}
-		case string(model.GroupMemberSourceConditional):
-			// Future: delete the conditional rule when storage lands.
 		}
 		if err := service.DeleteMembersBySource(groupID, src); err != nil {
 			logger.SugarLogger.Errorf("Failed to delete %s members on source removal for %s: %v", src, groupID, err)
@@ -483,50 +476,3 @@ func DeleteJoinRequestComment(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "comment deleted"})
 }
 
-// Discord role bindings
-
-func GetGroupDiscordBindings(c *gin.Context) {
-	id := c.Param("id")
-	bindings, err := service.GetDiscordBindingsForGroup(id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, bindings)
-}
-
-type addDiscordBindingRequest struct {
-	DiscordRoleIDs []string `json:"discord_role_ids" binding:"required"`
-}
-
-func AddGroupDiscordBinding(c *gin.Context) {
-	id := c.Param("id")
-	var req addDiscordBindingRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	if len(req.DiscordRoleIDs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "discord_role_ids must be non-empty"})
-		return
-	}
-	binding, err := service.CreateGroupDiscordBinding(model.GroupDiscordRoleBinding{
-		GroupID:        id,
-		DiscordRoleIDs: model.StringSlice(req.DiscordRoleIDs),
-	})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, binding)
-}
-
-func RemoveGroupDiscordBinding(c *gin.Context) {
-	id := c.Param("id")
-	bindingID := c.Param("bindingID")
-	if err := service.DeleteGroupDiscordBinding(id, bindingID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "discord binding removed"})
-}
