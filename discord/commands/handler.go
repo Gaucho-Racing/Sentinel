@@ -113,7 +113,7 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 		}
 	}
 
-	service.SyncDiscordUserAvatar(m.User.ID, m.User.AvatarURL("256"))
+	service.SyncDiscordUserAvatar(m.User.ID, m.AvatarURL("256"))
 }
 
 func OnGuildMemberRemove(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
@@ -128,7 +128,12 @@ func OnUserUpdate(s *discordgo.Session, u *discordgo.UserUpdate) {
 		return
 	}
 	logger.SugarLogger.Infof("UserUpdate: user=%s username=%s", u.ID, u.Username)
-	service.SyncDiscordUserAvatar(u.ID, u.AvatarURL("256"))
+	member, err := service.GetGuildMember(u.ID)
+	if err != nil {
+		logger.SugarLogger.Debugf("UserUpdate: user %s not in configured guild: %v", u.ID, err)
+		return
+	}
+	service.SyncDiscordUserAvatar(u.ID, member.AvatarURL("256"))
 }
 
 func diffRoles(before, after []string) (added, removed []string) {

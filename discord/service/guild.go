@@ -28,3 +28,13 @@ func GetGuildChannels() ([]*discordgo.Channel, error) {
 	})
 	return channels, nil
 }
+
+// GetGuildMember returns the member record for a user in the configured
+// guild, preferring the in-memory State cache and falling back to a
+// REST call. Returns an error if the user is not a member of the guild.
+func GetGuildMember(userID string) (*discordgo.Member, error) {
+	if m, err := Discord.State.Member(config.DiscordGuild, userID); err == nil && m != nil {
+		return m, nil
+	}
+	return Discord.GuildMember(config.DiscordGuild, userID)
+}
