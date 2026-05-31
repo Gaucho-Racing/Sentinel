@@ -7,7 +7,6 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
-	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
 
@@ -113,39 +112,7 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 		}
 	}
 
-	syncDiscordAvatar(m.Member)
-}
-
-// syncDiscordAvatar mirrors the member's current Discord avatar onto the
-// linked Sentinel user, when one exists. Skips silently when the Discord
-// user has no Sentinel record (most common case for non-onboarded members).
-func syncDiscordAvatar(m *discordgo.Member) {
-	if m == nil || m.User == nil {
-		return
-	}
-	avatarURL := m.User.AvatarURL("256")
-
-	var entity struct {
-		ID   string         `json:"id"`
-		Type string         `json:"type"`
-		User map[string]any `json:"user"`
-	}
-	if err := sentinel.Get("/core/entity/external/DISCORD/"+m.User.ID, &entity); err != nil {
-		logger.SugarLogger.Debugf("avatar sync: no entity for Discord user %s: %v", m.User.ID, err)
-		return
-	}
-	if entity.User == nil {
-		return
-	}
-	if current, _ := entity.User["avatar_url"].(string); current == avatarURL {
-		return
-	}
-	entity.User["avatar_url"] = avatarURL
-	if err := sentinel.Post("/core/users", entity.User, nil); err != nil {
-		logger.SugarLogger.Errorf("avatar sync: failed to update user %v: %v", entity.User["id"], err)
-		return
-	}
-	logger.SugarLogger.Infof("avatar sync: updated user %v avatar to %s", entity.User["id"], avatarURL)
+	service.SyncDiscordUserAvatar(m.User.ID, m.User.AvatarURL("256"))
 }
 
 func OnGuildMemberRemove(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
