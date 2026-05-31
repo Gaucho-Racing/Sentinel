@@ -14,27 +14,19 @@ var Service rincon.Service = rincon.Service{
 	HealthCheck: os.Getenv("SERVICE_HEALTH_CHECK"),
 }
 
+// The /** glob in rincon-go matches a non-empty suffix, so a bare path like
+// /groups or /users won't match /groups/** — register both forms so the
+// collection-level GETs are reachable via service-to-service calls.
 var Routes = []rincon.Route{
-	{
-		Route:  "/core/**",
-		Method: "*",
-	},
-	{
-		Route:  "/users/**",
-		Method: "*",
-	},
-	{
-		Route:  "/applications/**",
-		Method: "*",
-	},
-	{
-		Route:  "/groups/**",
-		Method: "*",
-	},
-	{
-		Route:  "/entities/**",
-		Method: "*",
-	},
+	{Route: "/core/**", Method: "*"},
+	{Route: "/users", Method: "*"},
+	{Route: "/users/**", Method: "*"},
+	{Route: "/applications", Method: "*"},
+	{Route: "/applications/**", Method: "*"},
+	{Route: "/groups", Method: "*"},
+	{Route: "/groups/**", Method: "*"},
+	{Route: "/entities", Method: "*"},
+	{Route: "/entities/**", Method: "*"},
 }
 
 var Env = os.Getenv("ENV")
