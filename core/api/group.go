@@ -224,7 +224,8 @@ func AddGroupMember(c *gin.Context) {
 func RemoveGroupMember(c *gin.Context) {
 	id := c.Param("id")
 	entityID := c.Param("entityID")
-	if err := service.DeleteGroupMember(id, entityID); err != nil {
+	source := c.Query("source")
+	if err := service.DeleteGroupMember(id, entityID, source); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

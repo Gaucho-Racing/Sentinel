@@ -122,8 +122,30 @@ func UpdateGroupMember(member model.GroupMember) (model.GroupMember, error) {
 	return member, nil
 }
 
-func DeleteGroupMember(groupID string, entityID string) error {
-	if err := database.DB.Where("group_id = ? AND entity_id = ?", groupID, entityID).Delete(&model.GroupMember{}).Error; err != nil {
+// GetGroupMembersForEntity returns every GroupMember row for an entity,
+// optionally filtered to a single Source. An empty source returns all rows.
+func GetGroupMembersForEntity(entityID, source string) ([]model.GroupMember, error) {
+	members := []model.GroupMember{}
+	q := database.DB.Where("entity_id = ?", entityID)
+	if source != "" {
+		q = q.Where("source = ?", source)
+	}
+	if err := q.Find(&members).Error; err != nil {
+		return []model.GroupMember{}, err
+	}
+	return members, nil
+}
+
+// DeleteGroupMember removes the membership row for (groupID, entityID).
+// If source is non-empty, the delete is scoped to that source — preventing
+// callers from accidentally removing a row written by a different source
+// (e.g. discord reconciliation deleting a DIRECT membership).
+func DeleteGroupMember(groupID, entityID, source string) error {
+	q := database.DB.Where("group_id = ? AND entity_id = ?", groupID, entityID)
+	if source != "" {
+		q = q.Where("source = ?", source)
+	}
+	if err := q.Delete(&model.GroupMember{}).Error; err != nil {
 		return err
 	}
 	return nil
