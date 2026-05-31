@@ -68,18 +68,18 @@ func GetEntityGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
-// GetEntityGroupMembers returns the raw GroupMember rows for an entity,
+// GetEntityMemberships returns the raw GroupMember rows for an entity,
 // optionally filtered by source via the ?source= query param. Used by
 // integration services to read their own membership writes for diffing.
-func GetEntityGroupMembers(c *gin.Context) {
+func GetEntityMemberships(c *gin.Context) {
 	entityID := c.Param("entityID")
 	source := c.Query("source")
-	members, err := service.GetGroupMembersForEntity(entityID, source)
+	memberships, err := service.GetMembershipsForEntity(entityID, source)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, members)
+	c.JSON(http.StatusOK, memberships)
 }
 
 func GetEntityByExternalAuth(c *gin.Context) {

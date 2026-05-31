@@ -117,7 +117,7 @@ func computeDesiredDiscordGroups(userRoles []string) ([]string, error) {
 
 func getEntityDiscordMemberships(entityID string) ([]groupMemberRow, error) {
 	var rows []groupMemberRow
-	if err := sentinel.Get("/core/entity/"+entityID+"/group-members?source=DISCORD", &rows); err != nil {
+	if err := sentinel.Get("/core/entity/"+entityID+"/memberships?source=DISCORD", &rows); err != nil {
 		return nil, err
 	}
 	return rows, nil

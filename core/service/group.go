@@ -122,9 +122,9 @@ func UpdateGroupMember(member model.GroupMember) (model.GroupMember, error) {
 	return member, nil
 }
 
-// GetGroupMembersForEntity returns every GroupMember row for an entity,
+// GetMembershipsForEntity returns every GroupMember row for an entity,
 // optionally filtered to a single Source. An empty source returns all rows.
-func GetGroupMembersForEntity(entityID, source string) ([]model.GroupMember, error) {
+func GetMembershipsForEntity(entityID, source string) ([]model.GroupMember, error) {
 	members := []model.GroupMember{}
 	q := database.DB.Where("entity_id = ?", entityID)
 	if source != "" {

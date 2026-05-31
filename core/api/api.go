@@ -50,7 +50,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/entity", CreateEntity)
 	router.GET("/core/entity/:entityID", GetEntityByID)
 	router.GET("/core/entity/:entityID/groups", GetEntityGroups)
-	router.GET("/core/entity/:entityID/group-members", GetEntityGroupMembers)
+	router.GET("/core/entity/:entityID/memberships", GetEntityMemberships)
 	router.GET("/core/entity/:entityID/logins", GetEntityLogins)
 	router.POST("/core/entity/:entityID/email-auth", CreateEntityEmailAuth)
 	router.POST("/core/entity/:entityID/phone-auth", CreateEntityPhoneAuth)
