@@ -114,6 +114,9 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	}
 
 	service.SyncDiscordUserAvatar(m.User.ID, m.AvatarURL("256"))
+	if err := service.ReconcileGroupsForDiscordUser(m.User.ID, m.Roles); err != nil {
+		logger.SugarLogger.Errorf("group sync: reconcile failed for %s: %v", m.User.ID, err)
+	}
 }
 
 func OnGuildMemberRemove(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
