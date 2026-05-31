@@ -20,6 +20,7 @@ func InitializeBot() {
 	service.Discord.AddHandler(OnGuildMemberAdd)
 	service.Discord.AddHandler(OnGuildMemberUpdate)
 	service.Discord.AddHandler(OnGuildMemberRemove)
+	service.Discord.AddHandler(OnUserUpdate)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
@@ -120,6 +121,14 @@ func OnGuildMemberRemove(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
 		return
 	}
 	logger.SugarLogger.Infof("GuildMemberRemove: user=%s", m.User.ID)
+}
+
+func OnUserUpdate(s *discordgo.Session, u *discordgo.UserUpdate) {
+	if u == nil || u.User == nil {
+		return
+	}
+	logger.SugarLogger.Infof("UserUpdate: user=%s username=%s", u.ID, u.Username)
+	service.SyncDiscordUserAvatar(u.ID, u.AvatarURL("256"))
 }
 
 func diffRoles(before, after []string) (added, removed []string) {
