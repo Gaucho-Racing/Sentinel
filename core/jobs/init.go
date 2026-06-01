@@ -22,7 +22,6 @@ func InitializeCore() {
 	initializeDefaultServiceAccounts()
 	initializeAdminsGroup()
 	linkAdminsGroupToSentinelApp()
-	SeedDevData()
 	logger.SugarLogger.Infoln("Finished initializing sentinel-core")
 }
 
