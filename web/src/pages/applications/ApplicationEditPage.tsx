@@ -6,6 +6,7 @@ import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -17,10 +18,22 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { api } from "@/lib/api"
-import { redirectURIWildcardExamples, type Application } from "@/lib/applications"
+import {
+  redirectURIWildcardExamples,
+  type Application,
+  type ApplicationGroupLink,
+} from "@/lib/applications"
+import type { Group } from "@/lib/groups"
 
 function BasicInfoCard({
   name,
@@ -240,6 +253,129 @@ function RedirectURIsCard({
   )
 }
 
+function LinkedGroupsCard({
+  links,
+  allGroups,
+  onAdd,
+  onRemove,
+  onToggleRequired,
+}: {
+  links: { group_id: string; required: boolean }[]
+  allGroups: Group[]
+  onAdd: (groupID: string, required: boolean) => void
+  onRemove: (groupID: string) => void
+  onToggleRequired: (groupID: string) => void
+}) {
+  const [draftGroupID, setDraftGroupID] = useState("")
+  const [draftRequired, setDraftRequired] = useState(false)
+
+  const linkedSet = useMemo(() => new Set(links.map((l) => l.group_id)), [links])
+  const groupByID = useMemo(() => {
+    const m = new Map<string, Group>()
+    for (const g of allGroups) m.set(g.id, g)
+    return m
+  }, [allGroups])
+  const availableGroups = useMemo(
+    () => allGroups.filter((g) => !linkedSet.has(g.id)),
+    [allGroups, linkedSet],
+  )
+
+  function handleAdd() {
+    if (!draftGroupID) return
+    onAdd(draftGroupID, draftRequired)
+    setDraftGroupID("")
+    setDraftRequired(false)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Linked groups</CardTitle>
+        <CardDescription>
+          Groups linked here flow into the token's <code className="font-mono text-xs">groups</code>{" "}
+          claim during OAuth. Mark a link as <span className="font-medium">required</span> to gate
+          access — users must be in at least one required group to obtain a token.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {links.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No groups linked yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {links.map((link) => {
+              const g = groupByID.get(link.group_id)
+              return (
+                <li
+                  key={link.group_id}
+                  className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5"
+                >
+                  <span className="flex-1 truncate text-sm">
+                    {g?.name ?? (
+                      <code className="font-mono text-xs text-muted-foreground">
+                        {link.group_id}
+                      </code>
+                    )}
+                  </span>
+                  <Badge
+                    variant={link.required ? "default" : "outline"}
+                    className="cursor-pointer select-none"
+                    onClick={() => onToggleRequired(link.group_id)}
+                    title={
+                      link.required
+                        ? "Required for access — click to make optional"
+                        : "Optional — click to require for access"
+                    }
+                  >
+                    {link.required ? "Required" : "Optional"}
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => onRemove(link.group_id)}
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <Select value={draftGroupID} onValueChange={setDraftGroupID}>
+            <SelectTrigger className="flex-1 min-w-[180px]">
+              <SelectValue placeholder="Select a group to link…" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableGroups.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  No more groups to link.
+                </div>
+              ) : (
+                availableGroups.map((g) => (
+                  <SelectItem key={g.id} value={g.id}>
+                    {g.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <Badge
+            variant={draftRequired ? "default" : "outline"}
+            className="cursor-pointer select-none"
+            onClick={() => setDraftRequired((v) => !v)}
+          >
+            {draftRequired ? "Required" : "Optional"}
+          </Badge>
+          <Button type="button" disabled={!draftGroupID} onClick={handleAdd}>
+            <Plus className="mr-1 size-3.5" />
+            Link
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function ApplicationEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -254,6 +390,24 @@ export default function ApplicationEditPage() {
     enabled: !!id,
   })
 
+  const linksQuery = useQuery({
+    queryKey: ["application", "id", id, "groups"],
+    queryFn: async () => {
+      const res = await api.get<ApplicationGroupLink[]>(`/applications/${id}/groups`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const groupsQuery = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await api.get<Group[]>(`/groups`)
+      return res.data
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
   // Basics form state.
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -264,6 +418,11 @@ export default function ApplicationEditPage() {
   // Staged redirect URI changes — applied on Save.
   const [pendingURIAdds, setPendingURIAdds] = useState<string[]>([])
   const [pendingURIRemoves, setPendingURIRemoves] = useState<Set<string>>(new Set())
+
+  // Staged group-link state. Map<group_id, required>. Initialized from the
+  // server response on first load; mutations only touch this map until Save.
+  const [linkState, setLinkState] = useState<Map<string, boolean>>(new Map())
+  const [linksInitialized, setLinksInitialized] = useState(false)
 
   // Dialog / in-flight state.
   const [submitting, setSubmitting] = useState(false)
@@ -279,6 +438,46 @@ export default function ApplicationEditPage() {
       setInitialized(true)
     }
   }, [query.data, initialized])
+
+  useEffect(() => {
+    if (linksQuery.data && !linksInitialized) {
+      const m = new Map<string, boolean>()
+      for (const l of linksQuery.data) m.set(l.group_id, l.required)
+      setLinkState(m)
+      setLinksInitialized(true)
+    }
+  }, [linksQuery.data, linksInitialized])
+
+  const linkList = useMemo(
+    () => Array.from(linkState, ([group_id, required]) => ({ group_id, required })),
+    [linkState],
+  )
+
+  function handleAddGroupLink(groupID: string, required: boolean) {
+    setLinkState((prev) => {
+      const next = new Map(prev)
+      next.set(groupID, required)
+      return next
+    })
+  }
+
+  function handleRemoveGroupLink(groupID: string) {
+    setLinkState((prev) => {
+      const next = new Map(prev)
+      next.delete(groupID)
+      return next
+    })
+  }
+
+  function handleToggleGroupRequired(groupID: string) {
+    setLinkState((prev) => {
+      const next = new Map(prev)
+      const cur = next.get(groupID)
+      if (cur === undefined) return prev
+      next.set(groupID, !cur)
+      return next
+    })
+  }
 
   const serverURIs = query.data?.redirect_uris ?? []
   const effectiveURIs = [
@@ -312,6 +511,27 @@ export default function ApplicationEditPage() {
       for (const uri of pendingURIAdds) {
         await api.post(`/applications/${id}/redirect-uris`, { redirect_uri: uri })
       }
+
+      // Diff group links against the server state. POST is upsert, so we
+      // send any link whose required flag differs (or doesn't exist yet);
+      // DELETE anything the server has that's no longer in our state.
+      const serverLinks = linksQuery.data ?? []
+      const serverByID = new Map(serverLinks.map((l) => [l.group_id, l.required]))
+      for (const [groupID, required] of linkState) {
+        const serverReq = serverByID.get(groupID)
+        if (serverReq === undefined || serverReq !== required) {
+          await api.post(`/applications/${id}/groups`, {
+            group_id: groupID,
+            required,
+          })
+        }
+      }
+      for (const l of serverLinks) {
+        if (!linkState.has(l.group_id)) {
+          await api.delete(`/applications/${id}/groups/${l.group_id}`)
+        }
+      }
+
       await api.put(`/applications/${id}`, {
         name,
         description,
@@ -319,6 +539,7 @@ export default function ApplicationEditPage() {
         launch_url: launchURL,
       })
       qc.invalidateQueries({ queryKey: ["application", "id", id] })
+      qc.invalidateQueries({ queryKey: ["application", "id", id, "groups"] })
       qc.invalidateQueries({ queryKey: ["applications"] })
       toast.success("Application updated")
       navigate(`/applications/${id}`)
@@ -350,7 +571,7 @@ export default function ApplicationEditPage() {
     }
   }
 
-  if (query.isLoading || !initialized) {
+  if (query.isLoading || !initialized || !linksInitialized) {
     return (
       <PageContainer>
         <Skeleton className="mb-4 h-4 w-24" />
@@ -421,6 +642,13 @@ export default function ApplicationEditPage() {
           uris={effectiveURIs}
           onAddURI={handleAddURI}
           onRemoveURI={handleRemoveURI}
+        />
+        <LinkedGroupsCard
+          links={linkList}
+          allGroups={groupsQuery.data ?? []}
+          onAdd={handleAddGroupLink}
+          onRemove={handleRemoveGroupLink}
+          onToggleRequired={handleToggleGroupRequired}
         />
         <Card>
           <CardHeader>
