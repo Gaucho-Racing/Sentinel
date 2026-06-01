@@ -21,6 +21,7 @@ func InitializeCore() {
 	initializeDefaultEntities()
 	initializeDefaultServiceAccounts()
 	initializeAdminsGroup()
+	linkAdminsGroupToSentinelApp()
 	SeedDevData()
 	logger.SugarLogger.Infoln("Finished initializing sentinel-core")
 }
@@ -117,6 +118,36 @@ func initializeAdminsGroup() {
 		}
 		logger.SugarLogger.Infof("Added %s to Admins group from ADMIN_ENTITY_IDS", entityID)
 	}
+}
+
+// linkAdminsGroupToSentinelApp ensures the Admins group is linked to the
+// Sentinel application so the Admins membership flows into every OAuth
+// app's tokens (Sentinel's linked groups act as a global default for the
+// claim filter). Created with required=false: this is a global default for
+// the claim, not a gate on Sentinel itself.
+//
+// Idempotent: only creates the link if it's missing, so admins toggling
+// the required flag through the UI won't be clobbered on next boot.
+func linkAdminsGroupToSentinelApp() {
+	groups, err := service.GetGroupsForApplication(SentinelApplicationID)
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to check Sentinel app group links: %v", err)
+		return
+	}
+	for _, g := range groups {
+		if g.ID == service.AdminsGroupID {
+			return
+		}
+	}
+	if _, err := service.UpsertApplicationGroup(model.ApplicationGroup{
+		ApplicationID: SentinelApplicationID,
+		GroupID:       service.AdminsGroupID,
+		Required:      false,
+	}); err != nil {
+		logger.SugarLogger.Errorf("Failed to link Admins group to Sentinel app: %v", err)
+		return
+	}
+	logger.SugarLogger.Infof("Linked Admins group to Sentinel application")
 }
 
 func initializeDefaultServiceAccounts() {
