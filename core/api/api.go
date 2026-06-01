@@ -263,3 +263,11 @@ func GetRequestTokenUserID(c *gin.Context) string {
 func RequestTokenHasUserID(c *gin.Context, userID string) bool {
 	return GetRequestTokenUserID(c) == userID
 }
+
+// RequestUserIsAdmin reports whether the bearer's subject entity is a
+// member of the Admins group. Used to grant admin-only write access
+// without requiring per-resource ownership. Returns false for unauth'd
+// requests (entity_id is "").
+func RequestUserIsAdmin(c *gin.Context) bool {
+	return service.IsAdmin(GetRequestTokenEntityID(c))
+}

@@ -12,6 +12,7 @@ import (
 func GetAllApplications(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "applications:read"),
 	))
 	applications, err := service.GetAllApplications()
@@ -25,6 +26,7 @@ func GetAllApplications(c *gin.Context) {
 func GetApplicationByID(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "applications:read"),
 	))
 	id := c.Param("id")
@@ -94,6 +96,7 @@ type createdApplicationResponse struct {
 func CreateApplication(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "applications:write"),
 	))
 
@@ -199,6 +202,7 @@ func DeleteApplication(c *gin.Context) {
 func GetApplicationGroups(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "applications:read"),
 	))
 	id := c.Param("id")
@@ -269,6 +273,7 @@ func RemoveApplicationGroup(c *gin.Context) {
 func GetApplicationRedirectURIs(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "applications:read"),
 	))
 	id := c.Param("id")
@@ -334,12 +339,14 @@ func RemoveApplicationRedirectURI(c *gin.Context) {
 }
 
 // ApplicationWriteAuthorized returns true when the bearer can mutate the
-// given application: admin scope, first-party UI used by the owner, or a
-// third-party with explicit applications:write granted by the owner.
+// given application: admin scope (sentinel:all), first-party UI used by the
+// owner OR an Admins-group member, or a third-party token with
+// applications:write granted by the owner.
 func ApplicationWriteAuthorized(c *gin.Context, app model.Application) bool {
 	return Any(
 		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
+		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
 		RequestTokenHasScope(c, "applications:write") && RequestTokenHasEntityID(c, app.OwnerID),
 	)
 }

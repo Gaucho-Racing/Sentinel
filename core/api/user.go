@@ -11,6 +11,10 @@ import (
 )
 
 func GetAllUsers(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
+	))
 	users, err := service.GetAllUsers()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -98,6 +102,7 @@ func GetUserRecentApplications(c *gin.Context) {
 	id := c.Param("id")
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
 	))
 
@@ -130,6 +135,7 @@ func GetUserLogins(c *gin.Context) {
 	id := c.Param("id")
 	Require(c, Any(
 		RequestTokenHasAudience(c, "sentinel"),
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
 	))
 
