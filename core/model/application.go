@@ -29,9 +29,15 @@ func (ApplicationRedirectURI) TableName() string {
 	return "application_redirect_uri"
 }
 
+// ApplicationGroup links an application to a group. The Required flag, when
+// true, gates access to the application: a user must hold membership in at
+// least one Required-flagged group on the app to obtain a token for it.
+// Non-required links still flow into the token's groups claim — they just
+// don't block access.
 type ApplicationGroup struct {
 	ApplicationID string    `json:"application_id" gorm:"primaryKey"`
 	GroupID       string    `json:"group_id" gorm:"primaryKey"`
+	Required      bool      `json:"required"`
 	CreatedAt     time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 

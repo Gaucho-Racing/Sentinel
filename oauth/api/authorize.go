@@ -139,6 +139,11 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
+	if err := service.CheckAccessGate(req.EntityID, clientID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		return
+	}
+
 	authCode, err := service.GenerateAuthorizationCode(req.EntityID, clientID, scope, redirectURI)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

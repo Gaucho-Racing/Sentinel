@@ -34,6 +34,12 @@ var Port = os.Getenv("PORT")
 var AccessTokenTTL int
 var RefreshTokenTTL int
 
+// SentinelClientID identifies the first-party Sentinel client. Tokens minted
+// for this client include the user's full group set (no filter); group links
+// on this app act as a global default that's added to every other app's
+// filter set during token issuance.
+var SentinelClientID = os.Getenv("SENTINEL_CLIENT_ID")
+
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")

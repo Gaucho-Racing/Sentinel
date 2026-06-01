@@ -8,6 +8,7 @@ import (
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
+	"gorm.io/gorm/clause"
 )
 
 // AccessedApplication is an Application plus the last time the requesting
@@ -164,8 +165,28 @@ func GetApplicationsForGroup(groupID string) ([]model.Application, error) {
 	return applications, nil
 }
 
-func CreateApplicationGroup(ag model.ApplicationGroup) (model.ApplicationGroup, error) {
-	if err := database.DB.Create(&ag).Error; err != nil {
+// GetApplicationGroupLinks returns the raw ApplicationGroup rows for an app.
+// Use this when callers need the Required flag; GetGroupsForApplication
+// returns just the underlying Group objects for display.
+func GetApplicationGroupLinks(applicationID string) ([]model.ApplicationGroup, error) {
+	links := []model.ApplicationGroup{}
+	if err := database.DB.Where("application_id = ?", applicationID).Find(&links).Error; err != nil {
+		return []model.ApplicationGroup{}, err
+	}
+	return links, nil
+}
+
+// UpsertApplicationGroup creates the (application_id, group_id) link if it
+// doesn't exist, or updates the Required flag if it does. Used in place of
+// PATCH since the project convention is POST-for-both. Only `required` is
+// overwritten on conflict — `created_at` is preserved as the original link
+// timestamp.
+func UpsertApplicationGroup(ag model.ApplicationGroup) (model.ApplicationGroup, error) {
+	err := database.DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "application_id"}, {Name: "group_id"}},
+		DoUpdates: clause.AssignmentColumns([]string{"required"}),
+	}).Create(&ag).Error
+	if err != nil {
 		return model.ApplicationGroup{}, err
 	}
 	return ag, nil

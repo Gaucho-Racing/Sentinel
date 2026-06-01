@@ -96,6 +96,11 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		return
 	}
 
+	if err := service.CheckAccessGate(authCode.EntityID, clientID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		return
+	}
+
 	claims := service.BuildTokenClaims(authCode.EntityID, clientID)
 
 	// Generate access token via core
@@ -172,6 +177,15 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// Revoke the old refresh token
 	if tokenID, ok := claims["jti"].(string); ok {
 		sentinel.Delete("/core/token/"+tokenID, nil)
+	}
+
+	// Re-check the gate on refresh — group membership may have changed
+	// since the original grant. If the user no longer qualifies, the
+	// refresh fails and they have to re-authenticate (which will hit the
+	// gate again at the authorize step).
+	if err := service.CheckAccessGate(entityID, clientID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		return
 	}
 
 	// Strip refresh_token from scope for the access token

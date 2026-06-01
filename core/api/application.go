@@ -202,18 +202,21 @@ func GetApplicationGroups(c *gin.Context) {
 		RequestTokenHasScope(c, "applications:read"),
 	))
 	id := c.Param("id")
-	groups, err := service.GetGroupsForApplication(id)
+	links, err := service.GetApplicationGroupLinks(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, groups)
+	c.JSON(http.StatusOK, links)
 }
 
-type addApplicationGroupRequest struct {
-	GroupID string `json:"group_id" binding:"required"`
+type upsertApplicationGroupRequest struct {
+	GroupID  string `json:"group_id" binding:"required"`
+	Required bool   `json:"required"`
 }
 
+// AddApplicationGroup upserts the (application, group) link. If the link
+// already exists, the Required flag is updated in place — no PATCH needed.
 func AddApplicationGroup(c *gin.Context) {
 	id := c.Param("id")
 	existing, err := service.GetApplicationByID(id)
@@ -226,14 +229,15 @@ func AddApplicationGroup(c *gin.Context) {
 		return
 	}
 	Require(c, ApplicationWriteAuthorized(c, existing))
-	var req addApplicationGroupRequest
+	var req upsertApplicationGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	ag, err := service.CreateApplicationGroup(model.ApplicationGroup{
+	ag, err := service.UpsertApplicationGroup(model.ApplicationGroup{
 		ApplicationID: id,
 		GroupID:       req.GroupID,
+		Required:      req.Required,
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
