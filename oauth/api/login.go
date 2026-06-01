@@ -90,8 +90,12 @@ func RefreshSession(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// First-party tokens are scoped to the Sentinel app itself.
-const firstPartyAccessScope = "user:read user:write groups:read applications:read"
+// First-party tokens carry sentinel:all — the privileged scope reserved
+// for Sentinel itself and service accounts. Granular scopes (user:read,
+// groups:read, etc.) exist for third-party OAuth clients to request via
+// the consent flow; first-party sessions don't need them since the audit
+// surface already gates on the sentinel audience or sentinel:all scope.
+const firstPartyAccessScope = "sentinel:all"
 const firstPartyRefreshScope = firstPartyAccessScope + " refresh_token"
 
 // mintFirstPartySession builds claims, mints access + refresh JWTs, and
