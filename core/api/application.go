@@ -202,12 +202,12 @@ func GetApplicationGroups(c *gin.Context) {
 		RequestTokenHasScope(c, "applications:read"),
 	))
 	id := c.Param("id")
-	links, err := service.GetApplicationGroupLinks(id)
+	groups, err := service.GetGroupsForApplication(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, links)
+	c.JSON(http.StatusOK, groups)
 }
 
 type upsertApplicationGroupRequest struct {

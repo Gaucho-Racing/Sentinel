@@ -131,49 +131,53 @@ func DeleteApplication(id string) error {
 	return nil
 }
 
-func GetGroupsForApplication(applicationID string) ([]model.Group, error) {
+func GetGroupsForApplication(applicationID string) ([]GroupWithRequired, error) {
 	appGroups := []model.ApplicationGroup{}
 	if err := database.DB.Where("application_id = ?", applicationID).Find(&appGroups).Error; err != nil {
-		return []model.Group{}, err
+		return []GroupWithRequired{}, err
 	}
-	groups := []model.Group{}
+	groups := []GroupWithRequired{}
 	for _, ag := range appGroups {
 		var group model.Group
 		if err := database.DB.Where("id = ?", ag.GroupID).First(&group).Error; err != nil {
 			logger.SugarLogger.Errorf("Failed to get group %s for application %s: %v", ag.GroupID, applicationID, err)
 			continue
 		}
-		groups = append(groups, group)
+		groups = append(groups, GroupWithRequired{Group: group, Required: ag.Required})
 	}
 	return groups, nil
 }
 
-func GetApplicationsForGroup(groupID string) ([]model.Application, error) {
+func GetApplicationsForGroup(groupID string) ([]ApplicationWithRequired, error) {
 	appGroups := []model.ApplicationGroup{}
 	if err := database.DB.Where("group_id = ?", groupID).Find(&appGroups).Error; err != nil {
-		return []model.Application{}, err
+		return []ApplicationWithRequired{}, err
 	}
-	applications := []model.Application{}
+	applications := []ApplicationWithRequired{}
 	for _, ag := range appGroups {
 		var app model.Application
 		if err := database.DB.Where("id = ?", ag.ApplicationID).First(&app).Error; err != nil {
 			logger.SugarLogger.Errorf("Failed to get application %s for group %s: %v", ag.ApplicationID, groupID, err)
 			continue
 		}
-		applications = append(applications, app)
+		applications = append(applications, ApplicationWithRequired{Application: app, Required: ag.Required})
 	}
 	return applications, nil
 }
 
-// GetApplicationGroupLinks returns the raw ApplicationGroup rows for an app.
-// Use this when callers need the Required flag; GetGroupsForApplication
-// returns just the underlying Group objects for display.
-func GetApplicationGroupLinks(applicationID string) ([]model.ApplicationGroup, error) {
-	links := []model.ApplicationGroup{}
-	if err := database.DB.Where("application_id = ?", applicationID).Find(&links).Error; err != nil {
-		return []model.ApplicationGroup{}, err
-	}
-	return links, nil
+// GroupWithRequired is a Group enriched with the Required flag from its
+// application_group link. Returned by GetGroupsForApplication so the link
+// metadata travels with the canonical group fields and clients don't have
+// to make a second fetch to resolve names.
+type GroupWithRequired struct {
+	model.Group
+	Required bool `json:"required"`
+}
+
+// ApplicationWithRequired mirrors GroupWithRequired in the other direction.
+type ApplicationWithRequired struct {
+	model.Application
+	Required bool `json:"required"`
 }
 
 // UpsertApplicationGroup creates the (application_id, group_id) link if it

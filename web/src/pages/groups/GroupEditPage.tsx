@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Bot, Plus, Trash2, X } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -15,9 +16,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
+import type { Application, ApplicationWithLink } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
 import {
   discordRoleColorHex,
@@ -122,6 +131,112 @@ function DiscordSyncCard({
   )
 }
 
+function LinkedApplicationsCard({
+  links,
+  allApps,
+  onAdd,
+  onRemove,
+  onToggleRequired,
+}: {
+  links: { id: string; name: string; required: boolean }[]
+  allApps: Application[]
+  onAdd: (appID: string, required: boolean) => void
+  onRemove: (appID: string) => void
+  onToggleRequired: (appID: string) => void
+}) {
+  const [draftAppID, setDraftAppID] = useState("")
+  const [draftRequired, setDraftRequired] = useState(false)
+
+  const linkedSet = useMemo(() => new Set(links.map((l) => l.id)), [links])
+  const availableApps = useMemo(
+    () => allApps.filter((a) => !linkedSet.has(a.id)),
+    [allApps, linkedSet],
+  )
+
+  function handleAdd() {
+    if (!draftAppID) return
+    onAdd(draftAppID, draftRequired)
+    setDraftAppID("")
+    setDraftRequired(false)
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Linked applications</CardTitle>
+        <CardDescription>
+          Applications linked to this group see members in their token's{" "}
+          <code className="font-mono text-xs">groups</code> claim. Marking the link as{" "}
+          <span className="font-medium">required</span> gates the app — only users in this group
+          can obtain a token for it.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {links.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No applications linked yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {links.map((link) => (
+              <li
+                key={link.id}
+                className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5"
+              >
+                <span className="flex-1 truncate text-sm">{link.name}</span>
+                <Badge
+                  variant={link.required ? "default" : "outline"}
+                  className="cursor-pointer select-none"
+                  onClick={() => onToggleRequired(link.id)}
+                  title={
+                    link.required
+                      ? "Required for access — click to make optional"
+                      : "Optional — click to require for access"
+                  }
+                >
+                  {link.required ? "Required" : "Optional"}
+                </Badge>
+                <Button variant="ghost" size="icon-sm" onClick={() => onRemove(link.id)}>
+                  <X className="size-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="flex flex-wrap items-center gap-2 pt-2">
+          <Select value={draftAppID} onValueChange={setDraftAppID}>
+            <SelectTrigger className="flex-1 min-w-[180px]">
+              <SelectValue placeholder="Select an application to link…" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableApps.length === 0 ? (
+                <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                  No more applications to link.
+                </div>
+              ) : (
+                availableApps.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.name}
+                  </SelectItem>
+                ))
+              )}
+            </SelectContent>
+          </Select>
+          <Badge
+            variant={draftRequired ? "default" : "outline"}
+            className="cursor-pointer select-none"
+            onClick={() => setDraftRequired((v) => !v)}
+          >
+            {draftRequired ? "Required" : "Optional"}
+          </Badge>
+          <Button type="button" disabled={!draftAppID} onClick={handleAdd}>
+            <Plus className="mr-1 size-3.5" />
+            Link
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function GroupEditPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -157,6 +272,29 @@ export default function GroupEditPage() {
   })
 
   const bindingsQuery = useGroupDiscordBindings(id ?? "")
+
+  const linkedAppsQuery = useQuery({
+    queryKey: ["group", id, "applications"],
+    queryFn: async () => {
+      const res = await api.get<ApplicationWithLink[]>(`/groups/${id}/applications`)
+      return res.data
+    },
+    enabled: !!id,
+  })
+
+  const allAppsQuery = useQuery({
+    queryKey: ["applications"],
+    queryFn: async () => {
+      const res = await api.get<Application[]>(`/applications`)
+      return res.data
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  // Staged application-link state. Map<application_id, required>. Mirrors
+  // the LinkedGroupsCard pattern on the application edit page.
+  const [appLinkState, setAppLinkState] = useState<Map<string, boolean>>(new Map())
+  const [appLinksInitialized, setAppLinksInitialized] = useState(false)
 
   const [values, setValues] = useState<GroupFormValues | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -219,6 +357,50 @@ export default function GroupEditPage() {
     }
   }, [query.data, values])
 
+  useEffect(() => {
+    if (linkedAppsQuery.data && !appLinksInitialized) {
+      const m = new Map<string, boolean>()
+      for (const a of linkedAppsQuery.data) m.set(a.id, a.required)
+      setAppLinkState(m)
+      setAppLinksInitialized(true)
+    }
+  }, [linkedAppsQuery.data, appLinksInitialized])
+
+  const appLinkList = useMemo(() => {
+    const byID = new Map((allAppsQuery.data ?? []).map((a) => [a.id, a.name]))
+    return Array.from(appLinkState, ([id, required]) => ({
+      id,
+      name: byID.get(id) ?? id,
+      required,
+    }))
+  }, [appLinkState, allAppsQuery.data])
+
+  function handleAddAppLink(appID: string, required: boolean) {
+    setAppLinkState((prev) => {
+      const next = new Map(prev)
+      next.set(appID, required)
+      return next
+    })
+  }
+
+  function handleRemoveAppLink(appID: string) {
+    setAppLinkState((prev) => {
+      const next = new Map(prev)
+      next.delete(appID)
+      return next
+    })
+  }
+
+  function handleToggleAppRequired(appID: string) {
+    setAppLinkState((prev) => {
+      const next = new Map(prev)
+      const cur = next.get(appID)
+      if (cur === undefined) return prev
+      next.set(appID, !cur)
+      return next
+    })
+  }
+
   async function commitSave() {
     if (!values || !id) return
     setSubmitting(true)
@@ -240,6 +422,26 @@ export default function GroupEditPage() {
           })
         }
       }
+      // Diff application links against the server state. POST is upsert,
+      // so we send any link whose required flag differs (or doesn't exist
+      // yet); DELETE anything the server has that's no longer in our state.
+      const serverAppLinks = linkedAppsQuery.data ?? []
+      const serverAppByID = new Map(serverAppLinks.map((l) => [l.id, l.required]))
+      for (const [appID, required] of appLinkState) {
+        const serverReq = serverAppByID.get(appID)
+        if (serverReq === undefined || serverReq !== required) {
+          await api.post(`/applications/${appID}/groups`, {
+            group_id: id,
+            required,
+          })
+        }
+      }
+      for (const a of serverAppLinks) {
+        if (!appLinkState.has(a.id)) {
+          await api.delete(`/applications/${a.id}/groups/${id}`)
+        }
+      }
+
       await api.post<Group>("/groups", {
         id,
         name: values.name.trim(),
@@ -250,6 +452,7 @@ export default function GroupEditPage() {
       qc.invalidateQueries({ queryKey: ["group", id] })
       qc.invalidateQueries({ queryKey: ["group", id, "members"] })
       qc.invalidateQueries({ queryKey: ["group", id, "discord-bindings"] })
+      qc.invalidateQueries({ queryKey: ["group", id, "applications"] })
       toast.success("Group updated")
       navigate(`/groups/${id}`)
     } catch (err: unknown) {
@@ -412,6 +615,14 @@ export default function GroupEditPage() {
             onRemoveBinding={handleRemoveBinding}
           />
         )}
+
+        <LinkedApplicationsCard
+          links={appLinkList}
+          allApps={allAppsQuery.data ?? []}
+          onAdd={handleAddAppLink}
+          onRemove={handleRemoveAppLink}
+          onToggleRequired={handleToggleAppRequired}
+        />
 
         <Card>
           <CardHeader>

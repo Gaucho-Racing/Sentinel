@@ -1,3 +1,5 @@
+import type { Group } from "./groups"
+
 // Application API shape — mirror of core's model.Application JSON.
 // owner_id is the entity_id of the creator (USER or SERVICE_ACCOUNT entity).
 export type Application = {
@@ -13,16 +15,16 @@ export type Application = {
   created_at: string
 }
 
-// ApplicationGroupLink — mirror of core's model.ApplicationGroup JSON.
-// `required` gates OAuth access: if any linked group on this app has it set
+// GroupWithLink is what `GET /applications/:id/groups` returns — a Group
+// enriched with the `required` flag from its application_group link.
+// `required` gates OAuth access: if any linked group on the app has it set
 // true, the user must be in at least one of those required groups to obtain
 // a token. Non-required links still flow into the token's groups claim.
-export type ApplicationGroupLink = {
-  application_id: string
-  group_id: string
-  required: boolean
-  created_at: string
-}
+export type GroupWithLink = Group & { required: boolean }
+
+// ApplicationWithLink is the inverse — what `GET /groups/:id/applications`
+// returns. Application + the link's `required` flag inline.
+export type ApplicationWithLink = Application & { required: boolean }
 
 // Substitutions chosen to demonstrate that `*` is greedy and matches dots and
 // slashes — the two characters that make wildcard redirect URIs dangerous

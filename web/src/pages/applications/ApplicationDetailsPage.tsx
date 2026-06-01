@@ -7,11 +7,12 @@ import { toast } from "sonner"
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
-import type { Application } from "@/lib/applications"
+import type { Application, GroupWithLink } from "@/lib/applications"
 import type { Entity } from "@/lib/auth"
 
 function initial(name: string) {
@@ -88,6 +89,15 @@ export default function ApplicationDetailsPage() {
     },
     enabled: !!id && secretVisible,
     staleTime: 5 * 60 * 1000,
+  })
+
+  const linkedGroupsQuery = useQuery({
+    queryKey: ["application", "id", id, "groups"],
+    queryFn: async () => {
+      const res = await api.get<GroupWithLink[]>(`/applications/${id}/groups`)
+      return res.data
+    },
+    enabled: !!id,
   })
 
   const ownerId = query.data?.owner_id
@@ -294,6 +304,47 @@ export default function ApplicationDetailsPage() {
                 {app.redirect_uris.map((uri) => (
                   <li key={uri}>
                     <CopyableMono value={uri} label="Redirect URI" />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Linked groups</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!linkedGroupsQuery.data ? (
+              <Skeleton className="h-10 w-full" />
+            ) : linkedGroupsQuery.data.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No groups linked.{" "}
+                <Link
+                  to={`/applications/${app.id}/edit`}
+                  className="text-foreground hover:text-gr-pink"
+                >
+                  Link one
+                </Link>
+                .
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {linkedGroupsQuery.data.map((g) => (
+                  <li
+                    key={g.id}
+                    className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5"
+                  >
+                    <Link
+                      to={`/groups/${g.id}`}
+                      className="flex-1 truncate text-sm hover:text-gr-pink"
+                    >
+                      {g.name}
+                    </Link>
+                    <Badge variant={g.required ? "default" : "outline"}>
+                      {g.required ? "Required" : "Optional"}
+                    </Badge>
                   </li>
                 ))}
               </ul>

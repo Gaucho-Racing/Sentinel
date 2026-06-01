@@ -31,7 +31,7 @@ import { api } from "@/lib/api"
 import {
   redirectURIWildcardExamples,
   type Application,
-  type ApplicationGroupLink,
+  type GroupWithLink,
 } from "@/lib/applications"
 import type { Group } from "@/lib/groups"
 
@@ -260,7 +260,7 @@ function LinkedGroupsCard({
   onRemove,
   onToggleRequired,
 }: {
-  links: { group_id: string; required: boolean }[]
+  links: { id: string; name: string; required: boolean }[]
   allGroups: Group[]
   onAdd: (groupID: string, required: boolean) => void
   onRemove: (groupID: string) => void
@@ -269,12 +269,7 @@ function LinkedGroupsCard({
   const [draftGroupID, setDraftGroupID] = useState("")
   const [draftRequired, setDraftRequired] = useState(false)
 
-  const linkedSet = useMemo(() => new Set(links.map((l) => l.group_id)), [links])
-  const groupByID = useMemo(() => {
-    const m = new Map<string, Group>()
-    for (const g of allGroups) m.set(g.id, g)
-    return m
-  }, [allGroups])
+  const linkedSet = useMemo(() => new Set(links.map((l) => l.id)), [links])
   const availableGroups = useMemo(
     () => allGroups.filter((g) => !linkedSet.has(g.id)),
     [allGroups, linkedSet],
@@ -302,42 +297,33 @@ function LinkedGroupsCard({
           <p className="text-sm text-muted-foreground">No groups linked yet.</p>
         ) : (
           <ul className="space-y-2">
-            {links.map((link) => {
-              const g = groupByID.get(link.group_id)
-              return (
-                <li
-                  key={link.group_id}
-                  className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5"
+            {links.map((link) => (
+              <li
+                key={link.id}
+                className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5"
+              >
+                <span className="flex-1 truncate text-sm">{link.name}</span>
+                <Badge
+                  variant={link.required ? "default" : "outline"}
+                  className="cursor-pointer select-none"
+                  onClick={() => onToggleRequired(link.id)}
+                  title={
+                    link.required
+                      ? "Required for access — click to make optional"
+                      : "Optional — click to require for access"
+                  }
                 >
-                  <span className="flex-1 truncate text-sm">
-                    {g?.name ?? (
-                      <code className="font-mono text-xs text-muted-foreground">
-                        {link.group_id}
-                      </code>
-                    )}
-                  </span>
-                  <Badge
-                    variant={link.required ? "default" : "outline"}
-                    className="cursor-pointer select-none"
-                    onClick={() => onToggleRequired(link.group_id)}
-                    title={
-                      link.required
-                        ? "Required for access — click to make optional"
-                        : "Optional — click to require for access"
-                    }
-                  >
-                    {link.required ? "Required" : "Optional"}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => onRemove(link.group_id)}
-                  >
-                    <X className="size-3.5" />
-                  </Button>
-                </li>
-              )
-            })}
+                  {link.required ? "Required" : "Optional"}
+                </Badge>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => onRemove(link.id)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </li>
+            ))}
           </ul>
         )}
         <div className="flex flex-wrap items-center gap-2 pt-2">
@@ -393,7 +379,7 @@ export default function ApplicationEditPage() {
   const linksQuery = useQuery({
     queryKey: ["application", "id", id, "groups"],
     queryFn: async () => {
-      const res = await api.get<ApplicationGroupLink[]>(`/applications/${id}/groups`)
+      const res = await api.get<GroupWithLink[]>(`/applications/${id}/groups`)
       return res.data
     },
     enabled: !!id,
@@ -442,16 +428,23 @@ export default function ApplicationEditPage() {
   useEffect(() => {
     if (linksQuery.data && !linksInitialized) {
       const m = new Map<string, boolean>()
-      for (const l of linksQuery.data) m.set(l.group_id, l.required)
+      for (const l of linksQuery.data) m.set(l.id, l.required)
       setLinkState(m)
       setLinksInitialized(true)
     }
   }, [linksQuery.data, linksInitialized])
 
-  const linkList = useMemo(
-    () => Array.from(linkState, ([group_id, required]) => ({ group_id, required })),
-    [linkState],
-  )
+  // Render rows for the card: each link gets its current desired-required
+  // state from linkState, name from groupsQuery (canonical source). Falls
+  // back to the group_id when names haven't loaded.
+  const linkList = useMemo(() => {
+    const byID = new Map((groupsQuery.data ?? []).map((g) => [g.id, g.name]))
+    return Array.from(linkState, ([id, required]) => ({
+      id,
+      name: byID.get(id) ?? id,
+      required,
+    }))
+  }, [linkState, groupsQuery.data])
 
   function handleAddGroupLink(groupID: string, required: boolean) {
     setLinkState((prev) => {
@@ -516,7 +509,7 @@ export default function ApplicationEditPage() {
       // send any link whose required flag differs (or doesn't exist yet);
       // DELETE anything the server has that's no longer in our state.
       const serverLinks = linksQuery.data ?? []
-      const serverByID = new Map(serverLinks.map((l) => [l.group_id, l.required]))
+      const serverByID = new Map(serverLinks.map((l) => [l.id, l.required]))
       for (const [groupID, required] of linkState) {
         const serverReq = serverByID.get(groupID)
         if (serverReq === undefined || serverReq !== required) {
@@ -527,8 +520,8 @@ export default function ApplicationEditPage() {
         }
       }
       for (const l of serverLinks) {
-        if (!linkState.has(l.group_id)) {
-          await api.delete(`/applications/${id}/groups/${l.group_id}`)
+        if (!linkState.has(l.id)) {
+          await api.delete(`/applications/${id}/groups/${l.id}`)
         }
       }
 
