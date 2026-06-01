@@ -124,7 +124,10 @@ for svc in "${SERVICES[@]}"; do
     FILES+=("${svc}/config/config.go")
 done
 git add "${FILES[@]}"
-git commit -m "release: sentinel ${VERSION}"
+# --allow-empty so the release still cuts when the Version constants are
+# already at target (no-op sed). The release commit is the anchor for the
+# tag; whether it changes files isn't important.
+git commit --allow-empty -m "release: sentinel ${VERSION}"
 git push origin main
 
 gh release create "$TAG" \
