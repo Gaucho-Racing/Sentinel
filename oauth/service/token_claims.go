@@ -117,7 +117,7 @@ func CheckAccessGate(entityID, clientID string) error {
 }
 
 func isSentinelClient(clientID string) bool {
-	return config.SentinelClientID != "" && clientID == config.SentinelClientID
+	return clientID == config.SentinelClientID
 }
 
 func getEntityGroupIDs(entityID string) []string {
@@ -151,8 +151,5 @@ func getAppGroupLinks(clientID string) []applicationGroupLink {
 }
 
 func getSentinelGroupLinks() []applicationGroupLink {
-	if config.SentinelClientID == "" {
-		return nil
-	}
 	return getAppGroupLinks(config.SentinelClientID)
 }

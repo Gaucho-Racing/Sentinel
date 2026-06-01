@@ -34,11 +34,13 @@ var Port = os.Getenv("PORT")
 var AccessTokenTTL int
 var RefreshTokenTTL int
 
-// SentinelClientID identifies the first-party Sentinel client. Tokens minted
-// for this client include the user's full group set (no filter); group links
-// on this app act as a global default that's added to every other app's
-// filter set during token issuance.
-var SentinelClientID = os.Getenv("SENTINEL_CLIENT_ID")
+// SentinelClientID is the first-party identifier used by /auth/login and
+// /auth/refresh when minting tokens. Direct-login tokens carry this as
+// their client_id, which is how token issuance distinguishes Sentinel's
+// own session tokens from third-party OAuth tokens. Group links attached
+// to the matching application row act as a global default that's added
+// to every OAuth app's filter set.
+const SentinelClientID = "sentinel"
 
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")

@@ -91,21 +91,20 @@ func RefreshSession(c *gin.Context) {
 }
 
 // First-party tokens are scoped to the Sentinel app itself.
-const firstPartyClientID = "sentinel"
 const firstPartyAccessScope = "user:read user:write groups:read applications:read"
 const firstPartyRefreshScope = firstPartyAccessScope + " refresh_token"
 
 // mintFirstPartySession builds claims, mints access + refresh JWTs, and
 // records an entity login for audit. Used by /auth/login and /auth/refresh.
 func mintFirstPartySession(c *gin.Context, entityID string) (sessionResponse, error) {
-	claims := service.BuildTokenClaims(entityID, firstPartyClientID)
+	claims := service.BuildTokenClaims(entityID, config.SentinelClientID)
 
-	accessToken, accessTokenID, err := generateToken(entityID, firstPartyClientID, firstPartyAccessScope, config.AccessTokenTTL, claims)
+	accessToken, accessTokenID, err := generateToken(entityID, config.SentinelClientID, firstPartyAccessScope, config.AccessTokenTTL, claims)
 	if err != nil {
 		return sessionResponse{}, errors.New("failed to generate access token")
 	}
 
-	refreshToken, refreshTokenID, err := generateToken(entityID, firstPartyClientID, firstPartyRefreshScope, config.RefreshTokenTTL, claims)
+	refreshToken, refreshTokenID, err := generateToken(entityID, config.SentinelClientID, firstPartyRefreshScope, config.RefreshTokenTTL, claims)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token for %s: %v", entityID, err)
 		refreshToken = ""
@@ -114,7 +113,7 @@ func mintFirstPartySession(c *gin.Context, entityID string) (sessionResponse, er
 
 	sentinel.Post("/core/entity/logins", map[string]string{
 		"entity_id":        entityID,
-		"client_id":        firstPartyClientID,
+		"client_id":        config.SentinelClientID,
 		"scope":            firstPartyAccessScope,
 		"access_token_id":  accessTokenID,
 		"refresh_token_id": refreshTokenID,
