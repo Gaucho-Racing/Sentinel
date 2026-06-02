@@ -82,7 +82,7 @@ func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce st
 	e, _ := fetchOIDCEntity(entityID)
 	claims := identityClaims(e, scope)
 	if GroupsClaimAllowed(scope) {
-		claims["groups"] = FilteredGroups(entityID, clientID)
+		SetGroupClaims(claims, FilteredGroups(entityID, clientID))
 	}
 	claims["auth_time"] = authTime
 	if nonce != "" {
@@ -104,7 +104,7 @@ func BuildUserInfoClaims(entityID string, clientID string, scope string) (map[st
 	}
 	claims := identityClaims(e, scope)
 	if GroupsClaimAllowed(scope) {
-		claims["groups"] = FilteredGroups(entityID, clientID)
+		SetGroupClaims(claims, FilteredGroups(entityID, clientID))
 	}
 	claims["sub"] = entityID
 	return claims, nil
