@@ -346,6 +346,10 @@ export default function OnboardingPage() {
                     ? nonStudentRole
                     : null
                 }
+                isAlumni={
+                  confirmedNonStudentDomain === emailDomain &&
+                  nonStudentRole === "Alumni"
+                }
               />
             )}
             {currentStep === "team" && <TeamStep data={data} update={update} />}

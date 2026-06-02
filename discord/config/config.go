@@ -41,3 +41,16 @@ var OnboardingTokenTTL = 15 * time.Minute
 func IsProduction() bool {
 	return Env == "PROD"
 }
+
+var MembersDiscordRoleID = "820467859477889034"
+var AlumniDiscordRoleID = "817577502968512552"
+var GuestDiscordRoleID = "1511273081824477245"
+
+var AeroSubteamDiscordRoleID = "761114473565519882"
+var BusinessSubteamDiscordRoleID = "761331962563919874"
+var ChassisSubteamDiscordRoleID = "761114557531553824"
+var DataSubteamDiscordRoleID = "1254572624307290202"
+var DrivetrainSubteamDiscordRoleID = "1344560076765007893"
+var ElectronicsSubteamDiscordRoleID = "761116347865890816"
+var FirmwareSubteamDiscordRoleID = "1387486553483509921"
+var SuspensionSubteamDiscordRoleID = "761114667048763423"
