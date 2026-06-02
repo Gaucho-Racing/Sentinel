@@ -36,12 +36,11 @@ type GroupRef struct {
 	Name string
 }
 
-type applicationResponse struct {
-	ID string `json:"id"`
-}
-
+// applicationGroupLink matches a GroupWithRequired element from
+// /core/applications/client/:clientID/groups: the group's own id (json "id",
+// not "group_id") plus the link's required flag.
 type applicationGroupLink struct {
-	GroupID  string `json:"group_id"`
+	GroupID  string `json:"id"`
 	Required bool   `json:"required"`
 }
 
@@ -179,14 +178,12 @@ func getAppGroupLinks(clientID string) []applicationGroupLink {
 	if clientID == "" {
 		return nil
 	}
-	var app applicationResponse
-	if err := sentinel.Get("/applications/client/"+clientID, &app); err != nil {
-		logger.SugarLogger.Debugf("Failed to load application for client %s: %v", clientID, err)
-		return nil
-	}
+	// Use the internal /core route: the public /applications/:id/groups
+	// endpoint requires a bearer this service doesn't carry, and resolving by
+	// client_id here avoids the extra app-lookup hop.
 	var links []applicationGroupLink
-	if err := sentinel.Get("/applications/"+app.ID+"/groups", &links); err != nil {
-		logger.SugarLogger.Errorf("Failed to load group links for app %s: %v", app.ID, err)
+	if err := sentinel.Get("/core/applications/client/"+clientID+"/groups", &links); err != nil {
+		logger.SugarLogger.Errorf("Failed to load group links for client %s: %v", clientID, err)
 		return nil
 	}
 	return links

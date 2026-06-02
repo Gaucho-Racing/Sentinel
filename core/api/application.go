@@ -214,6 +214,30 @@ func GetApplicationGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
+// GetApplicationGroupsByClientID returns an application's group links resolved
+// by client_id. Internal (/core) route, unauthenticated, for service-to-service
+// use by the oauth service when it resolves the groups claim and enforces the
+// access gate — the public /applications/:id/groups route requires a bearer
+// the oauth service doesn't carry.
+func GetApplicationGroupsByClientID(c *gin.Context) {
+	clientID := c.Param("clientID")
+	app, err := service.GetApplicationByClientID(clientID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	groups, err := service.GetGroupsForApplication(app.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, groups)
+}
+
 type upsertApplicationGroupRequest struct {
 	GroupID  string `json:"group_id" binding:"required"`
 	Required bool   `json:"required"`
