@@ -53,6 +53,18 @@ function errorMessage(err: unknown): string | undefined {
   return (err as { response?: { data?: { error?: string } } })?.response?.data?.error
 }
 
+// Returns the app name (possibly "") when the error is a gate denial, or null
+// otherwise — so denials can show an in-app page instead of redirecting.
+function accessDeniedAppName(err: unknown): string | null {
+  const res = (err as {
+    response?: { status?: number; data?: { error?: string; app_name?: string } }
+  })?.response
+  if (res?.status === 403 && res.data?.error === "access_denied") {
+    return res.data.app_name ?? ""
+  }
+  return null
+}
+
 export default function AuthorizePage() {
   const [params] = useSearchParams()
   const location = useLocation()
@@ -68,6 +80,7 @@ export default function AuthorizePage() {
 
   const [busy, setBusy] = useState<Action | null>(null)
   const [success, setSuccess] = useState(false)
+  const [deniedApp, setDeniedApp] = useState<string | null>(null)
   const autoApproved = useRef(false)
 
   // Echo `state` back to the client on every redirect — it's the client's
@@ -123,7 +136,16 @@ export default function AuthorizePage() {
       )
       window.location.href = buildRedirect(res.data.redirect_uri, withState({ code: res.data.code }))
     } catch (err) {
-      // Surface the OAuth error to the client app per the spec rather than
+      // Gate denials get an in-app error page rather than a bounce back to the
+      // client (the gate normally fires at the validate step, but membership
+      // can change between landing and approving).
+      const denied = accessDeniedAppName(err)
+      if (denied !== null) {
+        setBusy(null)
+        setDeniedApp(denied || validate.data?.app_name || "this application")
+        return
+      }
+      // Other errors: surface to the client app per the spec rather than
       // stranding the user on a dead consent screen.
       window.location.href = buildRedirect(
         redirectUri,
@@ -163,6 +185,26 @@ export default function AuthorizePage() {
     return (
       <main className="flex min-h-svh items-center justify-center px-4 py-12">
         <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </main>
+    )
+  }
+
+  // Access-gate denial — show a clear in-app page instead of redirecting back
+  // to the client. Covers the validate-step denial (validate.error) and the
+  // approve-step safety net (deniedApp).
+  const deniedFromValidate = validate.isError ? accessDeniedAppName(validate.error) : null
+  if (deniedApp !== null || deniedFromValidate !== null) {
+    const name = deniedApp ?? deniedFromValidate ?? validate.data?.app_name ?? "this application"
+    return (
+      <main className="flex min-h-svh items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm space-y-2 text-center">
+          <h1 className="text-xl font-semibold tracking-tight">Access denied</h1>
+          <p className="text-sm text-muted-foreground">
+            You don't have access to{" "}
+            <span className="font-medium text-foreground">{name || "this application"}</span>. If
+            you think this is a mistake, reach out to an administrator.
+          </p>
+        </div>
       </main>
     )
   }
