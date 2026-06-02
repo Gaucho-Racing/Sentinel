@@ -99,11 +99,16 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	}
 
 	if err := service.CheckAccessGate(authCode.EntityID, clientID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		writeGateError(c, err)
 		return
 	}
 
-	claims := service.BuildTokenClaims(authCode.EntityID, clientID, authCode.Scope)
+	claims, err := service.BuildTokenClaims(authCode.EntityID, clientID, authCode.Scope)
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to build token claims: %v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+		return
+	}
 
 	// Generate access token via core
 	accessToken, accessTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope, config.AccessTokenTTL, claims)
@@ -133,7 +138,12 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	// the moment the user approved consent (when the code was minted).
 	var idToken string
 	if service.ScopesContain(authCode.Scope, "openid") {
-		idClaims := service.BuildIDTokenClaims(authCode.EntityID, clientID, authCode.Scope, authCode.Nonce, accessToken, authCode.CreatedAt.Unix())
+		idClaims, idErr := service.BuildIDTokenClaims(authCode.EntityID, clientID, authCode.Scope, authCode.Nonce, accessToken, authCode.CreatedAt.Unix())
+		if idErr != nil {
+			logger.SugarLogger.Errorf("Failed to build id token claims: %v", idErr)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+			return
+		}
 		idToken, _, err = generateToken(authCode.EntityID, clientID, authCode.Scope, config.AccessTokenTTL, idClaims)
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)
@@ -199,14 +209,19 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// refresh fails and they have to re-authenticate (which will hit the
 	// gate again at the authorize step).
 	if err := service.CheckAccessGate(entityID, clientID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		writeGateError(c, err)
 		return
 	}
 
 	// Strip refresh_token from scope for the access token
 	accessScope := service.RemoveScope(scope, "refresh_token")
 
-	newClaims := service.BuildTokenClaims(entityID, clientID, accessScope)
+	newClaims, err := service.BuildTokenClaims(entityID, clientID, accessScope)
+	if err != nil {
+		logger.SugarLogger.Errorf("Failed to build token claims: %v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+		return
+	}
 
 	// Generate new access token
 	accessToken, accessTokenID, err := generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, newClaims)
@@ -238,7 +253,12 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// carried forward.
 	var idToken string
 	if service.ScopesContain(accessScope, "openid") {
-		idClaims := service.BuildIDTokenClaims(entityID, clientID, accessScope, "", accessToken, time.Now().Unix())
+		idClaims, idErr := service.BuildIDTokenClaims(entityID, clientID, accessScope, "", accessToken, time.Now().Unix())
+		if idErr != nil {
+			logger.SugarLogger.Errorf("Failed to build id token claims: %v", idErr)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+			return
+		}
 		idToken, _, err = generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, idClaims)
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)
@@ -270,7 +290,6 @@ func generateToken(entityID string, clientID string, scope string, expiresIn int
 	}
 	return result.Token, result.TokenID, nil
 }
-
 
 func validateClientSecret(clientID string, clientSecret string) bool {
 	var result map[string]interface{}

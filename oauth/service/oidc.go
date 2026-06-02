@@ -78,11 +78,18 @@ func identityClaims(e oidcEntity, scope string) map[string]interface{} {
 // time; this supplies the identity, groups, auth_time, nonce, and at_hash
 // claims. Groups are included only when the groups:read scope is granted and
 // follow the same per-client visibility rules as the access token.
-func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce string, accessToken string, authTime int64) map[string]interface{} {
-	e, _ := fetchOIDCEntity(entityID)
+func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce string, accessToken string, authTime int64) (map[string]interface{}, error) {
+	e, err := fetchOIDCEntity(entityID)
+	if err != nil {
+		return nil, err
+	}
 	claims := identityClaims(e, scope)
 	if GroupsClaimAllowed(scope) {
-		SetGroupClaims(claims, FilteredGroups(entityID, clientID))
+		groups, err := FilteredGroups(entityID, clientID)
+		if err != nil {
+			return nil, err
+		}
+		SetGroupClaims(claims, groups)
 	}
 	claims["auth_time"] = authTime
 	if nonce != "" {
@@ -91,7 +98,7 @@ func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce st
 	if accessToken != "" {
 		claims["at_hash"] = AccessTokenHash(accessToken)
 	}
-	return claims
+	return claims, nil
 }
 
 // BuildUserInfoClaims returns the UserInfo response for an entity, filtered by
@@ -104,7 +111,11 @@ func BuildUserInfoClaims(entityID string, clientID string, scope string) (map[st
 	}
 	claims := identityClaims(e, scope)
 	if GroupsClaimAllowed(scope) {
-		SetGroupClaims(claims, FilteredGroups(entityID, clientID))
+		groups, err := FilteredGroups(entityID, clientID)
+		if err != nil {
+			return nil, err
+		}
+		SetGroupClaims(claims, groups)
 	}
 	claims["sub"] = entityID
 	return claims, nil

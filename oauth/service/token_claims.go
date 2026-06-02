@@ -2,9 +2,9 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/gaucho-racing/sentinel/oauth/config"
-	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 )
 
@@ -36,12 +36,11 @@ type GroupRef struct {
 	Name string
 }
 
-type applicationResponse struct {
-	ID string `json:"id"`
-}
-
+// applicationGroupLink matches a GroupWithRequired element from
+// /core/applications/client/:clientID/groups: the group's own id (json "id",
+// not "group_id") plus the link's required flag.
 type applicationGroupLink struct {
-	GroupID  string `json:"group_id"`
+	GroupID  string `json:"id"`
 	Required bool   `json:"required"`
 }
 
@@ -58,13 +57,16 @@ type applicationGroupLink struct {
 //
 // Gate enforcement (CheckAccessGate) is a separate call — BuildTokenClaims
 // assumes the gate has already been passed.
-func BuildTokenClaims(entityID string, clientID string, scope string) map[string]interface{} {
+//
+// Fails closed: any error fetching the identity or group data is returned so
+// the caller aborts token issuance rather than minting a token with silently
+// missing claims (relying parties make authz decisions on these).
+func BuildTokenClaims(entityID string, clientID string, scope string) (map[string]interface{}, error) {
 	claims := map[string]interface{}{}
 
 	var entity entityResponse
 	if err := sentinel.Get("/core/entity/"+entityID, &entity); err != nil {
-		logger.SugarLogger.Errorf("Failed to load entity %s for token claims: %v", entityID, err)
-		return claims
+		return nil, fmt.Errorf("load entity %s: %w", entityID, err)
 	}
 	claims["entity_type"] = entity.Type
 	if entity.User != nil {
@@ -75,10 +77,14 @@ func BuildTokenClaims(entityID string, clientID string, scope string) map[string
 	}
 
 	if GroupsClaimAllowed(scope) {
-		SetGroupClaims(claims, FilteredGroups(entityID, clientID))
+		groups, err := FilteredGroups(entityID, clientID)
+		if err != nil {
+			return nil, err
+		}
+		SetGroupClaims(claims, groups)
 	}
 
-	return claims
+	return claims, nil
 }
 
 // SetGroupClaims writes the group claims onto a claim map: `groups` holds the
@@ -107,18 +113,26 @@ func GroupsClaimAllowed(scope string) bool {
 // BuildTokenClaims: the Sentinel client sees all of the user's groups; any
 // other client sees the user's groups intersected with the union of the
 // client's linked groups and Sentinel's linked groups (the global default).
-func FilteredGroups(entityID string, clientID string) []GroupRef {
-	userGroups := getEntityGroups(entityID)
+func FilteredGroups(entityID string, clientID string) ([]GroupRef, error) {
+	userGroups, err := getEntityGroups(entityID)
+	if err != nil {
+		return nil, err
+	}
 
 	if isSentinelClient(clientID) {
-		return userGroups
+		return userGroups, nil
 	}
 
 	allowed := map[string]struct{}{}
-	for _, link := range getAppGroupLinks(clientID) {
-		allowed[link.GroupID] = struct{}{}
+	appLinks, err := getAppGroupLinks(clientID)
+	if err != nil {
+		return nil, err
 	}
-	for _, link := range getSentinelGroupLinks() {
+	sentinelLinks, err := getSentinelGroupLinks()
+	if err != nil {
+		return nil, err
+	}
+	for _, link := range append(appLinks, sentinelLinks...) {
 		allowed[link.GroupID] = struct{}{}
 	}
 	filtered := make([]GroupRef, 0, len(userGroups))
@@ -127,15 +141,22 @@ func FilteredGroups(entityID string, clientID string) []GroupRef {
 			filtered = append(filtered, g)
 		}
 	}
-	return filtered
+	return filtered, nil
 }
 
 // CheckAccessGate returns ErrAccessDenied when the entity is not in at
 // least one Required-flagged group on the application. Apps with no
 // required-flagged links are open to anyone. The Sentinel client follows
 // the same rule — if it has required links of its own, they apply.
+//
+// Fails closed: a non-ErrAccessDenied error means the gate couldn't be
+// evaluated (core fetch failed). Callers must treat that as a denial, never
+// as "open" — otherwise a transient core outage would bypass gating.
 func CheckAccessGate(entityID, clientID string) error {
-	links := getAppGroupLinks(clientID)
+	links, err := getAppGroupLinks(clientID)
+	if err != nil {
+		return err
+	}
 	required := make([]string, 0, len(links))
 	for _, link := range links {
 		if link.Required {
@@ -145,7 +166,10 @@ func CheckAccessGate(entityID, clientID string) error {
 	if len(required) == 0 {
 		return nil
 	}
-	userGroups := getEntityGroups(entityID)
+	userGroups, err := getEntityGroups(entityID)
+	if err != nil {
+		return err
+	}
 	user := make(map[string]struct{}, len(userGroups))
 	for _, g := range userGroups {
 		user[g.ID] = struct{}{}
@@ -162,36 +186,32 @@ func isSentinelClient(clientID string) bool {
 	return clientID == config.SentinelClientID
 }
 
-func getEntityGroups(entityID string) []GroupRef {
+func getEntityGroups(entityID string) ([]GroupRef, error) {
 	var groups []groupResponse
 	if err := sentinel.Get("/core/entity/"+entityID+"/groups", &groups); err != nil {
-		logger.SugarLogger.Errorf("Failed to load groups for entity %s: %v", entityID, err)
-		return nil
+		return nil, fmt.Errorf("load groups for entity %s: %w", entityID, err)
 	}
 	refs := make([]GroupRef, 0, len(groups))
 	for _, g := range groups {
 		refs = append(refs, GroupRef{ID: g.ID, Name: g.Name})
 	}
-	return refs
+	return refs, nil
 }
 
-func getAppGroupLinks(clientID string) []applicationGroupLink {
+func getAppGroupLinks(clientID string) ([]applicationGroupLink, error) {
 	if clientID == "" {
-		return nil
+		return nil, nil
 	}
-	var app applicationResponse
-	if err := sentinel.Get("/applications/client/"+clientID, &app); err != nil {
-		logger.SugarLogger.Debugf("Failed to load application for client %s: %v", clientID, err)
-		return nil
-	}
+	// Use the internal /core route: the public /applications/:id/groups
+	// endpoint requires a bearer this service doesn't carry, and resolving by
+	// client_id here avoids the extra app-lookup hop.
 	var links []applicationGroupLink
-	if err := sentinel.Get("/applications/"+app.ID+"/groups", &links); err != nil {
-		logger.SugarLogger.Errorf("Failed to load group links for app %s: %v", app.ID, err)
-		return nil
+	if err := sentinel.Get("/core/applications/client/"+clientID+"/groups", &links); err != nil {
+		return nil, fmt.Errorf("load group links for client %s: %w", clientID, err)
 	}
-	return links
+	return links, nil
 }
 
-func getSentinelGroupLinks() []applicationGroupLink {
+func getSentinelGroupLinks() ([]applicationGroupLink, error) {
 	return getAppGroupLinks(config.SentinelClientID)
 }
