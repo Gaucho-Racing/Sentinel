@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/rincon"
@@ -17,7 +19,20 @@ var (
 	ErrRouteResolution     = errors.New("rincon could not resolve route")
 )
 
-var client = resty.New()
+// A short per-request timeout plus a couple of retries softens transient core
+// blips so authz-relevant reads (group links, entity groups) don't fail closed
+// over a momentary hiccup. Retries are limited to idempotent GETs — retrying a
+// POST (token mint, login record) could double-issue.
+var client = resty.New().
+	SetTimeout(5 * time.Second).
+	SetRetryCount(2).
+	SetRetryWaitTime(100 * time.Millisecond).
+	AddRetryCondition(func(r *resty.Response, err error) bool {
+		if r == nil || r.Request == nil || r.Request.Method != http.MethodGet {
+			return false
+		}
+		return err != nil || r.StatusCode() >= 500
+	})
 
 // APIError is returned by every method in this package. Status == 0 means no
 // HTTP response was received (route resolution failure or transport error).

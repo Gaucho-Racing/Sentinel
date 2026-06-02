@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,6 +11,19 @@ import (
 	"github.com/gaucho-racing/sentinel/oauth/service"
 	"github.com/gin-gonic/gin"
 )
+
+// writeGateError translates a CheckAccessGate failure into a response. A
+// genuine denial is 403 access_denied; any other error means the gate couldn't
+// be evaluated (a core fetch failed) — we fail closed with 502 rather than let
+// the login through.
+func writeGateError(c *gin.Context, err error) {
+	if errors.Is(err, service.ErrAccessDenied) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		return
+	}
+	logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)
+	c.JSON(http.StatusBadGateway, gin.H{"error": "server_error", "error_description": "could not verify access"})
+}
 
 type applicationResponse struct {
 	ID           string   `json:"id"`
@@ -146,7 +160,7 @@ func Authorize(c *gin.Context) {
 	}
 
 	if err := service.CheckAccessGate(req.EntityID, clientID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		writeGateError(c, err)
 		return
 	}
 

@@ -101,7 +101,10 @@ const firstPartyRefreshScope = firstPartyAccessScope + " refresh_token"
 // mintFirstPartySession builds claims, mints access + refresh JWTs, and
 // records an entity login for audit. Used by /auth/login and /auth/refresh.
 func mintFirstPartySession(c *gin.Context, entityID string) (sessionResponse, error) {
-	claims := service.BuildTokenClaims(entityID, config.SentinelClientID, firstPartyAccessScope)
+	claims, err := service.BuildTokenClaims(entityID, config.SentinelClientID, firstPartyAccessScope)
+	if err != nil {
+		return sessionResponse{}, err
+	}
 
 	accessToken, accessTokenID, err := generateToken(entityID, config.SentinelClientID, firstPartyAccessScope, config.AccessTokenTTL, claims)
 	if err != nil {
