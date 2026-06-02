@@ -20,6 +20,10 @@ import (
 	"gorm.io/gorm"
 )
 
+// SigningKeyID is the `kid` advertised in the JWKS and stamped into every
+// token header so OIDC relying parties can match a token to its key.
+const SigningKeyID = "1"
+
 // InitializeKeys loads the active RSA signing key from the signing_key
 // table, or generates a fresh keypair and persists it if no active key
 // exists. Persistence keeps sessions valid across core restarts.
@@ -109,7 +113,7 @@ func PublicKeyToJWKS(publicKey *rsa.PublicKey) map[string]interface{} {
 				"kty": "RSA",
 				"use": "sig",
 				"alg": "RS256",
-				"kid": "1",
+				"kid": SigningKeyID,
 				"n":   n,
 				"e":   e,
 			},
@@ -127,7 +131,7 @@ func GenerateToken(entityID string, clientID string, scope string, expiresIn int
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        tokenID,
 			Subject:   entityID,
-			Issuer:    "https://sso.gauchoracing.org",
+			Issuer:    config.Issuer,
 			Audience:  jwt.ClaimStrings{clientID},
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
@@ -135,6 +139,7 @@ func GenerateToken(entityID string, clientID string, scope string, expiresIn int
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, tokenClaims)
+	token.Header["kid"] = SigningKeyID
 	signedToken, err := token.SignedString(config.RsaPrivateKey)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate token: %v", err)

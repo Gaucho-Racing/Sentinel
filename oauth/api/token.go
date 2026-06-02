@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gaucho-racing/sentinel/oauth/config"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
@@ -26,6 +27,7 @@ type tokenResponse struct {
 type exchangeTokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token,omitempty"`
+	IDToken      string `json:"id_token,omitempty"`
 	TokenType    string `json:"token_type"`
 	ExpiresIn    int    `json:"expires_in"`
 	Scope        string `json:"scope"`
@@ -127,9 +129,22 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		"ip_address":       GetClientIP(c),
 	}, nil)
 
+	// OIDC: issue an ID token when the openid scope was granted. auth_time is
+	// the moment the user approved consent (when the code was minted).
+	var idToken string
+	if service.ScopesContain(authCode.Scope, "openid") {
+		idClaims := service.BuildIDTokenClaims(authCode.EntityID, authCode.Scope, authCode.Nonce, accessToken, authCode.CreatedAt.Unix())
+		idToken, _, err = generateToken(authCode.EntityID, clientID, authCode.Scope, config.AccessTokenTTL, idClaims)
+		if err != nil {
+			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)
+			idToken = ""
+		}
+	}
+
 	c.JSON(http.StatusOK, exchangeTokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
+		IDToken:      idToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    config.AccessTokenTTL,
 		Scope:        authCode.Scope,
@@ -217,9 +232,24 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		"ip_address":       GetClientIP(c),
 	}, nil)
 
+	// OIDC: re-issue an ID token on refresh when openid is still in scope. The
+	// original nonce isn't replayed on refresh (per spec), and auth_time
+	// reflects this refresh since the original authentication time isn't
+	// carried forward.
+	var idToken string
+	if service.ScopesContain(accessScope, "openid") {
+		idClaims := service.BuildIDTokenClaims(entityID, accessScope, "", accessToken, time.Now().Unix())
+		idToken, _, err = generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, idClaims)
+		if err != nil {
+			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)
+			idToken = ""
+		}
+	}
+
 	c.JSON(http.StatusOK, exchangeTokenResponse{
 		AccessToken:  accessToken,
 		RefreshToken: newRefreshToken,
+		IDToken:      idToken,
 		TokenType:    "Bearer",
 		ExpiresIn:    config.AccessTokenTTL,
 		Scope:        accessScope,

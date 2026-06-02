@@ -116,6 +116,14 @@ routes:
       strip_prefix: /api
     envelope: passthrough
 
+  # OIDC discovery must live at the issuer root (no /api prefix), so route it
+  # straight to oauth without stripping anything.
+  - name: well-known
+    match:
+      path: /.well-known/*
+    upstream: oauth
+    envelope: passthrough
+
   - name: web-frontend
     match:
       path: /*

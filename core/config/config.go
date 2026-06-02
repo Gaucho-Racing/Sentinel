@@ -32,6 +32,11 @@ var Routes = []rincon.Route{
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 
+// Issuer is the OIDC issuer identifier. It MUST be a byte-exact match of the
+// `iss` claim in issued tokens and the `issuer` field of the OAuth discovery
+// document, so both services read it from the same ISSUER env var.
+var Issuer = os.Getenv("ISSUER")
+
 // Comma-separated entity IDs to bootstrap into the Admins group on boot.
 // Idempotent; safe to set in any environment.
 var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")

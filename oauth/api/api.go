@@ -38,6 +38,10 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/oauth/authorize", ValidateAuthorize)
 	router.POST("/oauth/authorize", Authorize)
 	router.POST("/oauth/token", ExchangeToken)
+	router.GET("/oauth/userinfo", UserInfo)
+	router.POST("/oauth/userinfo", UserInfo)
+
+	router.GET("/.well-known/openid-configuration", OpenIDConfiguration)
 
 	router.POST("/auth/login/email-password", LoginEmailPassword)
 	router.POST("/auth/refresh", RefreshSession)

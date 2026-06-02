@@ -36,6 +36,10 @@ func Verify() {
 		DatabaseName = "sentinel"
 		logger.SugarLogger.Infof("DATABASE_NAME is not set, defaulting to %s", DatabaseName)
 	}
+	if Issuer == "" {
+		Issuer = "https://sso.gauchoracing.com"
+		logger.SugarLogger.Infof("ISSUER is not set, defaulting to %s", Issuer)
+	}
 	AccessTokenTTL = parseIntEnv("ACCESS_TOKEN_TTL", 30*60)
 	RefreshTokenTTL = parseIntEnv("REFRESH_TOKEN_TTL", 7*24*60*60)
 }

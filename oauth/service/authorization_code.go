@@ -9,7 +9,7 @@ import (
 	"github.com/gaucho-racing/sentinel/oauth/model"
 )
 
-func GenerateAuthorizationCode(entityID string, clientID string, scope string, redirectURI string) (model.AuthorizationCode, error) {
+func GenerateAuthorizationCode(entityID string, clientID string, scope string, redirectURI string, nonce string) (model.AuthorizationCode, error) {
 	code := generateCryptoString(32)
 	authCode := model.AuthorizationCode{
 		Code:        code,
@@ -17,6 +17,7 @@ func GenerateAuthorizationCode(entityID string, clientID string, scope string, r
 		ClientID:    clientID,
 		Scope:       scope,
 		RedirectURI: redirectURI,
+		Nonce:       nonce,
 		ExpiresAt:   time.Now().Add(5 * time.Minute),
 	}
 	if err := database.DB.Create(&authCode).Error; err != nil {

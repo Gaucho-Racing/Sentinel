@@ -8,6 +8,7 @@ type AuthorizationCode struct {
 	ClientID    string    `json:"client_id"`
 	Scope       string    `json:"scope"`
 	RedirectURI string    `json:"redirect_uri"`
+	Nonce       string    `json:"nonce"`
 	ExpiresAt   time.Time `json:"expires_at"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 }

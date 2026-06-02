@@ -63,6 +63,7 @@ export default function AuthorizePage() {
   const redirectUri = params.get("redirect_uri") ?? ""
   const scope = params.get("scope") ?? ""
   const state = params.get("state")
+  const nonce = params.get("nonce")
   const prompt = params.get("prompt") ?? ""
 
   const [busy, setBusy] = useState<Action | null>(null)
@@ -109,6 +110,9 @@ export default function AuthorizePage() {
         redirect_uri: redirectUri,
         scope: resolvedScope,
       })
+      // Bind the OIDC nonce to the authorization code so the backend can echo
+      // it into the issued ID token.
+      if (nonce) search.set("nonce", nonce)
       const res = await api.post<{ code: string; redirect_uri: string }>(
         `/oauth/authorize?${search.toString()}`,
         { entity_id: session?.entityId },
