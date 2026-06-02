@@ -1,0 +1,122 @@
+name: release-infra-pr
+run-name: Open infra image-bump PR for ${{ github.event.release.tag_name }}
+
+# When a release is published, open a PR into the infrastructure repo that
+# bumps the sentinel service image tags to the new version. Fires on the
+# release event (not tag push) so it only ever runs for real releases.
+#
+# Requires repo secret INFRA_PR_TOKEN: a PAT (or GitHub App token) with
+# contents:write + pull-requests:write on Gaucho-Racing/infrastructure. The
+# default GITHUB_TOKEN can't write to another repo.
+on:
+  release:
+    types: [published]
+
+env:
+  INFRA_REPO: Gaucho-Racing/infrastructure
+  KUSTOMIZATION: infra/kubernetes/manifests/sentinel/kustomization.yaml
+  SERVICES: "core oauth discord web"
+
+jobs:
+  infra-pr:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout sentinel (full history + tags)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Checkout infrastructure
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPO }}
+          token: ${{ secrets.INFRA_PR_TOKEN }}
+          path: infra
+
+      - name: Resolve versions
+        id: versions
+        run: |
+          NEW_TAG="${{ github.event.release.tag_name }}"
+          NEW="${NEW_TAG#v}"
+          OLD="$(yq '.images[] | select(.name == "ghcr.io/gaucho-racing/sentinel-core") | .newTag' "$KUSTOMIZATION")"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
+          echo "old_tag=v$OLD" >> "$GITHUB_OUTPUT"
+          if [ "$NEW" = "$OLD" ]; then
+            echo "infra already at $NEW; nothing to do."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump image tags
+        if: steps.versions.outputs.skip == 'false'
+        env:
+          NEW: ${{ steps.versions.outputs.new }}
+        run: |
+          # Surgically rewrite the newTag of each sentinel-* image only, leaving
+          # rincon/kerbecs and all comments/formatting untouched for a clean diff.
+          awk -v new="$NEW" '
+            $0 ~ "- name: ghcr.io/gaucho-racing/sentinel-(core|oauth|discord|web)$" { insent=1; print; next }
+            insent==1 && $1=="newTag:" { sub(/newTag:[[:space:]]*.*/, "newTag: " new); insent=0 }
+            { print }
+          ' "$KUSTOMIZATION" > "$KUSTOMIZATION.tmp" && mv "$KUSTOMIZATION.tmp" "$KUSTOMIZATION"
+          echo "--- diff ---"
+          git -C infra diff -- kubernetes/manifests/sentinel/kustomization.yaml
+
+      - name: Build changelog
+        if: steps.versions.outputs.skip == 'false'
+        env:
+          NEW_TAG: ${{ steps.versions.outputs.new_tag }}
+          OLD_TAG: ${{ steps.versions.outputs.old_tag }}
+        run: |
+          {
+            echo "Bumps the sentinel service images to **${NEW_TAG#v}**:"
+            echo
+            for svc in $SERVICES; do echo "- \`sentinel-$svc\` → \`${NEW_TAG#v}\`"; done
+            echo
+            echo "## Changes since ${OLD_TAG} (currently deployed)"
+            echo
+            if git rev-parse "$OLD_TAG" >/dev/null 2>&1; then
+              COMMITS="$(git log "${OLD_TAG}..${NEW_TAG}" --no-merges --pretty=format:'- %s (%h)')"
+              if [ -n "$COMMITS" ]; then echo "$COMMITS"; else echo "_No non-merge commits between ${OLD_TAG} and ${NEW_TAG}._"; fi
+            else
+              echo "_Previous tag ${OLD_TAG} not found in history; showing the latest commits instead._"
+              echo
+              git log -20 --no-merges --pretty=format:'- %s (%h)'
+            fi
+            echo
+            echo
+            echo "---"
+            echo "_Opened automatically by the \`release-infra-pr\` workflow on release ${NEW_TAG}._"
+          } > "$RUNNER_TEMP/pr-body.md"
+          cat "$RUNNER_TEMP/pr-body.md"
+
+      - name: Create pull request
+        if: steps.versions.outputs.skip == 'false'
+        working-directory: infra
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_PR_TOKEN }}
+          NEW: ${{ steps.versions.outputs.new }}
+          NEW_TAG: ${{ steps.versions.outputs.new_tag }}
+        run: |
+          BRANCH="bot/bump-sentinel-${NEW}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -C "$BRANCH"
+          git commit -am "release: bump sentinel services to ${NEW}"
+          git push -f -u origin "$BRANCH"
+          if [ -n "$(gh pr list --repo "$INFRA_REPO" --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
+            echo "PR already open for $BRANCH; pushed the updated branch."
+          else
+            gh pr create \
+              --repo "$INFRA_REPO" \
+              --base main \
+              --head "$BRANCH" \
+              --title "release: bump sentinel services to ${NEW}" \
+              --body-file "$RUNNER_TEMP/pr-body.md"
+          fi
