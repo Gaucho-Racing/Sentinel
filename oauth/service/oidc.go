@@ -81,7 +81,7 @@ func identityClaims(e oidcEntity, scope string) map[string]interface{} {
 func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce string, accessToken string, authTime int64) map[string]interface{} {
 	e, _ := fetchOIDCEntity(entityID)
 	claims := identityClaims(e, scope)
-	if ScopesContain(scope, "groups:read") {
+	if GroupsClaimAllowed(scope) {
 		claims["groups"] = FilteredGroups(entityID, clientID)
 	}
 	claims["auth_time"] = authTime
@@ -103,7 +103,7 @@ func BuildUserInfoClaims(entityID string, clientID string, scope string) (map[st
 		return nil, err
 	}
 	claims := identityClaims(e, scope)
-	if ScopesContain(scope, "groups:read") {
+	if GroupsClaimAllowed(scope) {
 		claims["groups"] = FilteredGroups(entityID, clientID)
 	}
 	claims["sub"] = entityID
