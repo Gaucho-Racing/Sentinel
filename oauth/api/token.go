@@ -133,7 +133,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 	// the moment the user approved consent (when the code was minted).
 	var idToken string
 	if service.ScopesContain(authCode.Scope, "openid") {
-		idClaims := service.BuildIDTokenClaims(authCode.EntityID, authCode.Scope, authCode.Nonce, accessToken, authCode.CreatedAt.Unix())
+		idClaims := service.BuildIDTokenClaims(authCode.EntityID, clientID, authCode.Scope, authCode.Nonce, accessToken, authCode.CreatedAt.Unix())
 		idToken, _, err = generateToken(authCode.EntityID, clientID, authCode.Scope, config.AccessTokenTTL, idClaims)
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)
@@ -238,7 +238,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// carried forward.
 	var idToken string
 	if service.ScopesContain(accessScope, "openid") {
-		idClaims := service.BuildIDTokenClaims(entityID, accessScope, "", accessToken, time.Now().Unix())
+		idClaims := service.BuildIDTokenClaims(entityID, clientID, accessScope, "", accessToken, time.Now().Unix())
 		idToken, _, err = generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, idClaims)
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)

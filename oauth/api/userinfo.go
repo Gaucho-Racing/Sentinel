@@ -37,7 +37,20 @@ func UserInfo(c *gin.Context) {
 		return
 	}
 
-	info, err := service.BuildUserInfoClaims(entityID, scope)
+	// aud is the client the token was issued to — used to apply the same
+	// per-client group filtering the access token gets. Per RFC 7519 it may be
+	// serialized as either an array or a single string.
+	clientID := ""
+	switch aud := claims["aud"].(type) {
+	case []interface{}:
+		if len(aud) > 0 {
+			clientID, _ = aud[0].(string)
+		}
+	case string:
+		clientID = aud
+	}
+
+	info, err := service.BuildUserInfoClaims(entityID, clientID, scope)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load user info"})
 		return

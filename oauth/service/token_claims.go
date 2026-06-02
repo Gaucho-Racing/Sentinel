@@ -63,11 +63,21 @@ func BuildTokenClaims(entityID string, clientID string) map[string]interface{} {
 		claims["service_account_id"] = entity.ServiceAccount.ID
 	}
 
+	claims["groups"] = FilteredGroups(entityID, clientID)
+
+	return claims
+}
+
+// FilteredGroups resolves the group IDs an entity should expose to a given
+// client, applying the same per-client visibility rules described on
+// BuildTokenClaims: the Sentinel client sees all of the user's groups; any
+// other client sees the user's groups intersected with the union of the
+// client's linked groups and Sentinel's linked groups (the global default).
+func FilteredGroups(entityID string, clientID string) []string {
 	userGroups := getEntityGroupIDs(entityID)
 
 	if isSentinelClient(clientID) {
-		claims["groups"] = userGroups
-		return claims
+		return userGroups
 	}
 
 	allowed := map[string]struct{}{}
@@ -83,9 +93,7 @@ func BuildTokenClaims(entityID string, clientID string) map[string]interface{} {
 			filtered = append(filtered, g)
 		}
 	}
-	claims["groups"] = filtered
-
-	return claims
+	return filtered
 }
 
 // CheckAccessGate returns ErrAccessDenied when the entity is not in at

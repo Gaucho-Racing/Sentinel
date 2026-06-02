@@ -75,10 +75,15 @@ func identityClaims(e oidcEntity, scope string) map[string]interface{} {
 
 // BuildIDTokenClaims assembles the OIDC-specific custom claims for an ID token.
 // Registered claims (iss/sub/aud/exp/iat/jti) are stamped by core at signing
-// time; this only supplies the identity, auth_time, nonce, and at_hash claims.
-func BuildIDTokenClaims(entityID string, scope string, nonce string, accessToken string, authTime int64) map[string]interface{} {
+// time; this supplies the identity, groups, auth_time, nonce, and at_hash
+// claims. Groups are included only when the groups:read scope is granted and
+// follow the same per-client visibility rules as the access token.
+func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce string, accessToken string, authTime int64) map[string]interface{} {
 	e, _ := fetchOIDCEntity(entityID)
 	claims := identityClaims(e, scope)
+	if ScopesContain(scope, "groups:read") {
+		claims["groups"] = FilteredGroups(entityID, clientID)
+	}
 	claims["auth_time"] = authTime
 	if nonce != "" {
 		claims["nonce"] = nonce
@@ -90,13 +95,17 @@ func BuildIDTokenClaims(entityID string, scope string, nonce string, accessToken
 }
 
 // BuildUserInfoClaims returns the UserInfo response for an entity, filtered by
-// the access token's granted scopes. `sub` is always present per spec.
-func BuildUserInfoClaims(entityID string, scope string) (map[string]interface{}, error) {
+// the access token's granted scopes. `sub` is always present per spec; groups
+// are included only when the groups:read scope is granted.
+func BuildUserInfoClaims(entityID string, clientID string, scope string) (map[string]interface{}, error) {
 	e, err := fetchOIDCEntity(entityID)
 	if err != nil {
 		return nil, err
 	}
 	claims := identityClaims(e, scope)
+	if ScopesContain(scope, "groups:read") {
+		claims["groups"] = FilteredGroups(entityID, clientID)
+	}
 	claims["sub"] = entityID
 	return claims, nil
 }
