@@ -88,7 +88,11 @@ if git tag -l "$TAG" | grep -q "^${TAG}$"; then
     exit 1
 fi
 
-SERVICES=("core" "oauth" "discord")
+# Go services have a Version constant in config/config.go that needs bumping.
+# IMAGES is the full set whose workflows publish on a tag push — web is
+# tag-triggered too but has no Go version constant to bump.
+GO_SERVICES=("core" "oauth" "discord")
+IMAGES=("core" "oauth" "discord" "web")
 
 echo ""
 echo "=== Release Summary ==="
@@ -98,12 +102,12 @@ echo "  Commit:  $(git rev-parse --short HEAD)"
 echo "  Branch:  main"
 echo ""
 echo "  Files to update:"
-for svc in "${SERVICES[@]}"; do
+for svc in "${GO_SERVICES[@]}"; do
     echo "    ${svc}/config/config.go"
 done
 echo ""
 echo "  Docker images that will be tagged:"
-for svc in "${SERVICES[@]}"; do
+for svc in "${IMAGES[@]}"; do
     echo "    ghcr.io/gaucho-racing/sentinel-${svc}:${SEMVER}"
 done
 echo ""
@@ -115,12 +119,12 @@ fi
 
 # Bump the Version field in each service's rincon.Service struct literal.
 # Matches lines like:  Version:     "5.0.0",
-for svc in "${SERVICES[@]}"; do
+for svc in "${GO_SERVICES[@]}"; do
     sed -i '' "s/Version:.*\".*\"/Version:     \"${SEMVER}\"/" "${REPO_ROOT}/${svc}/config/config.go"
 done
 
 FILES=()
-for svc in "${SERVICES[@]}"; do
+for svc in "${GO_SERVICES[@]}"; do
     FILES+=("${svc}/config/config.go")
 done
 git add "${FILES[@]}"
