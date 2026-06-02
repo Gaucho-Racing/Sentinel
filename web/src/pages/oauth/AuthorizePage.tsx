@@ -1,21 +1,31 @@
+import { useQuery } from "@tanstack/react-query"
 import { Loader2 } from "lucide-react"
-import { useMemo, useState } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { Navigate, useLocation, useSearchParams } from "react-router-dom"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { type Application, mockApplications, mockUser } from "@/lib/mock"
+import { api } from "@/lib/api"
+import { loadSession, useAuth } from "@/lib/auth"
 import { resolveScopes } from "@/lib/scopes"
 import { cn } from "@/lib/utils"
 
-const MOCK_LATENCY_MS = 1000
 const CONVERGE_MS = 250
 const CHECKMARK_DRAW_MS = 650
 const HOLD_MS = 250
 
 type Action = "approve" | "deny"
+
+type ValidateResponse = {
+  client_id: string
+  redirect_uri: string
+  scope: string
+  prompt: string
+  app_name: string
+  app_icon_url: string
+}
 
 function initials(name: string) {
   return name
@@ -25,11 +35,6 @@ function initials(name: string) {
     .slice(0, 2)
     .join("")
     .toUpperCase()
-}
-
-function findApp(clientId: string | null): Application | undefined {
-  if (!clientId) return undefined
-  return mockApplications.find((app) => app.clientId === clientId)
 }
 
 function buildRedirect(redirectUri: string, params: Record<string, string>) {
@@ -44,47 +49,139 @@ function buildRedirect(redirectUri: string, params: Record<string, string>) {
   }
 }
 
+function errorMessage(err: unknown): string | undefined {
+  return (err as { response?: { data?: { error?: string } } })?.response?.data?.error
+}
+
 export default function AuthorizePage() {
   const [params] = useSearchParams()
+  const location = useLocation()
+  const session = loadSession()
+  const { user } = useAuth()
+
   const clientId = params.get("client_id")
   const redirectUri = params.get("redirect_uri") ?? ""
   const scope = params.get("scope") ?? ""
-
-  const app = useMemo(() => findApp(clientId), [clientId])
-  const scopes = useMemo(() => resolveScopes(scope), [scope])
+  const state = params.get("state")
+  const prompt = params.get("prompt") ?? ""
 
   const [busy, setBusy] = useState<Action | null>(null)
   const [success, setSuccess] = useState(false)
+  const autoApproved = useRef(false)
+
+  // Echo `state` back to the client on every redirect — it's the client's
+  // CSRF token and the spec requires it round-trips untouched.
+  const withState = (extra: Record<string, string>) =>
+    state ? { ...extra, state } : extra
+
+  const validate = useQuery({
+    queryKey: ["oauth-authorize", clientId, redirectUri, scope, prompt, session?.entityId],
+    queryFn: async () => {
+      const search = new URLSearchParams({
+        client_id: clientId ?? "",
+        redirect_uri: redirectUri,
+        scope,
+        entity_id: session?.entityId ?? "",
+      })
+      if (prompt) search.set("prompt", prompt)
+      const res = await api.get<ValidateResponse>(`/oauth/authorize?${search.toString()}`)
+      return res.data
+    },
+    enabled: !!session && !!clientId,
+    retry: false,
+  })
+
+  const resolvedScope = validate.data?.scope ?? scope
+  const scopes = useMemo(() => resolveScopes(resolvedScope), [resolvedScope])
 
   async function complete(action: Action) {
     if (busy) return
     setBusy(action)
-    await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS))
 
-    if (action === "approve") {
+    if (action === "deny") {
+      window.location.href = buildRedirect(redirectUri, withState({ error: "access_denied" }))
+      return
+    }
+
+    try {
+      const search = new URLSearchParams({
+        client_id: clientId ?? "",
+        redirect_uri: redirectUri,
+        scope: resolvedScope,
+      })
+      const res = await api.post<{ code: string; redirect_uri: string }>(
+        `/oauth/authorize?${search.toString()}`,
+        { entity_id: session?.entityId },
+      )
       setSuccess(true)
       await new Promise((resolve) =>
         setTimeout(resolve, CONVERGE_MS + CHECKMARK_DRAW_MS + HOLD_MS),
       )
-      window.location.href = buildRedirect(redirectUri, { code: "mock_authorization_code" })
-    } else {
-      window.location.href = buildRedirect(redirectUri, { error: "access_denied" })
+      window.location.href = buildRedirect(res.data.redirect_uri, withState({ code: res.data.code }))
+    } catch (err) {
+      // Surface the OAuth error to the client app per the spec rather than
+      // stranding the user on a dead consent screen.
+      window.location.href = buildRedirect(
+        redirectUri,
+        withState({ error: errorMessage(err) ?? "server_error" }),
+      )
     }
   }
 
-  if (!app) {
+  // prompt=none means the user recently consented — approve silently without
+  // flashing the consent screen. The backend resolves the effective prompt.
+  useEffect(() => {
+    if (validate.data?.prompt === "none" && !autoApproved.current) {
+      autoApproved.current = true
+      void complete("approve")
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validate.data?.prompt])
+
+  if (!session) {
+    return <Navigate to="/auth/login" state={{ from: location }} replace />
+  }
+
+  if (!clientId || !redirectUri || !scope) {
     return (
       <main className="flex min-h-svh items-center justify-center px-4 py-12">
         <div className="w-full max-w-sm space-y-2 text-center">
-          <h1 className="text-xl font-semibold tracking-tight">Unknown application</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Invalid request</h1>
           <p className="text-sm text-muted-foreground">
-            No registered application matches{" "}
-            <code className="font-mono text-xs">{clientId ?? "(no client_id)"}</code>.
+            This authorization link is missing required parameters.
           </p>
         </div>
       </main>
     )
   }
+
+  if (validate.isLoading || validate.data?.prompt === "none") {
+    return (
+      <main className="flex min-h-svh items-center justify-center px-4 py-12">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </main>
+    )
+  }
+
+  if (validate.isError || !validate.data) {
+    return (
+      <main className="flex min-h-svh items-center justify-center px-4 py-12">
+        <div className="w-full max-w-sm space-y-2 text-center">
+          <h1 className="text-xl font-semibold tracking-tight">Can't authorize</h1>
+          <p className="text-sm text-muted-foreground">
+            {errorMessage(validate.error) ?? "This authorization request couldn't be validated."}
+          </p>
+        </div>
+      </main>
+    )
+  }
+
+  const app = validate.data
+  const userName = user?.user
+    ? `${user.user.first_name} ${user.user.last_name}`.trim()
+    : ""
+  const userEmail = user?.user?.email ?? ""
+  const userAvatar = user?.user?.avatar_url
 
   return (
     <main className="relative flex min-h-svh items-center justify-center px-4 py-12">
@@ -97,11 +194,20 @@ export default function AuthorizePage() {
         )}
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
-            {app.name.slice(0, 1).toUpperCase()}
-          </div>
+          {app.app_icon_url ? (
+            <Avatar className="size-14 rounded-xl">
+              <AvatarImage src={app.app_icon_url} alt={app.app_name} />
+              <AvatarFallback className="rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
+                {app.app_name.slice(0, 1).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          ) : (
+            <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
+              {app.app_name.slice(0, 1).toUpperCase()}
+            </div>
+          )}
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">{app.name}</h1>
+            <h1 className="text-xl font-semibold tracking-tight">{app.app_name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               wants to access your Sentinel account
             </p>
@@ -112,19 +218,19 @@ export default function AuthorizePage() {
           <p className="text-xs uppercase tracking-wider text-muted-foreground">Signed in as</p>
           <div className="flex items-center gap-3">
             <Avatar className="size-9">
-              <AvatarImage src={mockUser.avatarUrl} alt={mockUser.name} />
-              <AvatarFallback>{initials(mockUser.name)}</AvatarFallback>
+              <AvatarImage src={userAvatar} alt={userName} />
+              <AvatarFallback>{userName ? initials(userName) : "?"}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="text-sm font-medium leading-none">{mockUser.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{mockUser.email}</p>
+              <p className="text-sm font-medium leading-none">{userName || "Your account"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{userEmail}</p>
             </div>
           </div>
         </div>
 
         <div className="space-y-3">
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            This will let {app.name}:
+            This will let {app.app_name}:
           </p>
           <ul className="space-y-3">
             {scopes.map((scope) => (
@@ -147,7 +253,7 @@ export default function AuthorizePage() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
             You'll be redirected to{" "}
-            <span className="break-all font-mono text-foreground">{redirectUri || "—"}</span>
+            <span className="break-all font-mono text-foreground">{app.redirect_uri || "—"}</span>
           </p>
 
           <div className="flex gap-2">
