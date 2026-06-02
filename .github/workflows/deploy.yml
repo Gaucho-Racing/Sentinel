@@ -124,6 +124,7 @@ jobs:
           NEW: ${{ steps.versions.outputs.new }}
           NEW_TAG: ${{ steps.versions.outputs.new_tag }}
           SHORT_SHA: ${{ steps.versions.outputs.short_sha }}
+          RELEASE_AUTHOR: ${{ github.event.release.author.login }}
         run: |
           BRANCH="bot/bump-sentinel-${NEW}"
           git config user.name "github-actions[bot]"
@@ -131,8 +132,9 @@ jobs:
           git switch -C "$BRANCH"
           git commit -am "Deploy: sentinel to ${NEW_TAG} (${SHORT_SHA})"
           git push -f -u origin "$BRANCH"
-          if [ -n "$(gh pr list --repo "$INFRA_REPO" --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
-            echo "PR already open for $BRANCH; pushed the updated branch."
+          PR="$(gh pr list --repo "$INFRA_REPO" --head "$BRANCH" --state open --json number -q '.[0].number')"
+          if [ -n "$PR" ]; then
+            echo "PR #$PR already open for $BRANCH; pushed the updated branch."
           else
             gh pr create \
               --repo "$INFRA_REPO" \
@@ -140,4 +142,12 @@ jobs:
               --head "$BRANCH" \
               --title "Deploy: sentinel to ${NEW_TAG} (${SHORT_SHA})" \
               --body-file "$RUNNER_TEMP/pr-body.md"
+            PR="$(gh pr list --repo "$INFRA_REPO" --head "$BRANCH" --state open --json number -q '.[0].number')"
+          fi
+          # Request a review from the release author. Best-effort: GitHub rejects
+          # requesting a review from the PR's own author (happens when the token
+          # belongs to the release author), so don't fail the run over it.
+          if [ -n "$PR" ] && [ -n "$RELEASE_AUTHOR" ]; then
+            gh pr edit "$PR" --repo "$INFRA_REPO" --add-reviewer "$RELEASE_AUTHOR" \
+              || echo "Could not request review from @$RELEASE_AUTHOR (they may be the PR author)."
           fi
