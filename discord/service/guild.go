@@ -1,10 +1,12 @@
 package service
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
+	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 )
 
 func GetGuildRoles() ([]*discordgo.Role, error) {
@@ -37,4 +39,41 @@ func GetGuildMember(userID string) (*discordgo.Member, error) {
 		return m, nil
 	}
 	return Discord.GuildMember(config.DiscordGuild, userID)
+}
+
+// DiscordRolesForInitialRole returns the guild role IDs that should be
+// granted for a given onboarding initial_role value. Unknown values return
+// nil so callers no-op rather than guess.
+func DiscordRolesForInitialRole(initialRole string) []string {
+	switch initialRole {
+	case "member":
+		return []string{config.MembersDiscordRoleID}
+	case "alumni":
+		return []string{config.AlumniDiscordRoleID}
+	case "mentor", "sponsor", "other":
+		return []string{config.GuestDiscordRoleID}
+	default:
+		return nil
+	}
+}
+
+// AssignOnboardingRoles grants the Discord roles mapped to a user's
+// initial_role. Each grant is best-effort and logged individually so a
+// single failure doesn't skip the remaining roles. Returns the first error
+// encountered (if any) for the caller to surface, but does not stop on it.
+func AssignOnboardingRoles(discordID, initialRole string) error {
+	roleIDs := DiscordRolesForInitialRole(initialRole)
+	if len(roleIDs) == 0 {
+		return nil
+	}
+	var firstErr error
+	for _, roleID := range roleIDs {
+		if err := Discord.GuildMemberRoleAdd(config.DiscordGuild, discordID, roleID); err != nil {
+			logger.SugarLogger.Errorf("Failed to add role %s to discord user %s (initial_role=%s): %v", roleID, discordID, initialRole, err)
+			if firstErr == nil {
+				firstErr = fmt.Errorf("add role %s: %w", roleID, err)
+			}
+		}
+	}
+	return firstErr
 }

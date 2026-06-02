@@ -153,5 +153,9 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 		logger.SugarLogger.Errorf("Failed to mark onboarding token %s used: %v", id, err)
 	}
 
+	if err := AssignOnboardingRoles(token.DiscordID, p.InitialRole); err != nil {
+		logger.SugarLogger.Errorf("Failed to assign onboarding roles for entity %s (discord_id=%s, initial_role=%s): %v", entityResp.ID, token.DiscordID, p.InitialRole, err)
+	}
+
 	return entityResp.ID, nil
 }
