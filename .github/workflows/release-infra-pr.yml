@@ -46,6 +46,7 @@ jobs:
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
           echo "old=$OLD" >> "$GITHUB_OUTPUT"
           echo "old_tag=v$OLD" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$(git rev-parse --short "$GITHUB_SHA")" >> "$GITHUB_OUTPUT"
           if [ "$NEW" = "$OLD" ]; then
             echo "infra already at $NEW; nothing to do."
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -71,25 +72,44 @@ jobs:
       - name: Build changelog
         if: steps.versions.outputs.skip == 'false'
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENTINEL_REPO: ${{ github.repository }}
           NEW_TAG: ${{ steps.versions.outputs.new_tag }}
           OLD_TAG: ${{ steps.versions.outputs.old_tag }}
         run: |
+          # Format each commit as: `sha` subject - @author (#pr)
+          # author is the commit's GitHub login (not the git name), and the PR
+          # link points at the sentinel repo explicitly so it doesn't resolve
+          # against the infra repo the PR lives in.
+          emit_commits() {
+            for sha in $(git rev-list --no-merges "$@"); do
+              short="$(git rev-parse --short "$sha")"
+              # Drop the trailing "(#NN)" GitHub appends on squash merges — we
+              # re-add it as an explicit cross-repo link below.
+              subject="$(git show -s --format=%s "$sha" | sed -E 's/ \(#[0-9]+\)$//')"
+              login="$(gh api "repos/$SENTINEL_REPO/commits/$sha" --jq '.author.login // empty' 2>/dev/null || true)"
+              pr="$(gh api "repos/$SENTINEL_REPO/commits/$sha/pulls" --jq '.[0].number // empty' 2>/dev/null || true)"
+              line="- \`$short\` $subject"
+              [ -n "$login" ] && line="$line - @$login"
+              [ -n "$pr" ] && line="$line ([#$pr](https://github.com/$SENTINEL_REPO/pull/$pr))"
+              echo "$line"
+            done
+          }
           {
             echo "Bumps the sentinel service images to **${NEW_TAG#v}**:"
             echo
             for svc in $SERVICES; do echo "- \`sentinel-$svc\` → \`${NEW_TAG#v}\`"; done
             echo
-            echo "## Changes since ${OLD_TAG} (currently deployed)"
+            echo "## Changes since ${OLD_TAG}"
             echo
             if git rev-parse "$OLD_TAG" >/dev/null 2>&1; then
-              COMMITS="$(git log "${OLD_TAG}..${NEW_TAG}" --no-merges --pretty=format:'- %s (%h)')"
+              COMMITS="$(emit_commits "${OLD_TAG}..${NEW_TAG}")"
               if [ -n "$COMMITS" ]; then echo "$COMMITS"; else echo "_No non-merge commits between ${OLD_TAG} and ${NEW_TAG}._"; fi
             else
               echo "_Previous tag ${OLD_TAG} not found in history; showing the latest commits instead._"
               echo
-              git log -20 --no-merges --pretty=format:'- %s (%h)'
+              emit_commits -20 "$NEW_TAG"
             fi
-            echo
             echo
             echo "---"
             echo "_Opened automatically by the \`release-infra-pr\` workflow on release ${NEW_TAG}._"
@@ -103,12 +123,13 @@ jobs:
           GH_TOKEN: ${{ secrets.INFRA_PR_TOKEN }}
           NEW: ${{ steps.versions.outputs.new }}
           NEW_TAG: ${{ steps.versions.outputs.new_tag }}
+          SHORT_SHA: ${{ steps.versions.outputs.short_sha }}
         run: |
           BRANCH="bot/bump-sentinel-${NEW}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -C "$BRANCH"
-          git commit -am "release: bump sentinel services to ${NEW}"
+          git commit -am "Deploy: sentinel to ${NEW_TAG} (${SHORT_SHA})"
           git push -f -u origin "$BRANCH"
           if [ -n "$(gh pr list --repo "$INFRA_REPO" --head "$BRANCH" --state open --json number -q '.[].number')" ]; then
             echo "PR already open for $BRANCH; pushed the updated branch."
@@ -117,6 +138,6 @@ jobs:
               --repo "$INFRA_REPO" \
               --base main \
               --head "$BRANCH" \
-              --title "release: bump sentinel services to ${NEW}" \
+              --title "Deploy: sentinel to ${NEW_TAG} (${SHORT_SHA})" \
               --body-file "$RUNNER_TEMP/pr-body.md"
           fi
