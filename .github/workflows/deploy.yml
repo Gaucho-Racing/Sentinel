@@ -1,5 +1,5 @@
-name: release-infra-pr
-run-name: Open infra image-bump PR for ${{ github.event.release.tag_name }}
+name: deploy
+run-name: Open infrastructure PR for ${{ github.event.release.tag_name }}
 
 # When a release is published, open a PR into the infrastructure repo that
 # bumps the sentinel service image tags to the new version. Fires on the
@@ -112,7 +112,7 @@ jobs:
             fi
             echo
             echo "---"
-            echo "_Opened automatically by the \`release-infra-pr\` workflow on release ${NEW_TAG}._"
+            echo "_Opened automatically by the \`deploy\` workflow on release ${NEW_TAG}._"
           } > "$RUNNER_TEMP/pr-body.md"
           cat "$RUNNER_TEMP/pr-body.md"
 
