@@ -21,18 +21,23 @@ const NONE_OPTION = { value: "none", label: "N/A" }
 
 type Props = StepProps & {
   nonStudentRole?: string | null
+  isAlumni?: boolean
 }
 
-export function AcademicStep({ data, update, nonStudentRole }: Props) {
+export function AcademicStep({ data, update, nonStudentRole, isAlumni }: Props) {
   const isNonStudent = data.graduateLevel === "none"
   const levels = nonStudentRole ? [...STUDENT_LEVELS, NONE_OPTION] : STUDENT_LEVELS
 
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h2 className="text-lg font-semibold tracking-tight">Academic info</h2>
+        <h2 className="text-lg font-semibold tracking-tight">
+          {isAlumni ? "Graduation info" : "Academic info"}
+        </h2>
         <p className="text-sm text-muted-foreground">
-          Helps us track team eligibility and graduation timelines.
+          {isAlumni
+            ? "Tell us about when you graduated from UCSB."
+            : "Helps us track team eligibility and graduation timelines."}
         </p>
       </div>
 
@@ -52,7 +57,7 @@ export function AcademicStep({ data, update, nonStudentRole }: Props) {
 
       <div className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="graduateLevel">Level</Label>
+          <Label htmlFor="graduateLevel">{isAlumni ? "Degree" : "Level"}</Label>
           <Select
             value={data.graduateLevel}
             onValueChange={(v) => update({ graduateLevel: v })}
@@ -71,12 +76,14 @@ export function AcademicStep({ data, update, nonStudentRole }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="graduationYear">Graduation year</Label>
+          <Label htmlFor="graduationYear">
+            {isAlumni ? "Year graduated" : "Graduation year"}
+          </Label>
           <Input
             id="graduationYear"
             type="number"
             inputMode="numeric"
-            placeholder={isNonStudent ? "Optional" : "2027"}
+            placeholder={isNonStudent ? "Optional" : isAlumni ? "2023" : "2027"}
             min={2020}
             max={2035}
             value={data.graduationYear}
@@ -86,7 +93,7 @@ export function AcademicStep({ data, update, nonStudentRole }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="major">Major</Label>
+          <Label htmlFor="major">{isAlumni ? "Major studied" : "Major"}</Label>
           <Input
             id="major"
             placeholder={isNonStudent ? "Optional" : "Mechanical Engineering"}
