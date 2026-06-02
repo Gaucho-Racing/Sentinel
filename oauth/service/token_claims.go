@@ -25,7 +25,15 @@ type idHolder struct {
 }
 
 type groupResponse struct {
-	ID string `json:"id"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GroupRef is a group's stable ID and its human-readable name, carried
+// together so token claims can expose both.
+type GroupRef struct {
+	ID   string
+	Name string
 }
 
 type applicationResponse struct {
@@ -67,10 +75,24 @@ func BuildTokenClaims(entityID string, clientID string, scope string) map[string
 	}
 
 	if GroupsClaimAllowed(scope) {
-		claims["groups"] = FilteredGroups(entityID, clientID)
+		SetGroupClaims(claims, FilteredGroups(entityID, clientID))
 	}
 
 	return claims
+}
+
+// SetGroupClaims writes the group claims onto a claim map: `groups` holds the
+// human-readable names (what RBAC policies key on) and `group_ids` holds the
+// stable ULIDs (for consumers that need rename-safe references).
+func SetGroupClaims(claims map[string]interface{}, groups []GroupRef) {
+	names := make([]string, 0, len(groups))
+	ids := make([]string, 0, len(groups))
+	for _, g := range groups {
+		names = append(names, g.Name)
+		ids = append(ids, g.ID)
+	}
+	claims["groups"] = names
+	claims["group_ids"] = ids
 }
 
 // GroupsClaimAllowed reports whether a token carrying the given scope should
@@ -80,13 +102,13 @@ func GroupsClaimAllowed(scope string) bool {
 	return ScopesContain(scope, "sentinel:all") || ScopesContain(scope, "groups:read")
 }
 
-// FilteredGroups resolves the group IDs an entity should expose to a given
+// FilteredGroups resolves the groups an entity should expose to a given
 // client, applying the same per-client visibility rules described on
 // BuildTokenClaims: the Sentinel client sees all of the user's groups; any
 // other client sees the user's groups intersected with the union of the
 // client's linked groups and Sentinel's linked groups (the global default).
-func FilteredGroups(entityID string, clientID string) []string {
-	userGroups := getEntityGroupIDs(entityID)
+func FilteredGroups(entityID string, clientID string) []GroupRef {
+	userGroups := getEntityGroups(entityID)
 
 	if isSentinelClient(clientID) {
 		return userGroups
@@ -99,9 +121,9 @@ func FilteredGroups(entityID string, clientID string) []string {
 	for _, link := range getSentinelGroupLinks() {
 		allowed[link.GroupID] = struct{}{}
 	}
-	filtered := make([]string, 0, len(userGroups))
+	filtered := make([]GroupRef, 0, len(userGroups))
 	for _, g := range userGroups {
-		if _, ok := allowed[g]; ok {
+		if _, ok := allowed[g.ID]; ok {
 			filtered = append(filtered, g)
 		}
 	}
@@ -123,10 +145,10 @@ func CheckAccessGate(entityID, clientID string) error {
 	if len(required) == 0 {
 		return nil
 	}
-	userGroups := getEntityGroupIDs(entityID)
+	userGroups := getEntityGroups(entityID)
 	user := make(map[string]struct{}, len(userGroups))
 	for _, g := range userGroups {
-		user[g] = struct{}{}
+		user[g.ID] = struct{}{}
 	}
 	for _, g := range required {
 		if _, ok := user[g]; ok {
@@ -140,17 +162,17 @@ func isSentinelClient(clientID string) bool {
 	return clientID == config.SentinelClientID
 }
 
-func getEntityGroupIDs(entityID string) []string {
+func getEntityGroups(entityID string) []GroupRef {
 	var groups []groupResponse
 	if err := sentinel.Get("/core/entity/"+entityID+"/groups", &groups); err != nil {
 		logger.SugarLogger.Errorf("Failed to load groups for entity %s: %v", entityID, err)
 		return nil
 	}
-	ids := make([]string, 0, len(groups))
+	refs := make([]GroupRef, 0, len(groups))
 	for _, g := range groups {
-		ids = append(ids, g.ID)
+		refs = append(refs, GroupRef{ID: g.ID, Name: g.Name})
 	}
-	return ids
+	return refs
 }
 
 func getAppGroupLinks(clientID string) []applicationGroupLink {

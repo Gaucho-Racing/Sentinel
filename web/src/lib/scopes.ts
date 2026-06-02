@@ -1,5 +1,6 @@
 import {
   AppWindow,
+  Clock,
   IdCard,
   KeyRound,
   Mail,
@@ -31,6 +32,11 @@ const SCOPES: Record<string, ScopeMeta> = {
     label: "Read your email address",
     description: "See the email address on your account.",
     icon: Mail,
+  },
+  offline_access: {
+    label: "Stay signed in",
+    description: "Keep you signed in without re-authenticating.",
+    icon: Clock,
   },
   "user:read": {
     label: "Read your profile",
