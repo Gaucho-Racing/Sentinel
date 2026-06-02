@@ -61,6 +61,7 @@ services:
       RINCON_PASSWORD: admin
       SERVICE_ENDPOINT: http://core:9999
       SERVICE_HEALTH_CHECK: http://core:9999/core/ping
+      ISSUER: ${ISSUER:-http://localhost:10310}
 
   discord:
     container_name: sentinel-discord
@@ -119,6 +120,7 @@ services:
       RINCON_PASSWORD: admin
       SERVICE_ENDPOINT: http://oauth:9997
       SERVICE_HEALTH_CHECK: http://oauth:9997/oauth/ping
+      ISSUER: ${ISSUER:-http://localhost:10310}
 
   web:
     container_name: sentinel-web

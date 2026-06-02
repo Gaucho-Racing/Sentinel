@@ -31,4 +31,8 @@ func Verify() {
 		DatabaseName = "sentinel"
 		logger.SugarLogger.Infof("DATABASE_NAME is not set, defaulting to %s", DatabaseName)
 	}
+	if Issuer == "" {
+		Issuer = "https://sso.gauchoracing.com"
+		logger.SugarLogger.Infof("ISSUER is not set, defaulting to %s", Issuer)
+	}
 }

@@ -31,6 +31,12 @@ var Routes = []rincon.Route{
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 
+// Issuer is the OIDC issuer identifier and the public base URL of the
+// deployment. It MUST match core's ISSUER exactly — the discovery document's
+// `issuer` and the `iss` claim core stamps into ID tokens have to be
+// byte-identical for relying parties to accept the token.
+var Issuer = os.Getenv("ISSUER")
+
 var AccessTokenTTL int
 var RefreshTokenTTL int
 

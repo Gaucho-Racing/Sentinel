@@ -50,6 +50,12 @@ func ValidateAuthorize(c *gin.Context) {
 		return
 	}
 
+	// The authorization code flow is the only response type we support.
+	if responseType := c.Query("response_type"); responseType != "" && responseType != "code" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unsupported_response_type"})
+		return
+	}
+
 	if !service.ValidateScopes(scope) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scope"})
 		return
@@ -144,7 +150,7 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	authCode, err := service.GenerateAuthorizationCode(req.EntityID, clientID, scope, redirectURI)
+	authCode, err := service.GenerateAuthorizationCode(req.EntityID, clientID, scope, redirectURI, c.Query("nonce"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

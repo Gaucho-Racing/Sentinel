@@ -1,4 +1,14 @@
-import { AppWindow, IdCard, Pencil, Settings, Users, type LucideIcon } from "lucide-react"
+import {
+  AppWindow,
+  IdCard,
+  KeyRound,
+  Mail,
+  Pencil,
+  Settings,
+  UserCircle,
+  Users,
+  type LucideIcon,
+} from "lucide-react"
 
 type ScopeMeta = {
   label: string
@@ -7,6 +17,21 @@ type ScopeMeta = {
 }
 
 const SCOPES: Record<string, ScopeMeta> = {
+  openid: {
+    label: "Verify your identity",
+    description: "Confirm who you are and issue an ID token.",
+    icon: KeyRound,
+  },
+  profile: {
+    label: "Read your basic profile",
+    description: "See your name, username, and profile picture.",
+    icon: UserCircle,
+  },
+  email: {
+    label: "Read your email address",
+    description: "See the email address on your account.",
+    icon: Mail,
+  },
   "user:read": {
     label: "Read your profile",
     description: "See your name, email, entity ID, and basic account info.",
