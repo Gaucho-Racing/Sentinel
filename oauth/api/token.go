@@ -103,7 +103,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		return
 	}
 
-	claims := service.BuildTokenClaims(authCode.EntityID, clientID)
+	claims := service.BuildTokenClaims(authCode.EntityID, clientID, authCode.Scope)
 
 	// Generate access token via core
 	accessToken, accessTokenID, err := generateToken(authCode.EntityID, clientID, authCode.Scope, config.AccessTokenTTL, claims)
@@ -206,7 +206,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// Strip refresh_token from scope for the access token
 	accessScope := service.RemoveScope(scope, "refresh_token")
 
-	newClaims := service.BuildTokenClaims(entityID, clientID)
+	newClaims := service.BuildTokenClaims(entityID, clientID, accessScope)
 
 	// Generate new access token
 	accessToken, accessTokenID, err := generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, newClaims)

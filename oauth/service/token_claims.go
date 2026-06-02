@@ -45,9 +45,12 @@ type applicationGroupLink struct {
 //     of (the client's linked groups) and (Sentinel's linked groups —
 //     these act as a global default).
 //
+// The groups claim is only populated when the scope grants it (see
+// GroupsClaimAllowed); when present it follows the per-client visibility rules.
+//
 // Gate enforcement (CheckAccessGate) is a separate call — BuildTokenClaims
 // assumes the gate has already been passed.
-func BuildTokenClaims(entityID string, clientID string) map[string]interface{} {
+func BuildTokenClaims(entityID string, clientID string, scope string) map[string]interface{} {
 	claims := map[string]interface{}{}
 
 	var entity entityResponse
@@ -63,9 +66,18 @@ func BuildTokenClaims(entityID string, clientID string) map[string]interface{} {
 		claims["service_account_id"] = entity.ServiceAccount.ID
 	}
 
-	claims["groups"] = FilteredGroups(entityID, clientID)
+	if GroupsClaimAllowed(scope) {
+		claims["groups"] = FilteredGroups(entityID, clientID)
+	}
 
 	return claims
+}
+
+// GroupsClaimAllowed reports whether a token carrying the given scope should
+// include the groups claim — granted by the first-party sentinel:all scope or
+// the explicit groups:read scope.
+func GroupsClaimAllowed(scope string) bool {
+	return ScopesContain(scope, "sentinel:all") || ScopesContain(scope, "groups:read")
 }
 
 // FilteredGroups resolves the group IDs an entity should expose to a given
