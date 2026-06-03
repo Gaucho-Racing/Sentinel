@@ -108,7 +108,7 @@ func ValidateAuthorize(c *gin.Context) {
 	if entityID != "" {
 		if err := service.CheckAccessGate(entityID, clientID); err != nil {
 			if errors.Is(err, service.ErrAccessDenied) {
-				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": app.Name})
+				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": app.Name, "app_icon_url": app.IconURL})
 				return
 			}
 			logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)

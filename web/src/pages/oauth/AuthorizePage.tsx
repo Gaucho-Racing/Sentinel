@@ -53,16 +53,39 @@ function errorMessage(err: unknown): string | undefined {
   return (err as { response?: { data?: { error?: string } } })?.response?.data?.error
 }
 
-// Returns the app name (possibly "") when the error is a gate denial, or null
-// otherwise — so denials can show an in-app page instead of redirecting.
-function accessDeniedAppName(err: unknown): string | null {
+type DeniedApp = { name: string; iconUrl: string }
+
+// Returns the app's identity when the error is a gate denial, or null otherwise
+// — so denials can show an in-app page instead of redirecting.
+function accessDeniedApp(err: unknown): DeniedApp | null {
   const res = (err as {
-    response?: { status?: number; data?: { error?: string; app_name?: string } }
+    response?: { status?: number; data?: { error?: string; app_name?: string; app_icon_url?: string } }
   })?.response
   if (res?.status === 403 && res.data?.error === "access_denied") {
-    return res.data.app_name ?? ""
+    return { name: res.data.app_name ?? "", iconUrl: res.data.app_icon_url ?? "" }
   }
   return null
+}
+
+// AppAvatar renders an application's icon — its image when set, otherwise a
+// gradient tile with the first letter. Shared by the consent and denied views.
+function AppAvatar({ name, iconUrl }: { name: string; iconUrl?: string }) {
+  const letter = (name.slice(0, 1) || "?").toUpperCase()
+  if (iconUrl) {
+    return (
+      <Avatar className="size-14 rounded-xl">
+        <AvatarImage src={iconUrl} alt={name} />
+        <AvatarFallback className="rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
+          {letter}
+        </AvatarFallback>
+      </Avatar>
+    )
+  }
+  return (
+    <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
+      {letter}
+    </div>
+  )
 }
 
 export default function AuthorizePage() {
@@ -80,7 +103,7 @@ export default function AuthorizePage() {
 
   const [busy, setBusy] = useState<Action | null>(null)
   const [success, setSuccess] = useState(false)
-  const [deniedApp, setDeniedApp] = useState<string | null>(null)
+  const [deniedApp, setDeniedApp] = useState<DeniedApp | null>(null)
   const autoApproved = useRef(false)
 
   // Echo `state` back to the client on every redirect — it's the client's
@@ -139,10 +162,13 @@ export default function AuthorizePage() {
       // Gate denials get an in-app error page rather than a bounce back to the
       // client (the gate normally fires at the validate step, but membership
       // can change between landing and approving).
-      const denied = accessDeniedAppName(err)
+      const denied = accessDeniedApp(err)
       if (denied !== null) {
         setBusy(null)
-        setDeniedApp(denied || validate.data?.app_name || "this application")
+        setDeniedApp({
+          name: denied.name || validate.data?.app_name || "",
+          iconUrl: denied.iconUrl || validate.data?.app_icon_url || "",
+        })
         return
       }
       // Other errors: surface to the client app per the spec rather than
@@ -189,21 +215,43 @@ export default function AuthorizePage() {
     )
   }
 
-  // Access-gate denial — show a clear in-app page instead of redirecting back
-  // to the client. Covers the validate-step denial (validate.error) and the
-  // approve-step safety net (deniedApp).
-  const deniedFromValidate = validate.isError ? accessDeniedAppName(validate.error) : null
-  if (deniedApp !== null || deniedFromValidate !== null) {
-    const name = deniedApp ?? deniedFromValidate ?? validate.data?.app_name ?? "this application"
+  // Access-gate denial — show a clear in-app page (styled like the consent
+  // screen) instead of redirecting back to the client. Covers the validate-step
+  // denial (validate.error) and the approve-step safety net (deniedApp).
+  const denied = deniedApp ?? (validate.isError ? accessDeniedApp(validate.error) : null)
+  if (denied) {
+    const name = denied.name || "this application"
     return (
       <main className="flex min-h-svh items-center justify-center px-4 py-12">
-        <div className="w-full max-w-sm space-y-2 text-center">
-          <h1 className="text-xl font-semibold tracking-tight">Access denied</h1>
-          <p className="text-sm text-muted-foreground">
-            You don't have access to{" "}
-            <span className="font-medium text-foreground">{name || "this application"}</span>. If
-            you think this is a mistake, reach out to an administrator.
+        <div className="w-full max-w-md space-y-8">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <AppAvatar name={name} iconUrl={denied.iconUrl} />
+            <div>
+              <h1 className="text-xl font-semibold tracking-tight">{name}</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                You don't have access to this application
+              </p>
+            </div>
+          </div>
+
+          <p className="text-center text-sm text-muted-foreground">
+            You're not in a group that's required to use{" "}
+            <span className="font-medium text-foreground">{name}</span>. If you think this is a
+            mistake, reach out to an administrator.
           </p>
+
+          {redirectUri && (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full rounded-xl"
+              onClick={() => {
+                window.location.href = buildRedirect(redirectUri, withState({ error: "access_denied" }))
+              }}
+            >
+              Back to {name}
+            </Button>
+          )}
         </div>
       </main>
     )
@@ -240,18 +288,7 @@ export default function AuthorizePage() {
         )}
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          {app.app_icon_url ? (
-            <Avatar className="size-14 rounded-xl">
-              <AvatarImage src={app.app_icon_url} alt={app.app_name} />
-              <AvatarFallback className="rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
-                {app.app_name.slice(0, 1).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
-              {app.app_name.slice(0, 1).toUpperCase()}
-            </div>
-          )}
+          <AppAvatar name={app.app_name} iconUrl={app.app_icon_url} />
           <div>
             <h1 className="text-xl font-semibold tracking-tight">{app.app_name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
