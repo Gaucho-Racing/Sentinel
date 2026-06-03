@@ -20,16 +20,26 @@ type ResponseForm struct {
 // builds the session from core, and produces a signed SAML Response for the
 // approved entity. The gate is re-checked here (not only at consent) so group
 // membership changes between consent and approval can't leak a token.
-func GenerateResponse(requestBuffer []byte, relayState string, entityID string) (ResponseForm, error) {
+//
+// validatedAt is the time the request was first validated at the SSO endpoint.
+// crewjam's Validate re-checks the request's IssueInstant against MaxIssueDelay
+// using req.Now, and uses the same req.Now to stamp the assertion's validity
+// window. Those want different clocks: the staleness check must use the
+// original (already-passed) validation time so a slow consent doesn't trip the
+// 90s window, while the assertion must be stamped with the real current time so
+// SPs see a fresh window. We anchor Now to validatedAt for Validate, then reset
+// it to now before building the response.
+func GenerateResponse(requestBuffer []byte, relayState string, entityID string, validatedAt time.Time) (ResponseForm, error) {
 	req := &saml.IdpAuthnRequest{
 		IDP:           idp,
 		RequestBuffer: requestBuffer,
 		RelayState:    relayState,
-		Now:           time.Now(),
+		Now:           validatedAt,
 	}
 	if err := req.Validate(); err != nil {
 		return ResponseForm{}, err
 	}
+	req.Now = time.Now()
 
 	sp, err := ResolveSP(req.Request.Issuer.Value)
 	if err != nil {

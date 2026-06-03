@@ -92,7 +92,7 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	form, err := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID)
+	form, err := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID, stash.CreatedAt)
 	if err != nil {
 		if errors.Is(err, service.ErrAccessDenied) {
 			writeGateError(c, err)
