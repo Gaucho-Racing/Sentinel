@@ -41,6 +41,7 @@ func Init() {
 			&model.Application{},
 			&model.ApplicationGroup{},
 			&model.ApplicationRedirectURI{},
+			&model.SAMLServiceProvider{},
 			&model.EntityLogin{},
 			&model.ServiceAccount{},
 			&model.Group{},
