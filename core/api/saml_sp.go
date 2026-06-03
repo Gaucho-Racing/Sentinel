@@ -93,13 +93,26 @@ func DeleteApplicationSAML(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "saml service provider deleted"})
 }
 
-// GetSAMLServiceProviderByEntityID resolves a SAML SP by its entityID. Internal
+type resolveSAMLRequest struct {
+	EntityID string `json:"entity_id" binding:"required"`
+}
+
+// ResolveSAMLServiceProvider resolves a SAML SP by its entityID. Internal
 // (/core) route, unauthenticated, for service-to-service use by the saml
 // service when it handles an inbound AuthnRequest — it returns the owning
 // application's client_id so the saml service can run the same access gate and
 // group filtering OAuth uses.
-func GetSAMLServiceProviderByEntityID(c *gin.Context) {
-	sp, err := service.GetResolvedSAMLServiceProviderByEntityID(c.Param("entityID"))
+//
+// The entityID is passed in the request body, not the path: SAML entity IDs are
+// typically URLs (e.g. https://sp.example.com/metadata) whose `://` and slashes
+// break a single-segment path param.
+func ResolveSAMLServiceProvider(c *gin.Context) {
+	var req resolveSAMLRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	sp, err := service.GetResolvedSAMLServiceProviderByEntityID(req.EntityID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "saml service provider not found"})

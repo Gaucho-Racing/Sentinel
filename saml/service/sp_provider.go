@@ -28,10 +28,12 @@ type ResolvedSP struct {
 }
 
 // ResolveSP fetches the SP registration for a SAML entityID from core. Returns
-// sentinel.APIError (with Status 404) when no SP is registered for the id.
+// sentinel.APIError (with Status 404) when no SP is registered for the id. The
+// entityID is sent in the request body, not the path: SAML entity IDs are
+// usually URLs whose `://` and slashes break a path segment.
 func ResolveSP(entityID string) (ResolvedSP, error) {
 	var sp ResolvedSP
-	if err := sentinel.Get("/api/core/saml/sp/entity/"+entityID, &sp); err != nil {
+	if err := sentinel.Post("/api/core/saml/sp/resolve", map[string]string{"entity_id": entityID}, &sp); err != nil {
 		return ResolvedSP{}, err
 	}
 	return sp, nil
