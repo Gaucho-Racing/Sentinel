@@ -100,8 +100,24 @@ func ValidateAuthorize(c *gin.Context) {
 		return
 	}
 
-	prompt := c.Query("prompt")
+	// Enforce the access gate here (not only at the authorize/token steps) so a
+	// user who doesn't qualify gets a clear error page up front, instead of a
+	// consent screen followed by a redirect back to the client with
+	// access_denied. entity_id is supplied by the SPA from the active session.
 	entityID := c.Query("entity_id")
+	if entityID != "" {
+		if err := service.CheckAccessGate(entityID, clientID); err != nil {
+			if errors.Is(err, service.ErrAccessDenied) {
+				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": app.Name, "app_icon_url": app.IconURL})
+				return
+			}
+			logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+			return
+		}
+	}
+
+	prompt := c.Query("prompt")
 	if prompt == "none" && entityID != "" {
 		var logins []map[string]interface{}
 		err = sentinel.Get(fmt.Sprintf("/core/entity/%s/logins?client_id=%s&scope=%s&limit=1", entityID, clientID, scope), &logins)
