@@ -5,7 +5,7 @@ import (
 )
 
 const Name = "sentinel-oauth"
-const Version = "5.4.4"
+const Version = "5.5.0"
 
 func FormattedNameWithVersion() string {
 	return Name + ":v" + Version
