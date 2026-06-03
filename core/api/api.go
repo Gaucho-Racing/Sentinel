@@ -59,7 +59,7 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/core/applications/verify", VerifyClientCredentials)
 	router.GET("/core/applications/client/:clientID/groups", GetApplicationGroupsByClientID)
-	router.GET("/core/saml/sp/entity/:entityID", GetSAMLServiceProviderByEntityID)
+	router.POST("/core/saml/sp/resolve", ResolveSAMLServiceProvider)
 	router.POST("/core/login/email-password", LoginEmailPassword)
 
 	router.GET("/entities/@me", GetMe)
