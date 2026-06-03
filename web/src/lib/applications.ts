@@ -26,6 +26,23 @@ export type GroupWithLink = Group & { required: boolean }
 // returns. Application + the link's `required` flag inline.
 export type ApplicationWithLink = Application & { required: boolean }
 
+// SAMLConfig mirrors core's model.SAMLServiceProvider — the SAML relying-party
+// registration attached to an application. `entity_id` is the SP's SAML
+// entityID (issuer); `acs_url` is its Assertion Consumer Service. Provide
+// `metadata_xml` instead to have the IdP derive the ACS and signing cert from
+// the SP's published metadata.
+export type SAMLConfig = {
+  application_id: string
+  entity_id: string
+  acs_url: string
+  name_id_format: string
+  certificate_pem: string
+  want_authn_requests_signed: boolean
+  metadata_xml: string
+  updated_at: string
+  created_at: string
+}
+
 // Substitutions chosen to demonstrate that `*` is greedy and matches dots and
 // slashes — the two characters that make wildcard redirect URIs dangerous
 // (host confusion, path takeover). Order: innocuous → concerning.
