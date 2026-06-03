@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gaucho-racing/sentinel/core/config"
-	"github.com/gaucho-racing/sentinel/core/model"
-	"github.com/gaucho-racing/sentinel/core/pkg/logger"
+	"github.com/gaucho-racing/sentinel/saml/config"
+	"github.com/gaucho-racing/sentinel/saml/model"
+	"github.com/gaucho-racing/sentinel/saml/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -30,26 +30,8 @@ func Init() {
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
 		db.AutoMigrate(
-			&model.Entity{},
-			&model.EntityEmail{},
-			&model.EntityPhone{},
-			&model.EntityExternalAuth{},
-			&model.PhoneLoginCode{},
-			&model.EmailLoginCode{},
-			&model.Token{},
-			&model.User{},
-			&model.Application{},
-			&model.ApplicationGroup{},
-			&model.ApplicationRedirectURI{},
-			&model.SAMLServiceProvider{},
-			&model.EntityLogin{},
-			&model.ServiceAccount{},
-			&model.Group{},
-			&model.GroupMember{},
-			&model.GroupJoinRequest{},
-			&model.GroupJoinRequestComment{},
-			&model.GroupOwner{},
 			&model.SigningKey{},
+			&model.SSORequest{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db

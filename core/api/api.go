@@ -59,6 +59,7 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/core/applications/verify", VerifyClientCredentials)
 	router.GET("/core/applications/client/:clientID/groups", GetApplicationGroupsByClientID)
+	router.GET("/core/saml/sp/entity/:entityID", GetSAMLServiceProviderByEntityID)
 	router.POST("/core/login/email-password", LoginEmailPassword)
 
 	router.GET("/entities/@me", GetMe)
@@ -86,6 +87,9 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:id/redirect-uris", GetApplicationRedirectURIs)
 	router.POST("/applications/:id/redirect-uris", AddApplicationRedirectURI)
 	router.DELETE("/applications/:id/redirect-uris", RemoveApplicationRedirectURI)
+	router.GET("/applications/:id/saml", GetApplicationSAML)
+	router.POST("/applications/:id/saml", UpsertApplicationSAML)
+	router.DELETE("/applications/:id/saml", DeleteApplicationSAML)
 
 	router.GET("/groups", GetAllGroups)
 	router.GET("/groups/:id", GetGroupByID)
