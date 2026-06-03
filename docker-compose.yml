@@ -18,23 +18,6 @@ services:
       - discord
       - web
 
-  rincon:
-    container_name: sentinel-rincon
-    image: bk1031/rincon:latest
-    restart: always
-    ports:
-      - "10311:10311"
-    depends_on:
-      - db
-    environment:
-      STORAGE_MODE: sql
-      DB_DRIVER: postgres
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASSWORD: ${POSTGRES_PASSWORD}
-      DB_NAME: sentinel
-
   core:
     container_name: sentinel-core
     image: golang:1.26-alpine
@@ -47,7 +30,6 @@ services:
       - core_gopath:/go
     depends_on:
       - db
-      - rincon
     environment:
       ENV: DEV
       PORT: 9999
@@ -56,11 +38,6 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: sentinel
-      RINCON_ENDPOINT: http://rincon:10311
-      RINCON_USER: admin
-      RINCON_PASSWORD: admin
-      SERVICE_ENDPOINT: http://core:9999
-      SERVICE_HEALTH_CHECK: http://core:9999/core/ping
       ISSUER: ${ISSUER:-http://localhost:10310}
 
   discord:
@@ -75,7 +52,6 @@ services:
       - discord_gopath:/go
     depends_on:
       - db
-      - rincon
     environment:
       ENV: DEV
       PORT: 9998
@@ -84,11 +60,9 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: sentinel
-      RINCON_ENDPOINT: http://rincon:10311
-      RINCON_USER: admin
-      RINCON_PASSWORD: admin
-      SERVICE_ENDPOINT: http://discord:9998
-      SERVICE_HEALTH_CHECK: http://discord:9998/discord/ping
+      KERBECS_ENDPOINT: http://kerbecs:10300
+      KERBECS_USER: admin
+      KERBECS_PASSWORD: admin
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_GUILD: ${DISCORD_GUILD}
       DISCORD_PREFIX: d!
@@ -106,7 +80,6 @@ services:
       - oauth_gopath:/go
     depends_on:
       - db
-      - rincon
     environment:
       ENV: DEV
       PORT: 9997
@@ -115,11 +88,9 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: sentinel
-      RINCON_ENDPOINT: http://rincon:10311
-      RINCON_USER: admin
-      RINCON_PASSWORD: admin
-      SERVICE_ENDPOINT: http://oauth:9997
-      SERVICE_HEALTH_CHECK: http://oauth:9997/oauth/ping
+      KERBECS_ENDPOINT: http://kerbecs:10300
+      KERBECS_USER: admin
+      KERBECS_PASSWORD: admin
       ISSUER: ${ISSUER:-http://localhost:10310}
 
   web:

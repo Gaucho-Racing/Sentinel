@@ -72,7 +72,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 
 	// Validate client credentials via core
 	var app applicationResponse
-	err := sentinel.Get("/applications/client/"+clientID, &app)
+	err := sentinel.Get("/api/applications/client/"+clientID, &app)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid client credentials"})
 		return
@@ -125,7 +125,7 @@ func handleAuthorizationCodeExchange(c *gin.Context) {
 		refreshTokenID = ""
 	}
 
-	sentinel.Post("/core/entity/logins", map[string]string{
+	sentinel.Post("/api/core/entity/logins", map[string]string{
 		"entity_id":        authCode.EntityID,
 		"client_id":        clientID,
 		"scope":            authCode.Scope,
@@ -185,7 +185,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 
 	// Validate the refresh token via core
 	var claims map[string]interface{}
-	err := sentinel.Post("/core/token/validate", map[string]string{"token": refreshToken}, &claims)
+	err := sentinel.Post("/api/core/token/validate", map[string]string{"token": refreshToken}, &claims)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired refresh token"})
 		return
@@ -201,7 +201,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 
 	// Revoke the old refresh token
 	if tokenID, ok := claims["jti"].(string); ok {
-		sentinel.Delete("/core/token/"+tokenID, nil)
+		sentinel.Delete("/api/core/token/"+tokenID, nil)
 	}
 
 	// Re-check the gate on refresh — group membership may have changed
@@ -238,7 +238,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		newRefreshTokenID = ""
 	}
 
-	sentinel.Post("/core/entity/logins", map[string]string{
+	sentinel.Post("/api/core/entity/logins", map[string]string{
 		"entity_id":        entityID,
 		"client_id":        clientID,
 		"scope":            accessScope,
@@ -278,7 +278,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 
 func generateToken(entityID string, clientID string, scope string, expiresIn int, claims map[string]interface{}) (string, string, error) {
 	var result tokenResponse
-	err := sentinel.Post("/core/token", tokenRequest{
+	err := sentinel.Post("/api/core/token", tokenRequest{
 		EntityID:  entityID,
 		ClientID:  clientID,
 		Scope:     scope,
@@ -293,7 +293,7 @@ func generateToken(entityID string, clientID string, scope string, expiresIn int
 
 func validateClientSecret(clientID string, clientSecret string) bool {
 	var result map[string]interface{}
-	err := sentinel.Post("/core/applications/verify", map[string]string{
+	err := sentinel.Post("/api/core/applications/verify", map[string]string{
 		"client_id":     clientID,
 		"client_secret": clientSecret,
 	}, &result)

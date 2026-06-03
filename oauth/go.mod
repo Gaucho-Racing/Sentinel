@@ -3,7 +3,6 @@ module github.com/gaucho-racing/sentinel/oauth
 go 1.25.6
 
 require (
-	github.com/bk1031/rincon-go/v2 v2.0.0
 	github.com/fatih/color v1.19.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0

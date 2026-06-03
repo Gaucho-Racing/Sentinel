@@ -117,10 +117,10 @@ if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then
     exit 0
 fi
 
-# Bump the Version field in each service's rincon.Service struct literal.
-# Matches lines like:  Version:     "5.0.0",
+# Bump the Version constant in each service's config.
+# Matches:  const Version = "5.0.0"
 for svc in "${GO_SERVICES[@]}"; do
-    sed -i '' "s/Version:.*\".*\"/Version:     \"${SEMVER}\"/" "${REPO_ROOT}/${svc}/config/config.go"
+    sed -i '' "s/const Version = \".*\"/const Version = \"${SEMVER}\"/" "${REPO_ROOT}/${svc}/config/config.go"
 done
 
 FILES=()

@@ -34,7 +34,7 @@ func LoginEmailPassword(c *gin.Context) {
 	var verify struct {
 		EntityID string `json:"entity_id"`
 	}
-	if err := sentinel.Post("/core/login/email-password", req, &verify); err != nil {
+	if err := sentinel.Post("/api/core/login/email-password", req, &verify); err != nil {
 		logger.SugarLogger.Errorf("login: upstream failure: %v", err)
 		var apiErr *sentinel.APIError
 		if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnauthorized {
@@ -66,7 +66,7 @@ func RefreshSession(c *gin.Context) {
 	}
 
 	var claims map[string]interface{}
-	if err := sentinel.Post("/core/token/validate", map[string]string{"token": req.RefreshToken}, &claims); err != nil {
+	if err := sentinel.Post("/api/core/token/validate", map[string]string{"token": req.RefreshToken}, &claims); err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired refresh token"})
 		return
 	}
@@ -79,7 +79,7 @@ func RefreshSession(c *gin.Context) {
 	}
 
 	if tokenID, ok := claims["jti"].(string); ok {
-		sentinel.Delete("/core/token/"+tokenID, nil)
+		sentinel.Delete("/api/core/token/"+tokenID, nil)
 	}
 
 	resp, err := mintFirstPartySession(c, entityID)
@@ -118,7 +118,7 @@ func mintFirstPartySession(c *gin.Context, entityID string) (sessionResponse, er
 		refreshTokenID = ""
 	}
 
-	sentinel.Post("/core/entity/logins", map[string]string{
+	sentinel.Post("/api/core/entity/logins", map[string]string{
 		"entity_id":        entityID,
 		"client_id":        config.SentinelClientID,
 		"scope":            firstPartyAccessScope,

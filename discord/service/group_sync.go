@@ -33,7 +33,7 @@ type groupMemberRow struct {
 //  4. Apply the diff via core's group-member endpoints
 func ReconcileGroupsForDiscordUser(discordUserID string, currentRoles []string) error {
 	var entity entityResponse
-	if err := sentinel.Get("/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
+	if err := sentinel.Get("/api/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
 		logger.SugarLogger.Debugf("group sync: no entity for Discord user %s: %v", discordUserID, err)
 		return nil
 	}
@@ -94,7 +94,7 @@ func computeDesiredDiscordGroups(userRoles []string) ([]string, error) {
 		return nil, nil
 	}
 	var groups []groupSummary
-	if err := sentinel.Get("/groups", &groups); err != nil {
+	if err := sentinel.Get("/api/groups", &groups); err != nil {
 		return nil, err
 	}
 	discordEnabled := make(map[string]bool, len(groups))
@@ -117,7 +117,7 @@ func computeDesiredDiscordGroups(userRoles []string) ([]string, error) {
 
 func getEntityDiscordMemberships(entityID string) ([]groupMemberRow, error) {
 	var rows []groupMemberRow
-	if err := sentinel.Get("/core/entity/"+entityID+"/memberships?source=DISCORD", &rows); err != nil {
+	if err := sentinel.Get("/api/core/entity/"+entityID+"/memberships?source=DISCORD", &rows); err != nil {
 		return nil, err
 	}
 	return rows, nil
@@ -129,11 +129,11 @@ func addDiscordGroupMember(groupID, entityID string) error {
 		"source":    "DISCORD",
 		"added_by":  "discord-sync",
 	}
-	return sentinel.Post("/groups/"+groupID+"/members", body, nil)
+	return sentinel.Post("/api/groups/"+groupID+"/members", body, nil)
 }
 
 func removeDiscordGroupMember(groupID, entityID string) error {
-	return sentinel.Delete("/groups/"+groupID+"/members/"+entityID+"?source=DISCORD", nil)
+	return sentinel.Delete("/api/groups/"+groupID+"/members/"+entityID+"?source=DISCORD", nil)
 }
 
 func toSet(ss []string) map[string]struct{} {

@@ -81,7 +81,7 @@ func ValidateAuthorize(c *gin.Context) {
 	}
 
 	var app applicationResponse
-	err := sentinel.Get("/applications/client/"+clientID, &app)
+	err := sentinel.Get("/api/applications/client/"+clientID, &app)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to get application for client_id %s: %v", clientID, err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid client_id"})

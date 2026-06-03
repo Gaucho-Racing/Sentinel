@@ -8,9 +8,9 @@ import (
 )
 
 func Ping(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
-	message, err := s.ChannelMessageSend(m.ChannelID, "Pong from "+"Sentinel v"+config.Service.Version+"!")
+	message, err := s.ChannelMessageSend(m.ChannelID, "Pong from "+"Sentinel v"+config.Version+"!")
 	if err == nil {
 		delay := message.Timestamp.Sub(m.Timestamp).Milliseconds()
-		s.ChannelMessageEdit(m.ChannelID, message.ID, "Pong from "+"Sentinel v"+config.Service.Version+"! (**"+strconv.FormatInt(delay, 10)+"ms**)")
+		s.ChannelMessageEdit(m.ChannelID, message.ID, "Pong from "+"Sentinel v"+config.Version+"! (**"+strconv.FormatInt(delay, 10)+"ms**)")
 	}
 }

@@ -47,4 +47,16 @@ func Verify() {
 		WebBaseURL = "http://localhost:10310"
 		logger.SugarLogger.Infof("WEB_BASE_URL is not set, defaulting to %s", WebBaseURL)
 	}
+	if KerbecsEndpoint == "" {
+		KerbecsEndpoint = "http://localhost:10300"
+		logger.SugarLogger.Infof("KERBECS_ENDPOINT is not set, defaulting to %s", KerbecsEndpoint)
+	}
+	if KerbecsUser == "" {
+		KerbecsUser = "admin"
+		logger.SugarLogger.Infof("KERBECS_USER is not set, defaulting to %s", KerbecsUser)
+	}
+	if KerbecsPassword == "" {
+		KerbecsPassword = "admin"
+		logger.SugarLogger.Infoln("KERBECS_PASSWORD is not set, defaulting to \"admin\" — DO NOT USE IN PRODUCTION")
+	}
 }

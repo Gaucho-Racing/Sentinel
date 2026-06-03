@@ -16,7 +16,7 @@ type entityResponse struct {
 // with an empty entity_id that can be backfilled later.
 func GetEntityIDForDiscordUser(discordUserID string) string {
 	var entity entityResponse
-	err := sentinel.Get("/core/entity/external/DISCORD/"+discordUserID, &entity)
+	err := sentinel.Get("/api/core/entity/external/DISCORD/"+discordUserID, &entity)
 	if err != nil {
 		logger.SugarLogger.Debugf("No entity found for Discord user %s: %v", discordUserID, err)
 		return ""
@@ -29,7 +29,7 @@ func GetEntityIDForDiscordUser(discordUserID string) string {
 // has no Sentinel record or the avatar is already current.
 func SyncDiscordUserAvatar(discordUserID, avatarURL string) {
 	var entity entityResponse
-	if err := sentinel.Get("/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
+	if err := sentinel.Get("/api/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
 		logger.SugarLogger.Debugf("avatar sync: no entity for Discord user %s: %v", discordUserID, err)
 		return
 	}
@@ -40,7 +40,7 @@ func SyncDiscordUserAvatar(discordUserID, avatarURL string) {
 		return
 	}
 	entity.User["avatar_url"] = avatarURL
-	if err := sentinel.Post("/core/users", entity.User, nil); err != nil {
+	if err := sentinel.Post("/api/core/users", entity.User, nil); err != nil {
 		logger.SugarLogger.Errorf("avatar sync: failed to update user %v: %v", entity.User["id"], err)
 		return
 	}

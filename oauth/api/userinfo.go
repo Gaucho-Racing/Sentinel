@@ -24,7 +24,7 @@ func UserInfo(c *gin.Context) {
 	token := strings.TrimPrefix(authHeader, "Bearer ")
 
 	var claims map[string]interface{}
-	if err := sentinel.Post("/core/token/validate", map[string]string{"token": token}, &claims); err != nil {
+	if err := sentinel.Post("/api/core/token/validate", map[string]string{"token": token}, &claims); err != nil {
 		c.Header("WWW-Authenticate", `Bearer error="invalid_token"`)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired token"})
 		return

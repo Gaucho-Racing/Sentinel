@@ -4,8 +4,8 @@ import (
 	"github.com/gaucho-racing/sentinel/oauth/api"
 	"github.com/gaucho-racing/sentinel/oauth/config"
 	"github.com/gaucho-racing/sentinel/oauth/database"
+	"github.com/gaucho-racing/sentinel/oauth/pkg/kerbecs"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
-	"github.com/gaucho-racing/sentinel/oauth/pkg/rincon"
 )
 
 func main() {
@@ -14,7 +14,7 @@ func main() {
 
 	config.Verify()
 	config.PrintStartupBanner()
-	rincon.Init(&config.Service, &config.Routes)
+	kerbecs.Init(config.KerbecsEndpoint, config.KerbecsUser, config.KerbecsPassword)
 	database.Init()
 
 	api.Run()
