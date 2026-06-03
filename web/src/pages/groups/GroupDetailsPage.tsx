@@ -457,6 +457,12 @@ export default function GroupDetailsPage() {
   const myPending = myEntityID
     ? allPending.find((r) => r.entity_id === myEntityID)
     : undefined
+  // Joining is request-based and approvals mint a DIRECT member, so the button
+  // only makes sense for groups that allow the DIRECT source. Ownership is
+  // tracked separately from membership, so an owner who isn't a member can
+  // still request to join.
+  const canRequestToJoin =
+    (group.allowed_sources?.includes("DIRECT") ?? false) && !isMember && !myPending
   // Hide the viewer's own request from the owner inbox; they manage it from
   // their "Request pending" dialog instead.
   const pending = myEntityID
@@ -538,7 +544,7 @@ export default function GroupDetailsPage() {
               </Link>
             </Button>
           )}
-          {!isOwner && !isMember && !myPending && (
+          {canRequestToJoin && (
             <Button
               className="h-10 gap-1.5 rounded-xl px-4 text-sm"
               onClick={() => setJoinOpen(true)}
