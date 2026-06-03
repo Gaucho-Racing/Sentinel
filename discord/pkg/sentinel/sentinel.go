@@ -7,16 +7,15 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gaucho-racing/sentinel/discord/pkg/kerbecs"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
-	"github.com/gaucho-racing/sentinel/discord/pkg/rincon"
 	"github.com/go-resty/resty/v2"
 )
 
 // Sentinel-side error categories — wrapped into APIError.Err so callers
 // can errors.Is on them and pick the right user-facing message.
 var (
-	ErrRinconUninitialized = errors.New("rincon client not initialized")
-	ErrRouteResolution     = errors.New("rincon could not resolve route")
+	ErrRouteResolution = errors.New("could not resolve route via kerbecs")
 )
 
 // A short per-request timeout plus a couple of retries softens transient blips
@@ -64,14 +63,11 @@ func (e *APIError) Error() string {
 func (e *APIError) Unwrap() error { return e.Err }
 
 func resolveURL(route string, method string) (string, error) {
-	if rincon.RinconClient == nil {
-		return "", ErrRinconUninitialized
-	}
-	service, err := rincon.RinconClient.MatchRoute(route, method)
+	url, err := kerbecs.Resolve(method, route)
 	if err != nil {
 		return "", fmt.Errorf("%w: %s: %v", ErrRouteResolution, route, err)
 	}
-	return service.Endpoint + route, nil
+	return url, nil
 }
 
 func do(method, route string, body, result interface{}, headers []map[string]string) error {

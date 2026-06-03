@@ -99,7 +99,7 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 	var entityResp struct {
 		ID string `json:"id"`
 	}
-	if err := sentinel.Post("/core/entity", map[string]string{"type": "USER"}, &entityResp); err != nil {
+	if err := sentinel.Post("/api/core/entity", map[string]string{"type": "USER"}, &entityResp); err != nil {
 		return "", fmt.Errorf("create entity: %w", err)
 	}
 
@@ -121,7 +121,7 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 		"avatar_url":              token.DiscordAvatarURL,
 		"initial_role":            p.InitialRole,
 	}
-	if err := sentinel.Post("/core/users", userBody, &ignored); err != nil {
+	if err := sentinel.Post("/api/core/users", userBody, &ignored); err != nil {
 		return "", fmt.Errorf("create user: %w", err)
 	}
 

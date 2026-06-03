@@ -6,7 +6,6 @@ import (
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/jobs"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
-	"github.com/gaucho-racing/sentinel/core/pkg/rincon"
 	"github.com/gaucho-racing/sentinel/core/service"
 )
 
@@ -16,7 +15,6 @@ func main() {
 
 	config.Verify()
 	config.PrintStartupBanner()
-	rincon.Init(&config.Service, &config.Routes)
 	database.Init()
 	service.InitializeKeys()
 	jobs.InitializeCore()

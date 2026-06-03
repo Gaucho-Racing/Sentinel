@@ -2,34 +2,24 @@ package config
 
 import (
 	"os"
-
-	"github.com/bk1031/rincon-go/v2"
 )
 
-var Service rincon.Service = rincon.Service{
-	Name:        "Sentinel OAuth",
-	Version:     "5.4.3",
-	Endpoint:    os.Getenv("SERVICE_ENDPOINT"),
-	HealthCheck: os.Getenv("SERVICE_HEALTH_CHECK"),
-}
+const Name = "sentinel-oauth"
+const Version = "5.4.3"
 
-var Routes = []rincon.Route{
-	{
-		Route:  "/oauth/**",
-		Method: "*",
-	},
-	{
-		Route:  "/auth/**",
-		Method: "*",
-	},
-	{
-		Route:  "/.well-known/**",
-		Method: "GET",
-	},
+func FormattedNameWithVersion() string {
+	return Name + ":v" + Version
 }
 
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
+
+// Kerbecs admin API — the gateway doubles as the service registry. The sentinel
+// client resolves gateway-form paths (/api/core/...) to upstream URLs via its
+// /admin-gw/resolve endpoint, which sits behind basic auth.
+var KerbecsEndpoint = os.Getenv("KERBECS_ENDPOINT")
+var KerbecsUser = os.Getenv("KERBECS_USER")
+var KerbecsPassword = os.Getenv("KERBECS_PASSWORD")
 
 // Issuer is the OIDC issuer identifier and the public base URL of the
 // deployment. It MUST match core's ISSUER exactly — the discovery document's

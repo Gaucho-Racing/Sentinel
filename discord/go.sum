@@ -1,5 +1,3 @@
-github.com/bk1031/rincon-go/v2 v2.0.0 h1:nmDHQNZI/AFfW+ZGTGoxpNPrv3OYXQ09anX+fCoiQsQ=
-github.com/bk1031/rincon-go/v2 v2.0.0/go.mod h1:287Zc8PvUNnJuAwpt9XVuYUL8k4wrXg3Fa3L0KEmAB4=
 github.com/bwmarrin/discordgo v0.29.0 h1:FmWeXFaKUwrcL3Cx65c20bTRW+vOb6k8AnaP+EgjDno=
 github.com/bwmarrin/discordgo v0.29.0/go.mod h1:NJZpH+1AfhIcyQsPeuBKsUtYrRnjkyu0kIVMCHkZtRY=
 github.com/bytedance/gopkg v0.1.3 h1:TPBSwH8RsouGCBcMBktLt1AymVo2TVsBVCY4b6TnZ/M=

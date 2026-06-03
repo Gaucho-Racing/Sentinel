@@ -26,7 +26,7 @@ type oidcEntity struct {
 
 func fetchOIDCEntity(entityID string) (oidcEntity, error) {
 	var e oidcEntity
-	if err := sentinel.Get("/core/entity/"+entityID, &e); err != nil {
+	if err := sentinel.Get("/api/core/entity/"+entityID, &e); err != nil {
 		logger.SugarLogger.Errorf("Failed to load entity %s for OIDC claims: %v", entityID, err)
 		return oidcEntity{}, err
 	}

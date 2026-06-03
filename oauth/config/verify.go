@@ -40,6 +40,18 @@ func Verify() {
 		Issuer = "https://sso.gauchoracing.com"
 		logger.SugarLogger.Infof("ISSUER is not set, defaulting to %s", Issuer)
 	}
+	if KerbecsEndpoint == "" {
+		KerbecsEndpoint = "http://localhost:10300"
+		logger.SugarLogger.Infof("KERBECS_ENDPOINT is not set, defaulting to %s", KerbecsEndpoint)
+	}
+	if KerbecsUser == "" {
+		KerbecsUser = "admin"
+		logger.SugarLogger.Infof("KERBECS_USER is not set, defaulting to %s", KerbecsUser)
+	}
+	if KerbecsPassword == "" {
+		KerbecsPassword = "admin"
+		logger.SugarLogger.Infoln("KERBECS_PASSWORD is not set, defaulting to \"admin\" — DO NOT USE IN PRODUCTION")
+	}
 	AccessTokenTTL = parseIntEnv("ACCESS_TOKEN_TTL", 30*60)
 	RefreshTokenTTL = parseIntEnv("REFRESH_TOKEN_TTL", 7*24*60*60)
 }

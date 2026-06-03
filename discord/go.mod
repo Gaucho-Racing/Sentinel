@@ -3,7 +3,6 @@ module github.com/gaucho-racing/sentinel/discord
 go 1.25.6
 
 require (
-	github.com/bk1031/rincon-go/v2 v2.0.0
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/fatih/color v1.19.0
 	github.com/gaucho-racing/ulid-go v1.1.0

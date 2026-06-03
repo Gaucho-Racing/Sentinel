@@ -5,8 +5,8 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/commands"
 	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/database"
+	"github.com/gaucho-racing/sentinel/discord/pkg/kerbecs"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
-	"github.com/gaucho-racing/sentinel/discord/pkg/rincon"
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
 
@@ -16,7 +16,7 @@ func main() {
 
 	config.Verify()
 	config.PrintStartupBanner()
-	rincon.Init(&config.Service, &config.Routes)
+	kerbecs.Init(config.KerbecsEndpoint, config.KerbecsUser, config.KerbecsPassword)
 	database.Init()
 	service.ConnectDiscord()
 	commands.InitializeBot()

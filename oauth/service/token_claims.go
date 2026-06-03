@@ -65,7 +65,7 @@ func BuildTokenClaims(entityID string, clientID string, scope string) (map[strin
 	claims := map[string]interface{}{}
 
 	var entity entityResponse
-	if err := sentinel.Get("/core/entity/"+entityID, &entity); err != nil {
+	if err := sentinel.Get("/api/core/entity/"+entityID, &entity); err != nil {
 		return nil, fmt.Errorf("load entity %s: %w", entityID, err)
 	}
 	claims["entity_type"] = entity.Type
@@ -188,7 +188,7 @@ func isSentinelClient(clientID string) bool {
 
 func getEntityGroups(entityID string) ([]GroupRef, error) {
 	var groups []groupResponse
-	if err := sentinel.Get("/core/entity/"+entityID+"/groups", &groups); err != nil {
+	if err := sentinel.Get("/api/core/entity/"+entityID+"/groups", &groups); err != nil {
 		return nil, fmt.Errorf("load groups for entity %s: %w", entityID, err)
 	}
 	refs := make([]GroupRef, 0, len(groups))
@@ -206,7 +206,7 @@ func getAppGroupLinks(clientID string) ([]applicationGroupLink, error) {
 	// endpoint requires a bearer this service doesn't carry, and resolving by
 	// client_id here avoids the extra app-lookup hop.
 	var links []applicationGroupLink
-	if err := sentinel.Get("/core/applications/client/"+clientID+"/groups", &links); err != nil {
+	if err := sentinel.Get("/api/core/applications/client/"+clientID+"/groups", &links); err != nil {
 		return nil, fmt.Errorf("load group links for client %s: %w", clientID, err)
 	}
 	return links, nil
