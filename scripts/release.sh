@@ -4,10 +4,10 @@ set -euo pipefail
 # Cuts a Sentinel release across all services.
 #
 #   ./scripts/release.sh 5.1.0
-#       Bumps the Version constant in core/config, oauth/config, and
-#       discord/config to 5.1.0, commits, pushes, and creates a v5.1.0 GH
-#       release. The per-service workflows (core.yml/oauth.yml/discord.yml)
-#       observe the tag and publish images to ghcr.io.
+#       Bumps the Version constant in core/config, oauth/config, discord/config,
+#       and saml/config to 5.1.0, commits, pushes, and creates a v5.1.0 GH
+#       release. The per-service workflows (core.yml/oauth.yml/discord.yml/
+#       saml.yml) observe the tag and publish images to ghcr.io.
 #
 # Run from any subdirectory; the script cd's to the repo root.
 
@@ -91,8 +91,8 @@ fi
 # Go services have a Version constant in config/config.go that needs bumping.
 # IMAGES is the full set whose workflows publish on a tag push — web is
 # tag-triggered too but has no Go version constant to bump.
-GO_SERVICES=("core" "oauth" "discord")
-IMAGES=("core" "oauth" "discord" "web")
+GO_SERVICES=("core" "oauth" "discord" "saml")
+IMAGES=("core" "oauth" "discord" "saml" "web")
 
 echo ""
 echo "=== Release Summary ==="
