@@ -1,0 +1,118 @@
+package api
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/gaucho-racing/sentinel/saml/pkg/logger"
+	"github.com/gaucho-racing/sentinel/saml/pkg/sentinel"
+	"github.com/gaucho-racing/sentinel/saml/service"
+	"github.com/gin-gonic/gin"
+)
+
+// writeGateError mirrors the oauth service: a genuine denial is 403, any other
+// gate-evaluation failure fails closed with 502 rather than letting the login
+// through.
+func writeGateError(c *gin.Context, err error) {
+	if errors.Is(err, service.ErrAccessDenied) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "error_description": err.Error()})
+		return
+	}
+	logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)
+	c.JSON(http.StatusBadGateway, gin.H{"error": "server_error", "error_description": "could not verify access"})
+}
+
+type validateAuthorizeResponse struct {
+	SPEntityID string `json:"sp_entity_id"`
+	AppName    string `json:"app_name"`
+	AppIconURL string `json:"app_icon_url"`
+}
+
+// ValidateAuthorize returns the SP info for the consent screen and, when the
+// SPA supplies the active entity, enforces the access gate up front so an
+// ineligible user sees a clear error instead of a failed redirect at the SP.
+func ValidateAuthorize(c *gin.Context) {
+	ssoRequestID := c.Query("sso_request")
+	if ssoRequestID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sso_request is required"})
+		return
+	}
+	stash, err := service.GetSSORequest(ssoRequestID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	sp, err := service.ResolveSP(stash.SPEntityID)
+	if err != nil {
+		logger.SugarLogger.Errorf("saml authorize: failed to resolve SP %s: %v", stash.SPEntityID, err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "unknown service provider"})
+		return
+	}
+
+	entityID := c.Query("entity_id")
+	if entityID != "" {
+		if err := service.CheckAccessGate(entityID, sp.ClientID); err != nil {
+			if errors.Is(err, service.ErrAccessDenied) {
+				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": sp.AppName, "app_icon_url": sp.AppIconURL})
+				return
+			}
+			logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)
+			c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, validateAuthorizeResponse{
+		SPEntityID: sp.EntityID,
+		AppName:    sp.AppName,
+		AppIconURL: sp.AppIconURL,
+	})
+}
+
+type authorizeRequest struct {
+	SSORequest string `json:"sso_request" binding:"required"`
+	EntityID   string `json:"entity_id" binding:"required"`
+}
+
+// Authorize completes SP-initiated SSO after consent: it consumes the stashed
+// request, builds a signed SAML Response for the approved entity, records the
+// login for audit, and returns the HTTP-POST binding payload for the SPA to
+// auto-submit to the SP's ACS.
+func Authorize(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
+	var req authorizeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	stash, err := service.ConsumeSSORequest(req.SSORequest)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	form, err := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID)
+	if err != nil {
+		if errors.Is(err, service.ErrAccessDenied) {
+			writeGateError(c, err)
+			return
+		}
+		logger.SugarLogger.Errorf("saml authorize: failed to generate response: %v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+		return
+	}
+
+	sentinel.Post("/api/core/entity/logins", map[string]string{
+		"entity_id":  req.EntityID,
+		"client_id":  form.ClientID,
+		"scope":      "saml",
+		"ip_address": GetClientIP(c),
+	}, nil)
+
+	c.JSON(http.StatusOK, gin.H{
+		"acs_url":       form.ACSURL,
+		"saml_response": form.SAMLResponse,
+		"relay_state":   form.RelayState,
+	})
+}
