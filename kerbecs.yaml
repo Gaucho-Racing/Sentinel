@@ -45,6 +45,12 @@ upstreams:
     instances:
       - http://discord:9998
 
+  saml:
+    name: sentinel-saml
+    version: 0.1.0
+    instances:
+      - http://saml:9996
+
   web:
     name: sentinel-web
     version: 0.1.0
@@ -116,12 +122,37 @@ routes:
       strip_prefix: /api
     envelope: passthrough
 
+  # SAML consent endpoints — the SPA calls these through the /api prefix.
+  - name: saml
+    match:
+      path: /api/saml/*
+    upstream: saml
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
   # OIDC discovery must live at the issuer root (no /api prefix), so route it
   # straight to oauth without stripping anything.
   - name: well-known
     match:
       path: /.well-known/*
     upstream: oauth
+    envelope: passthrough
+
+  # SAML IdP metadata and SSO endpoint live at the issuer root (no /api prefix)
+  # so the URLs published in metadata are clean and stable. The SPA-served
+  # /saml/authorize consent page is NOT listed here, so it falls through to the
+  # web frontend below.
+  - name: saml-metadata
+    match:
+      path: /saml/metadata
+    upstream: saml
+    envelope: passthrough
+
+  - name: saml-sso
+    match:
+      path: /saml/sso
+    upstream: saml
     envelope: passthrough
 
   - name: web-frontend
