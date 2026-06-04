@@ -46,7 +46,10 @@ func GenerateResponse(requestBuffer []byte, relayState string, entityID string, 
 	if err := req.Validate(); err != nil {
 		return ResponseForm{}, err
 	}
-	req.Now = time.Now()
+	// UTC: SAML serializes timestamps as xsd:dateTime and crewjam's layout emits
+	// a zone offset for non-UTC times (e.g. -07:00 under the pod's TZ), which
+	// strict SPs reject — they require the Zulu "...Z" form.
+	req.Now = time.Now().UTC()
 
 	sp, err := ResolveSP(req.Request.Issuer.Value)
 	if err != nil {
