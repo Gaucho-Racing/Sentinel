@@ -1,6 +1,7 @@
 package service
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/crewjam/saml"
@@ -29,9 +30,15 @@ type ResponseForm struct {
 // 90s window, while the assertion must be stamped with the real current time so
 // SPs see a fresh window. We anchor Now to validatedAt for Validate, then reset
 // it to now before building the response.
-func GenerateResponse(requestBuffer []byte, relayState string, entityID string, validatedAt time.Time) (ResponseForm, error) {
+//
+// remoteAddr is the client IP. crewjam stamps it into the assertion's
+// SubjectConfirmationData/SubjectLocality Address, dereferencing
+// req.HTTPRequest to read it — so HTTPRequest must be non-nil even though we
+// rebuild the request from the stashed buffer rather than a live *http.Request.
+func GenerateResponse(requestBuffer []byte, relayState string, entityID string, remoteAddr string, validatedAt time.Time) (ResponseForm, error) {
 	req := &saml.IdpAuthnRequest{
 		IDP:           idp,
+		HTTPRequest:   &http.Request{RemoteAddr: remoteAddr},
 		RequestBuffer: requestBuffer,
 		RelayState:    relayState,
 		Now:           validatedAt,

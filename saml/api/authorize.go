@@ -86,13 +86,16 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	stash, err := service.ConsumeSSORequest(req.SSORequest)
+	// Peek at the stash without consuming it: we only delete it once the
+	// assertion is successfully issued, so a transient failure leaves the
+	// handle valid for a retry instead of stranding the user.
+	stash, err := service.GetSSORequest(req.SSORequest)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	form, err := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID, stash.CreatedAt)
+	form, err := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID, GetClientIP(c), stash.CreatedAt)
 	if err != nil {
 		if errors.Is(err, service.ErrAccessDenied) {
 			writeGateError(c, err)
@@ -102,6 +105,8 @@ func Authorize(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
 		return
 	}
+
+	service.DeleteSSORequest(req.SSORequest)
 
 	sentinel.Post("/api/core/entity/logins", map[string]string{
 		"entity_id":  req.EntityID,

@@ -40,14 +40,12 @@ func GetSSORequest(id string) (model.SSORequest, error) {
 	return req, nil
 }
 
-// ConsumeSSORequest loads and deletes a stashed request, enforcing single use.
-func ConsumeSSORequest(id string) (model.SSORequest, error) {
-	req, err := GetSSORequest(id)
-	if err != nil {
-		return model.SSORequest{}, err
-	}
+// DeleteSSORequest removes a stashed request. Called once the assertion has
+// been issued so the handle is single-use, but only after success — a failed
+// attempt leaves the stash in place so the user can retry without restarting
+// the whole SP-initiated flow.
+func DeleteSSORequest(id string) {
 	database.DB.Where("id = ?", id).Delete(&model.SSORequest{})
-	return req, nil
 }
 
 func generateCryptoString(length int) string {
