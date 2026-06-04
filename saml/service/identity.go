@@ -68,9 +68,11 @@ func BuildSession(entityID string, clientID string) (*saml.Session, error) {
 	}
 
 	session := &saml.Session{
-		ID:           entityID,
-		CreateTime:   time.Now(),
-		ExpireTime:   time.Now().Add(time.Hour),
+		ID: entityID,
+		// UTC so the assertion's AuthnInstant/SessionNotOnOrAfter serialize in
+		// the Zulu form SAML requires (see GenerateResponse).
+		CreateTime:   time.Now().UTC(),
+		ExpireTime:   time.Now().Add(time.Hour).UTC(),
 		Index:        entityID,
 		NameID:       email,
 		NameIDFormat: string(saml.EmailAddressNameIDFormat),
