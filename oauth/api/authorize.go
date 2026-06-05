@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
@@ -117,25 +118,19 @@ func ValidateAuthorize(c *gin.Context) {
 		}
 	}
 
-	prompt := c.Query("prompt")
-	if prompt == "none" && entityID != "" {
+	// Default to a consent prompt. If the user already authorized this exact
+	// client+scope set within the last 24h, skip the screen and auto-approve.
+	prompt := "consent"
+	if entityID != "" {
+		q := url.Values{}
+		q.Set("client_id", clientID)
+		q.Set("scope", scope)
+		q.Set("after", time.Now().Add(-24*time.Hour).Format(time.RFC3339))
+		q.Set("limit", "1")
 		var logins []map[string]interface{}
-		err = sentinel.Get(fmt.Sprintf("/core/entity/%s/logins?client_id=%s&scope=%s&limit=1", entityID, clientID, scope), &logins)
-		if err == nil && len(logins) > 0 {
-			if createdAt, ok := logins[0]["created_at"].(string); ok {
-				if t, err := time.Parse(time.RFC3339, createdAt); err == nil && time.Since(t) < 7*24*time.Hour {
-					prompt = "none"
-				} else {
-					prompt = "consent"
-				}
-			} else {
-				prompt = "consent"
-			}
-		} else {
-			prompt = "consent"
+		if err := sentinel.Get(fmt.Sprintf("/api/core/entity/%s/logins?%s", entityID, q.Encode()), &logins); err == nil && len(logins) > 0 {
+			prompt = "none"
 		}
-	} else {
-		prompt = "consent"
 	}
 
 	c.JSON(http.StatusOK, validateAuthorizeResponse{
