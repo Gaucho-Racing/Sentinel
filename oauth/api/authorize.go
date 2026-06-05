@@ -120,7 +120,7 @@ func ValidateAuthorize(c *gin.Context) {
 	prompt := c.Query("prompt")
 	if prompt == "none" && entityID != "" {
 		var logins []map[string]interface{}
-		err = sentinel.Get(fmt.Sprintf("/core/entity/%s/logins?client_id=%s&scope=%s&limit=1", entityID, clientID, scope), &logins)
+		err = sentinel.Get(fmt.Sprintf("/api/core/entity/%s/logins?client_id=%s&scope=%s&limit=1", entityID, clientID, scope), &logins)
 		if err == nil && len(logins) > 0 {
 			if createdAt, ok := logins[0]["created_at"].(string); ok {
 				if t, err := time.Parse(time.RFC3339, createdAt); err == nil && time.Since(t) < 7*24*time.Hour {

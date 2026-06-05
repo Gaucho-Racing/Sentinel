@@ -125,20 +125,20 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 		return "", fmt.Errorf("create user: %w", err)
 	}
 
-	if err := sentinel.Post(fmt.Sprintf("/core/entity/%s/email-auth", entityResp.ID), map[string]string{
+	if err := sentinel.Post(fmt.Sprintf("/api/core/entity/%s/email-auth", entityResp.ID), map[string]string{
 		"email":    p.Email,
 		"password": p.Password,
 	}, &ignored); err != nil {
 		return "", fmt.Errorf("create email auth: %w", err)
 	}
 
-	if err := sentinel.Post(fmt.Sprintf("/core/entity/%s/phone-auth", entityResp.ID), map[string]string{
+	if err := sentinel.Post(fmt.Sprintf("/api/core/entity/%s/phone-auth", entityResp.ID), map[string]string{
 		"phone_number": p.PhoneNumber,
 	}, &ignored); err != nil {
 		return "", fmt.Errorf("create phone auth: %w", err)
 	}
 
-	if err := sentinel.Post(fmt.Sprintf("/core/entity/%s/external-auth", entityResp.ID), map[string]string{
+	if err := sentinel.Post(fmt.Sprintf("/api/core/entity/%s/external-auth", entityResp.ID), map[string]string{
 		"provider":    "DISCORD",
 		"external_id": token.DiscordID,
 	}, &ignored); err != nil {
