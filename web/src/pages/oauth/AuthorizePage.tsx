@@ -99,7 +99,6 @@ export default function AuthorizePage() {
   const scope = params.get("scope") ?? ""
   const state = params.get("state")
   const nonce = params.get("nonce")
-  const prompt = params.get("prompt") ?? ""
 
   const [busy, setBusy] = useState<Action | null>(null)
   const [success, setSuccess] = useState(false)
@@ -112,7 +111,7 @@ export default function AuthorizePage() {
     state ? { ...extra, state } : extra
 
   const validate = useQuery({
-    queryKey: ["oauth-authorize", clientId, redirectUri, scope, prompt, session?.entityId],
+    queryKey: ["oauth-authorize", clientId, redirectUri, scope, session?.entityId],
     queryFn: async () => {
       const search = new URLSearchParams({
         client_id: clientId ?? "",
@@ -120,7 +119,6 @@ export default function AuthorizePage() {
         scope,
         entity_id: session?.entityId ?? "",
       })
-      if (prompt) search.set("prompt", prompt)
       const res = await api.get<ValidateResponse>(`/oauth/authorize?${search.toString()}`)
       return res.data
     },
@@ -180,8 +178,8 @@ export default function AuthorizePage() {
     }
   }
 
-  // prompt=none means the user recently consented — approve silently without
-  // flashing the consent screen. The backend resolves the effective prompt.
+  // Backend signals prompt=none when the user authorized this client+scope
+  // within the auto-consent window — approve silently without flashing the screen.
   useEffect(() => {
     if (validate.data?.prompt === "none" && !autoApproved.current) {
       autoApproved.current = true
