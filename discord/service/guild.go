@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
@@ -55,6 +56,21 @@ func DiscordRolesForInitialRole(initialRole string) []string {
 	default:
 		return nil
 	}
+}
+
+// SetGuildNickname sets the user's nickname in the configured guild.
+// Empty or whitespace-only names are skipped. Discord's nickname field is
+// capped at 32 characters; longer values are truncated.
+func SetGuildNickname(discordID, nickname string) error {
+	trimmed := strings.TrimSpace(nickname)
+	if trimmed == "" {
+		return nil
+	}
+	if len(trimmed) > 32 {
+		trimmed = trimmed[:32]
+	}
+	_, err := Discord.GuildMemberEdit(config.DiscordGuild, discordID, &discordgo.GuildMemberParams{Nick: trimmed})
+	return err
 }
 
 // AssignOnboardingRoles grants the Discord roles mapped to a user's

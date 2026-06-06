@@ -157,5 +157,9 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 		logger.SugarLogger.Errorf("Failed to assign onboarding roles for entity %s (discord_id=%s, initial_role=%s): %v", entityResp.ID, token.DiscordID, p.InitialRole, err)
 	}
 
+	if err := SetGuildNickname(token.DiscordID, p.FirstName); err != nil {
+		logger.SugarLogger.Errorf("Failed to set guild nickname for entity %s (discord_id=%s, first_name=%s): %v", entityResp.ID, token.DiscordID, p.FirstName, err)
+	}
+
 	return entityResp.ID, nil
 }
