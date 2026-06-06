@@ -51,6 +51,7 @@ func CreateRoleBinding(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	service.TriggerReconcileAll()
 	c.JSON(http.StatusOK, binding)
 }
 
@@ -68,5 +69,6 @@ func DeleteRoleBinding(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	service.TriggerReconcileAll()
 	c.Status(http.StatusNoContent)
 }

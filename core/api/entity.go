@@ -101,6 +101,16 @@ func GetEntityByExternalAuth(c *gin.Context) {
 	c.JSON(http.StatusOK, entity)
 }
 
+func ListExternalAuthsByProvider(c *gin.Context) {
+	provider := c.Param("provider")
+	auths, err := service.ListExternalAuthsByProvider(provider)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, auths)
+}
+
 func CreateEntityLogin(c *gin.Context) {
 	var login model.EntityLogin
 	if err := c.ShouldBindJSON(&login); err != nil {

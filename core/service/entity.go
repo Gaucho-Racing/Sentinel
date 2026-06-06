@@ -145,6 +145,17 @@ func GetExternalAuthForEntity(entityID string) ([]model.EntityExternalAuth, erro
 	return auths, nil
 }
 
+// ListExternalAuthsByProvider returns every external auth row for the given
+// provider (e.g. "DISCORD"). Used by integration services to enumerate
+// onboarded users for a provider without having to walk all entities.
+func ListExternalAuthsByProvider(provider string) ([]model.EntityExternalAuth, error) {
+	auths := []model.EntityExternalAuth{}
+	if err := database.DB.Where("UPPER(provider) = UPPER(?)", provider).Find(&auths).Error; err != nil {
+		return []model.EntityExternalAuth{}, err
+	}
+	return auths, nil
+}
+
 func CreateExternalAuthForEntity(auth model.EntityExternalAuth) (model.EntityExternalAuth, error) {
 	if err := database.DB.Create(&auth).Error; err != nil {
 		return model.EntityExternalAuth{}, err

@@ -2,7 +2,9 @@ package service
 
 import (
 	"fmt"
+	"sync"
 
+	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
 )
@@ -142,4 +144,151 @@ func toSet(ss []string) map[string]struct{} {
 		out[s] = struct{}{}
 	}
 	return out
+}
+
+// externalAuthRow mirrors the EntityExternalAuth fields needed to enumerate
+// onboarded users for a provider.
+type externalAuthRow struct {
+	EntityID   string `json:"entity_id"`
+	ExternalID string `json:"external_id"`
+}
+
+var (
+	sweepMu      sync.Mutex
+	sweepRunning bool
+	sweepDirty   bool
+)
+
+// TriggerReconcileAll requests a full reconciliation sweep over every
+// onboarded Discord user. If a sweep is already running, the request is
+// coalesced — when the current sweep finishes, it will run once more to
+// pick up the latest binding state. This guarantees the final sweep
+// reflects any binding mutations made during a prior sweep, without
+// spawning parallel sweeps.
+func TriggerReconcileAll() {
+	sweepMu.Lock()
+	if sweepRunning {
+		sweepDirty = true
+		sweepMu.Unlock()
+		return
+	}
+	sweepRunning = true
+	sweepMu.Unlock()
+
+	go func() {
+		for {
+			if err := reconcileAllOnboardedDiscordUsers(); err != nil {
+				logger.SugarLogger.Errorf("group sync: full sweep failed: %v", err)
+			}
+			sweepMu.Lock()
+			if !sweepDirty {
+				sweepRunning = false
+				sweepMu.Unlock()
+				return
+			}
+			sweepDirty = false
+			sweepMu.Unlock()
+		}
+	}()
+}
+
+// reconcileAllOnboardedDiscordUsers walks every Sentinel entity with a
+// DISCORD external auth and reconciles their DISCORD-sourced group
+// memberships against current Discord roles. Bindings and group
+// allowed_sources are snapshotted once up-front so the per-user inner loop
+// only touches core for memberships + diff writes.
+func reconcileAllOnboardedDiscordUsers() error {
+	var auths []externalAuthRow
+	if err := sentinel.Get("/api/core/entity/external/DISCORD", &auths); err != nil {
+		return fmt.Errorf("list discord external auths: %w", err)
+	}
+	if len(auths) == 0 {
+		return nil
+	}
+
+	allBindings, err := GetAllRoleBindings()
+	if err != nil {
+		return fmt.Errorf("load bindings: %w", err)
+	}
+	bindingsByGroup := make(map[string][]model.GroupDiscordRoleBinding, len(allBindings))
+	for _, b := range allBindings {
+		bindingsByGroup[b.GroupID] = append(bindingsByGroup[b.GroupID], b)
+	}
+
+	var groups []groupSummary
+	if err := sentinel.Get("/api/groups", &groups); err != nil {
+		return fmt.Errorf("load groups: %w", err)
+	}
+	discordEnabled := make(map[string]bool, len(groups))
+	for _, g := range groups {
+		for _, src := range g.AllowedSources {
+			if src == "DISCORD" {
+				discordEnabled[g.ID] = true
+				break
+			}
+		}
+	}
+
+	logger.SugarLogger.Infof("group sync: starting full sweep over %d onboarded discord users", len(auths))
+	for _, a := range auths {
+		if err := reconcileOneWithSnapshot(a.EntityID, a.ExternalID, bindingsByGroup, discordEnabled); err != nil {
+			logger.SugarLogger.Errorf("group sync: reconcile failed for entity=%s discord=%s: %v", a.EntityID, a.ExternalID, err)
+		}
+	}
+	logger.SugarLogger.Infof("group sync: full sweep complete")
+	return nil
+}
+
+// reconcileOneWithSnapshot reconciles a single onboarded user using
+// pre-fetched binding + allowed_sources snapshots. Reads current Discord
+// roles via the guild-member lookup (state cache then REST fallback).
+// Users no longer present in the guild are skipped rather than stripped —
+// a transient lookup failure shouldn't aggressively remove memberships.
+func reconcileOneWithSnapshot(entityID, discordID string, bindingsByGroup map[string][]model.GroupDiscordRoleBinding, discordEnabled map[string]bool) error {
+	member, err := GetGuildMember(discordID)
+	if err != nil {
+		logger.SugarLogger.Debugf("group sync: skipping entity=%s discord=%s, guild member lookup failed: %v", entityID, discordID, err)
+		return nil
+	}
+
+	desired := make(map[string]struct{})
+	for groupID, bs := range bindingsByGroup {
+		if !discordEnabled[groupID] {
+			continue
+		}
+		if EvaluateDiscordMembership(bs, member.Roles) {
+			desired[groupID] = struct{}{}
+		}
+	}
+
+	current, err := getEntityDiscordMemberships(entityID)
+	if err != nil {
+		return fmt.Errorf("fetch current memberships: %w", err)
+	}
+	currentSet := make(map[string]struct{}, len(current))
+	for _, m := range current {
+		currentSet[m.GroupID] = struct{}{}
+	}
+
+	for groupID := range desired {
+		if _, already := currentSet[groupID]; already {
+			continue
+		}
+		if err := addDiscordGroupMember(groupID, entityID); err != nil {
+			logger.SugarLogger.Errorf("group sync: failed to add %s to %s: %v", entityID, groupID, err)
+			continue
+		}
+		logger.SugarLogger.Infof("group sync: added entity %s to group %s (DISCORD)", entityID, groupID)
+	}
+	for groupID := range currentSet {
+		if _, keep := desired[groupID]; keep {
+			continue
+		}
+		if err := removeDiscordGroupMember(groupID, entityID); err != nil {
+			logger.SugarLogger.Errorf("group sync: failed to remove %s from %s: %v", entityID, groupID, err)
+			continue
+		}
+		logger.SugarLogger.Infof("group sync: removed entity %s from group %s (DISCORD)", entityID, groupID)
+	}
+	return nil
 }
