@@ -103,7 +103,7 @@ export default function ApplicationNewPage() {
         </div>
 
         <div className="flex gap-2 pt-2">
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" className="h-10 gap-1.5 rounded-xl px-4 text-sm">
             <Link to="/applications">Cancel</Link>
           </Button>
           <OutlineButton type="submit" className="w-auto" loading={submitting} disabled={!name}>
