@@ -13,7 +13,7 @@ import {
   Trash2,
   UserPlus,
 } from "lucide-react"
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -43,6 +43,10 @@ import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
+import {
+  useGroupConditionalBindings,
+  type GroupConditionalBinding,
+} from "@/lib/conditional"
 import {
   discordRoleColorHex,
   useDiscordRoles,
@@ -197,10 +201,14 @@ function SyncConfigBlock({
   source,
   discordBindings,
   discordRoles,
+  conditionalBindings,
+  groupNamesByID,
 }: {
   source: GroupSource
   discordBindings?: GroupDiscordRoleBinding[]
   discordRoles?: DiscordRole[]
+  conditionalBindings?: GroupConditionalBinding[]
+  groupNamesByID?: Record<string, string>
 }) {
   if (source === "DIRECT") {
     return (
@@ -267,14 +275,49 @@ function SyncConfigBlock({
       </div>
     )
   }
+  // CONDITIONAL
+  const bindings = conditionalBindings ?? []
   return (
     <div className="flex items-start gap-3 py-3">
       <Sparkles className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">Conditional rule</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Members are auto-populated by a rule against entity profiles. Rule editor not yet built.
+          Members of any of the group sets below are added automatically.
         </p>
+        {bindings.length === 0 ? (
+          <p className="mt-2 text-xs italic text-muted-foreground">
+            No conditional bindings configured yet.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1.5">
+            {bindings.map((binding) => (
+              <li key={binding.id} className="flex flex-wrap items-center gap-1.5">
+                {binding.required_group_ids.map((groupID, idx) => {
+                  const name = groupNamesByID?.[groupID]
+                  return (
+                    <span key={groupID} className="flex items-center gap-1.5">
+                      {idx > 0 && (
+                        <span className="text-xs font-medium text-muted-foreground">
+                          AND
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5">
+                        <span className="text-sm">
+                          {name ?? (
+                            <code className="font-mono text-xs text-muted-foreground">
+                              {groupID}
+                            </code>
+                          )}
+                        </span>
+                      </span>
+                    </span>
+                  )
+                })}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   )
@@ -346,6 +389,21 @@ export default function GroupDetailsPage() {
 
   const discordBindingsQuery = useGroupDiscordBindings(id ?? "")
   const discordRolesQuery = useDiscordRoles()
+  const conditionalBindingsQuery = useGroupConditionalBindings(id ?? "")
+  // Fetch ALL groups once so we can resolve required_group_ids → names for
+  // the conditional-binding chips. Cheap query for typical org scale.
+  const allGroupsQuery = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await api.get<Group[]>("/groups")
+      return res.data
+    },
+  })
+  const groupNamesByID = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const g of allGroupsQuery.data ?? []) m[g.id] = g.name
+    return m
+  }, [allGroupsQuery.data])
 
 
   async function submitJoinRequest() {
@@ -719,6 +777,8 @@ export default function GroupDetailsPage() {
                         source={source}
                         discordBindings={discordBindingsQuery.data}
                         discordRoles={discordRolesQuery.data}
+                        conditionalBindings={conditionalBindingsQuery.data}
+                        groupNamesByID={groupNamesByID}
                       />
                     ))
                   ) : (

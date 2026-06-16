@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"unicode"
 
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -11,6 +12,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// validateGroupName enforces the no-whitespace rule on group names so they
+// can be safely embedded in CLI args, URL paths, scope strings, etc.
+// without quoting concerns. Empty names are handled by the availability
+// check downstream — this only rejects valid-but-whitespace-bearing names.
+func validateGroupName(name string) error {
+	for _, r := range name {
+		if unicode.IsSpace(r) {
+			return errors.New("group names cannot contain spaces — try hyphens or underscores")
+		}
+	}
+	return nil
+}
 
 // validateMembershipExpiration enforces the 1-year cap on time-boxed
 // memberships and join requests. Uses AddDate(1, 0, 0) so leap years are
@@ -41,6 +55,18 @@ func GetAllGroups(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, groups)
+}
+
+// containsSource reports whether src is in sources. Sources are stored
+// case-sensitively (uppercase enum strings), so a direct match is enough.
+func containsSource(sources model.StringSlice, src model.GroupMemberSource) bool {
+	want := string(src)
+	for _, s := range sources {
+		if s == want {
+			return true
+		}
+	}
+	return false
 }
 
 // cascadeRemovedSources deletes auto-synced members for any source that was
@@ -91,6 +117,11 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		return
 	}
 
+	if err := validateGroupName(req.Name); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
 	existing, err := service.GetGroupByID(req.ID)
 	if err != nil && err != gorm.ErrRecordNotFound {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -122,6 +153,14 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		group, err = service.UpdateGroup(group)
 		if err == nil {
 			cascadeRemovedSources(existing.ID, existing.AllowedSources, req.AllowedSources)
+			// If CONDITIONAL was just newly added to allowed_sources, kick a
+			// sweep so members whose group set already satisfies the
+			// bindings get added immediately (instead of waiting for the
+			// next cron tick).
+			if !containsSource(existing.AllowedSources, model.GroupMemberSourceConditional) &&
+				containsSource(model.StringSlice(req.AllowedSources), model.GroupMemberSourceConditional) {
+				service.TriggerReconcileAllConditional()
+			}
 		}
 	} else {
 		group = model.Group{
@@ -218,6 +257,10 @@ func AddGroupMember(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// The entity's group set just changed — re-evaluate any conditional
+	// bindings that depend on it. Conditional sync runs in the background
+	// via syncJob; failures here are logged, not surfaced to the caller.
+	service.ReconcileConditionalForEntity(req.EntityID)
 	c.JSON(http.StatusOK, member)
 }
 
@@ -229,6 +272,8 @@ func RemoveGroupMember(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// Their group set just changed — re-evaluate conditional bindings.
+	service.ReconcileConditionalForEntity(entityID)
 	c.JSON(http.StatusOK, gin.H{"message": "member removed from group"})
 }
 

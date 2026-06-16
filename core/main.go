@@ -19,5 +19,12 @@ func main() {
 	service.InitializeKeys()
 	jobs.InitializeCore()
 
+	// Initial conditional-group reconcile to catch drift accumulated while
+	// core was offline (manual DB edits, missed triggers, etc). Background
+	// goroutine via syncJob so it doesn't block startup.
+	service.TriggerReconcileAllConditional()
+	// Periodic safety-net sweep on a configurable interval.
+	service.StartReconcileConditionalCron()
+
 	api.Run()
 }

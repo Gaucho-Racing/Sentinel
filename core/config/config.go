@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/rsa"
 	"os"
+	"time"
 )
 
 const Name = "sentinel-core"
@@ -29,6 +30,25 @@ var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")
 var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
 var DatabaseName = os.Getenv("DATABASE_NAME")
+
+// ConditionalSyncInterval is how often the periodic conditional-group
+// reconcile cron fires. Event-driven sync (member add/remove triggers,
+// binding mutations) covers the happy path; the cron is a safety net for
+// missed events, batched DB edits, and any future trigger we forget to
+// wire. Default 1h; set to 0 (or any non-positive duration) to disable.
+var ConditionalSyncInterval = parseDurationOr("CONDITIONAL_SYNC_INTERVAL", time.Hour)
+
+func parseDurationOr(envKey string, fallback time.Duration) time.Duration {
+	raw := os.Getenv(envKey)
+	if raw == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return fallback
+	}
+	return d
+}
 
 func IsProduction() bool {
 	return Env == "PROD"

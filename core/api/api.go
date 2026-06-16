@@ -104,6 +104,10 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/groups/:id/members", AddGroupMember)
 	router.DELETE("/groups/:id/members/:entityID", RemoveGroupMember)
 
+	router.GET("/groups/:id/conditional-bindings", GetGroupConditionalBindings)
+	router.POST("/groups/:id/conditional-bindings", CreateGroupConditionalBinding)
+	router.DELETE("/groups/:id/conditional-bindings/:bindingID", DeleteGroupConditionalBinding)
+
 	router.GET("/groups/:id/owners", GetGroupOwners)
 	router.POST("/groups/:id/owners", AddGroupOwner)
 	router.DELETE("/groups/:id/owners/:entityID", RemoveGroupOwner)

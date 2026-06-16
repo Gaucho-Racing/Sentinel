@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Bot, Plus, Trash2, X } from "lucide-react"
+import { ArrowLeft, Bot, Plus, Sparkles, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -29,6 +29,10 @@ import { api } from "@/lib/api"
 import type { Application, ApplicationWithLink } from "@/lib/applications"
 import { loadSession } from "@/lib/auth"
 import {
+  useGroupConditionalBindings,
+  type GroupConditionalBinding,
+} from "@/lib/conditional"
+import {
   discordRoleColorHex,
   useDiscordRoles,
   useGroupDiscordBindings,
@@ -37,7 +41,8 @@ import {
 import type { Group, GroupMember, GroupOwner, GroupSource } from "@/lib/groups"
 
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
-import { GroupForm, type GroupFormValues } from "./GroupForm"
+import { groupNameError, GroupForm, type GroupFormValues } from "./GroupForm"
+import { GroupPickerDialog } from "./GroupPickerDialog"
 
 function DiscordSyncCard({
   bindings,
@@ -125,6 +130,96 @@ function DiscordSyncCard({
       <DiscordRolePickerDialog
         open={pickerOpen}
         onOpenChange={setPickerOpen}
+        onAddBinding={onAddBinding}
+      />
+    </Card>
+  )
+}
+
+function ConditionalSyncCard({
+  groupID,
+  bindings,
+  groupNamesByID,
+  onAddBinding,
+  onRemoveBinding,
+}: {
+  groupID: string
+  bindings: GroupConditionalBinding[]
+  groupNamesByID: Record<string, string>
+  onAddBinding: (groupIDs: string[]) => void
+  onRemoveBinding: (bindingID: string) => void
+}) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Sparkles className="size-4 text-muted-foreground" />
+          Conditional rule
+        </CardTitle>
+        <CardDescription>
+          Each binding is an AND-group of other Sentinel groups — entities must be a
+          member of every group in the binding to be synced through it. Group membership
+          is the OR across all bindings, so add multiple bindings for either-or rules.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {bindings.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No conditional bindings yet.</p>
+        ) : (
+          <ul className="space-y-2">
+            {bindings.map((binding) => (
+              <li
+                key={binding.id}
+                className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
+              >
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  {binding.required_group_ids.map((reqID, idx) => {
+                    const name = groupNamesByID[reqID]
+                    return (
+                      <span key={reqID} className="flex items-center gap-1.5">
+                        {idx > 0 && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            AND
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/60 px-2 py-0.5">
+                          <span className="text-sm">
+                            {name ?? (
+                              <code className="font-mono text-xs text-muted-foreground">
+                                {reqID}
+                              </code>
+                            )}
+                          </span>
+                        </span>
+                      </span>
+                    )
+                  })}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => onRemoveBinding(binding.id)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="pt-1">
+          <Button type="button" onClick={() => setPickerOpen(true)}>
+            <Plus className="mr-1 size-3.5" />
+            Add conditional binding
+          </Button>
+        </div>
+      </CardContent>
+
+      <GroupPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        excludeGroupID={groupID}
         onAddBinding={onAddBinding}
       />
     </Card>
@@ -272,6 +367,23 @@ export default function GroupEditPage() {
   })
 
   const bindingsQuery = useGroupDiscordBindings(id ?? "")
+  const conditionalBindingsQuery = useGroupConditionalBindings(id ?? "")
+
+  // All groups, used by the conditional editor to resolve required_group_ids
+  // → names for the chips and to feed the picker dialog. Cheap query for
+  // typical org scale.
+  const allGroupsQuery = useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await api.get<Group[]>("/groups")
+      return res.data
+    },
+  })
+  const groupNamesByID = useMemo(() => {
+    const m: Record<string, string> = {}
+    for (const g of allGroupsQuery.data ?? []) m[g.id] = g.name
+    return m
+  }, [allGroupsQuery.data])
 
   const linkedAppsQuery = useQuery({
     queryKey: ["group", id, "applications"],
@@ -310,6 +422,12 @@ export default function GroupEditPage() {
   const [pendingBindingRemoves, setPendingBindingRemoves] = useState<Set<string>>(
     new Set(),
   )
+  const [pendingConditionalAdds, setPendingConditionalAdds] = useState<
+    { tempID: string; required_group_ids: string[] }[]
+  >([])
+  const [pendingConditionalRemoves, setPendingConditionalRemoves] = useState<Set<string>>(
+    new Set(),
+  )
 
   const serverBindings = bindingsQuery.data ?? []
   const effectiveBindings: GroupDiscordRoleBinding[] = [
@@ -341,6 +459,40 @@ export default function GroupEditPage() {
       return
     }
     setPendingBindingRemoves((prev) => {
+      const next = new Set(prev)
+      next.add(bindingID)
+      return next
+    })
+  }
+
+  const serverConditionalBindings = conditionalBindingsQuery.data ?? []
+  const effectiveConditionalBindings: GroupConditionalBinding[] = [
+    ...serverConditionalBindings.filter((b) => !pendingConditionalRemoves.has(b.id)),
+    ...pendingConditionalAdds.map((p) => ({
+      id: p.tempID,
+      group_id: id ?? "",
+      required_group_ids: p.required_group_ids,
+      created_at: "",
+    })),
+  ]
+
+  function handleAddConditionalBinding(groupIDs: string[]) {
+    if (groupIDs.length === 0) return
+    setPendingConditionalAdds((prev) => [
+      ...prev,
+      {
+        tempID: `pending_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+        required_group_ids: groupIDs,
+      },
+    ])
+  }
+
+  function handleRemoveConditionalBinding(bindingID: string) {
+    if (bindingID.startsWith("pending_")) {
+      setPendingConditionalAdds((prev) => prev.filter((p) => p.tempID !== bindingID))
+      return
+    }
+    setPendingConditionalRemoves((prev) => {
       const next = new Set(prev)
       next.add(bindingID)
       return next
@@ -419,6 +571,22 @@ export default function GroupEditPage() {
           await api.post(`/discord/role-bindings`, {
             group_id: id,
             discord_role_ids: add.discord_role_ids,
+          })
+        }
+      }
+
+      // Same gate for conditional bindings — apply staged edits only if
+      // CONDITIONAL is staying enabled. cascadeRemovedSources on the
+      // backend will already strip CONDITIONAL members when the source is
+      // disabled, so adds/removes here would be wasted writes.
+      const keepingConditional = values.allowed_sources.includes("CONDITIONAL")
+      if (keepingConditional) {
+        for (const bindingID of pendingConditionalRemoves) {
+          await api.delete(`/groups/${id}/conditional-bindings/${bindingID}`)
+        }
+        for (const add of pendingConditionalAdds) {
+          await api.post(`/groups/${id}/conditional-bindings`, {
+            required_group_ids: add.required_group_ids,
           })
         }
       }
@@ -516,6 +684,7 @@ export default function GroupEditPage() {
     ownersQuery.isLoading ||
     membersQuery.isLoading ||
     bindingsQuery.isLoading ||
+    conditionalBindingsQuery.isLoading ||
     adminsLoading
   ) {
     return (
@@ -583,7 +752,7 @@ export default function GroupEditPage() {
           type="button"
           className="w-auto"
           loading={submitting}
-          disabled={!values.name.trim()}
+          disabled={!values.name.trim() || groupNameError(values.name) !== null}
           onClick={handleSubmit}
         >
           Save changes
@@ -613,6 +782,16 @@ export default function GroupEditPage() {
             bindings={effectiveBindings}
             onAddBinding={handleAddBinding}
             onRemoveBinding={handleRemoveBinding}
+          />
+        )}
+
+        {values.allowed_sources.includes("CONDITIONAL") && id && (
+          <ConditionalSyncCard
+            groupID={id}
+            bindings={effectiveConditionalBindings}
+            groupNamesByID={groupNamesByID}
+            onAddBinding={handleAddConditionalBinding}
+            onRemoveBinding={handleRemoveConditionalBinding}
           />
         )}
 
