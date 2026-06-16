@@ -43,6 +43,18 @@ func GetAllGroups(c *gin.Context) {
 	c.JSON(http.StatusOK, groups)
 }
 
+// containsSource reports whether src is in sources. Sources are stored
+// case-sensitively (uppercase enum strings), so a direct match is enough.
+func containsSource(sources model.StringSlice, src model.GroupMemberSource) bool {
+	want := string(src)
+	for _, s := range sources {
+		if s == want {
+			return true
+		}
+	}
+	return false
+}
+
 // cascadeRemovedSources deletes auto-synced members for any source that was
 // previously allowed but is no longer in the update. DIRECT members are
 // never touched. Sync configuration (e.g. Discord role bindings) is owned by
@@ -122,6 +134,14 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		group, err = service.UpdateGroup(group)
 		if err == nil {
 			cascadeRemovedSources(existing.ID, existing.AllowedSources, req.AllowedSources)
+			// If CONDITIONAL was just newly added to allowed_sources, kick a
+			// sweep so members whose group set already satisfies the
+			// bindings get added immediately (instead of waiting for the
+			// next cron tick).
+			if !containsSource(existing.AllowedSources, model.GroupMemberSourceConditional) &&
+				containsSource(model.StringSlice(req.AllowedSources), model.GroupMemberSourceConditional) {
+				service.TriggerReconcileAllConditional()
+			}
 		}
 	} else {
 		group = model.Group{
@@ -218,6 +238,10 @@ func AddGroupMember(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// The entity's group set just changed — re-evaluate any conditional
+	// bindings that depend on it. Conditional sync runs in the background
+	// via syncJob; failures here are logged, not surfaced to the caller.
+	service.ReconcileConditionalForEntity(req.EntityID)
 	c.JSON(http.StatusOK, member)
 }
 
@@ -229,6 +253,8 @@ func RemoveGroupMember(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// Their group set just changed — re-evaluate conditional bindings.
+	service.ReconcileConditionalForEntity(entityID)
 	c.JSON(http.StatusOK, gin.H{"message": "member removed from group"})
 }
 
