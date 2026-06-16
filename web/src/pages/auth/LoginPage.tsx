@@ -56,7 +56,18 @@ export default function LoginPage() {
   const location = useLocation()
   const [params] = useSearchParams()
   const arrivedFromOnboarding = params.has("email")
-  const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/"
+  // Reconstruct the full pre-login URL — pathname alone drops OAuth query
+  // params (?client_id=…&redirect_uri=…&scope=…) and the hash, so a 3rd-party
+  // app that bounces an unauthenticated user through /auth/login was landing
+  // back at /oauth/authorize stripped down to "Invalid request."
+  const fromLocation = (
+    location.state as {
+      from?: { pathname: string; search?: string; hash?: string }
+    } | null
+  )?.from
+  const from = fromLocation
+    ? `${fromLocation.pathname}${fromLocation.search ?? ""}${fromLocation.hash ?? ""}`
+    : "/"
   const [email, setEmail] = useState(params.get("email") ?? "")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState<LoadingTarget>(null)
