@@ -1,9 +1,12 @@
 package service
 
 import (
+	"context"
+	"errors"
 	"fmt"
-	"sync"
+	"time"
 
+	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
@@ -23,17 +26,46 @@ type groupMemberRow struct {
 	Source   string `json:"source"`
 }
 
+// Per-user reconciles are serialized via a syncJobMap keyed by Discord user
+// ID. The full sweep is its own singleton syncJob. Both use cancel-and-
+// restart: a new event for the same user (or a new binding mutation) cancels
+// the in-flight run and replaces it with a fresh one. This works because
+// every reconcile re-reads the live state — a cancelled run leaves the DB in
+// a consistent (if partial) state and the next run catches up from there.
+var (
+	userSyncJobs syncJobMap
+	sweepJob     syncJob
+)
+
 // ReconcileGroupsForDiscordUser brings a user's DISCORD-sourced group
-// memberships into agreement with their current Discord role set. It is a
-// no-op if the Discord user has no Sentinel entity (not onboarded).
+// memberships into agreement with their current Discord role set. Returns
+// immediately after scheduling the work — completion is asynchronous. A
+// subsequent call for the same Discord user cancels the in-flight run and
+// schedules a new one with the latest role set.
 //
-// Steps:
-//  1. Resolve Discord ID -> entity ID via core
-//  2. Compute desired groups: bindings that match the user's roles, scoped
-//     to groups that still allow DISCORD in their allowed_sources
-//  3. Read the entity's current DISCORD-sourced membership rows from core
-//  4. Apply the diff via core's group-member endpoints
+// The error return is kept for caller ergonomics but is always nil; failures
+// inside the spawned goroutine are logged, not propagated.
 func ReconcileGroupsForDiscordUser(discordUserID string, currentRoles []string) error {
+	roles := append([]string(nil), currentRoles...) // defensive copy for the closure
+	userSyncJobs.Start(discordUserID, func(ctx context.Context) {
+		if err := reconcileGroupsForDiscordUserCtx(ctx, discordUserID, roles); err != nil {
+			if errors.Is(err, context.Canceled) {
+				logger.SugarLogger.Debugf("group sync: per-user run for %s cancelled by newer event", discordUserID)
+				return
+			}
+			logger.SugarLogger.Errorf("group sync: reconcile failed for %s: %v", discordUserID, err)
+		}
+	})
+	return nil
+}
+
+// reconcileGroupsForDiscordUserCtx is the ctx-aware body. It checks
+// ctx.Err() between every cross-service step so a cancellation lands at the
+// next safe boundary; mid-HTTP-call cancellation is not attempted.
+func reconcileGroupsForDiscordUserCtx(ctx context.Context, discordUserID string, currentRoles []string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	var entity entityResponse
 	if err := sentinel.Get("/api/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
 		logger.SugarLogger.Debugf("group sync: no entity for Discord user %s: %v", discordUserID, err)
@@ -43,11 +75,17 @@ func ReconcileGroupsForDiscordUser(discordUserID string, currentRoles []string) 
 		return nil
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	desired, err := computeDesiredDiscordGroups(currentRoles)
 	if err != nil {
 		return fmt.Errorf("compute desired groups: %w", err)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	current, err := getEntityDiscordMemberships(entity.ID)
 	if err != nil {
 		return fmt.Errorf("fetch current memberships: %w", err)
@@ -60,6 +98,9 @@ func ReconcileGroupsForDiscordUser(discordUserID string, currentRoles []string) 
 	}
 
 	for groupID := range desiredSet {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if _, already := currentSet[groupID]; already {
 			continue
 		}
@@ -70,6 +111,9 @@ func ReconcileGroupsForDiscordUser(discordUserID string, currentRoles []string) 
 		logger.SugarLogger.Infof("group sync: added entity %s to group %s (DISCORD)", entity.ID, groupID)
 	}
 	for groupID := range currentSet {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if _, keep := desiredSet[groupID]; keep {
 			continue
 		}
@@ -153,51 +197,63 @@ type externalAuthRow struct {
 	ExternalID string `json:"external_id"`
 }
 
-var (
-	sweepMu      sync.Mutex
-	sweepRunning bool
-	sweepDirty   bool
-)
-
-// TriggerReconcileAll requests a full reconciliation sweep over every
-// onboarded Discord user. If a sweep is already running, the request is
-// coalesced — when the current sweep finishes, it will run once more to
-// pick up the latest binding state. This guarantees the final sweep
-// reflects any binding mutations made during a prior sweep, without
-// spawning parallel sweeps.
-func TriggerReconcileAll() {
-	sweepMu.Lock()
-	if sweepRunning {
-		sweepDirty = true
-		sweepMu.Unlock()
+// StartReconcileCron spawns a background goroutine that periodically calls
+// TriggerReconcileAll on config.GroupSyncInterval. Acts as a safety net for
+// drift the event stream might miss: dropped gateway events, bot restarts,
+// out-of-band core-side changes (e.g. group allowed_sources flips) that
+// don't surface as Discord events. A non-positive interval disables the
+// cron — useful in tests and one-off runs.
+//
+// Cancel-and-restart semantics in TriggerReconcileAll make this safe: if a
+// sweep is still running when the next tick fires, the in-flight sweep is
+// cancelled and replaced. The goroutine is leaked on process exit; we don't
+// have graceful-shutdown plumbing for it and the OS reaps everything anyway.
+func StartReconcileCron() {
+	interval := config.GroupSyncInterval
+	if interval <= 0 {
+		logger.SugarLogger.Infof("group sync: cron disabled (interval=%v)", interval)
 		return
 	}
-	sweepRunning = true
-	sweepMu.Unlock()
-
+	logger.SugarLogger.Infof("group sync: cron enabled, interval=%v", interval)
 	go func() {
-		for {
-			if err := reconcileAllOnboardedDiscordUsers(); err != nil {
-				logger.SugarLogger.Errorf("group sync: full sweep failed: %v", err)
-			}
-			sweepMu.Lock()
-			if !sweepDirty {
-				sweepRunning = false
-				sweepMu.Unlock()
-				return
-			}
-			sweepDirty = false
-			sweepMu.Unlock()
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
+			logger.SugarLogger.Debugf("group sync: cron tick, kicking full sweep")
+			TriggerReconcileAll()
 		}
 	}()
+}
+
+// TriggerReconcileAll schedules a full reconciliation sweep over every
+// onboarded Discord user. A subsequent call (e.g. a second role-binding
+// mutation arriving while the first sweep is still running) cancels the
+// in-flight sweep and starts a new one with the latest binding state. Safe
+// because the sweep re-reads bindings and allowed_sources at the top of
+// every run — cancelling mid-iteration just means the next run picks up
+// users that weren't yet processed.
+func TriggerReconcileAll() {
+	sweepJob.Start(func(ctx context.Context) {
+		if err := reconcileAllOnboardedDiscordUsers(ctx); err != nil {
+			if errors.Is(err, context.Canceled) {
+				logger.SugarLogger.Debugf("group sync: full sweep cancelled by newer trigger")
+				return
+			}
+			logger.SugarLogger.Errorf("group sync: full sweep failed: %v", err)
+		}
+	})
 }
 
 // reconcileAllOnboardedDiscordUsers walks every Sentinel entity with a
 // DISCORD external auth and reconciles their DISCORD-sourced group
 // memberships against current Discord roles. Bindings and group
 // allowed_sources are snapshotted once up-front so the per-user inner loop
-// only touches core for memberships + diff writes.
-func reconcileAllOnboardedDiscordUsers() error {
+// only touches core for memberships + diff writes. ctx is checked between
+// iterations so a cancellation cuts off the sweep at the next user boundary.
+func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	var auths []externalAuthRow
 	if err := sentinel.Get("/api/core/entity/external/DISCORD", &auths); err != nil {
 		return fmt.Errorf("list discord external auths: %w", err)
@@ -206,6 +262,9 @@ func reconcileAllOnboardedDiscordUsers() error {
 		return nil
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	allBindings, err := GetAllRoleBindings()
 	if err != nil {
 		return fmt.Errorf("load bindings: %w", err)
@@ -215,6 +274,9 @@ func reconcileAllOnboardedDiscordUsers() error {
 		bindingsByGroup[b.GroupID] = append(bindingsByGroup[b.GroupID], b)
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	var groups []groupSummary
 	if err := sentinel.Get("/api/groups", &groups); err != nil {
 		return fmt.Errorf("load groups: %w", err)
@@ -231,7 +293,14 @@ func reconcileAllOnboardedDiscordUsers() error {
 
 	logger.SugarLogger.Infof("group sync: starting full sweep over %d onboarded discord users", len(auths))
 	for _, a := range auths {
-		if err := reconcileOneWithSnapshot(a.EntityID, a.ExternalID, bindingsByGroup, discordEnabled); err != nil {
+		if err := ctx.Err(); err != nil {
+			logger.SugarLogger.Infof("group sync: sweep cancelled mid-iteration after %d users", indexOf(auths, a))
+			return err
+		}
+		if err := reconcileOneWithSnapshot(ctx, a.EntityID, a.ExternalID, bindingsByGroup, discordEnabled); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
 			logger.SugarLogger.Errorf("group sync: reconcile failed for entity=%s discord=%s: %v", a.EntityID, a.ExternalID, err)
 		}
 	}
@@ -239,12 +308,27 @@ func reconcileAllOnboardedDiscordUsers() error {
 	return nil
 }
 
+// indexOf returns the index of row in auths, or -1 if not found. Used only
+// for the cancellation log line so the operator can see how far the sweep
+// got before being cancelled.
+func indexOf(auths []externalAuthRow, row externalAuthRow) int {
+	for i, a := range auths {
+		if a.EntityID == row.EntityID && a.ExternalID == row.ExternalID {
+			return i
+		}
+	}
+	return -1
+}
+
 // reconcileOneWithSnapshot reconciles a single onboarded user using
 // pre-fetched binding + allowed_sources snapshots. Reads current Discord
 // roles via the guild-member lookup (state cache then REST fallback).
 // Users no longer present in the guild are skipped rather than stripped —
 // a transient lookup failure shouldn't aggressively remove memberships.
-func reconcileOneWithSnapshot(entityID, discordID string, bindingsByGroup map[string][]model.GroupDiscordRoleBinding, discordEnabled map[string]bool) error {
+func reconcileOneWithSnapshot(ctx context.Context, entityID, discordID string, bindingsByGroup map[string][]model.GroupDiscordRoleBinding, discordEnabled map[string]bool) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	member, err := GetGuildMember(discordID)
 	if err != nil {
 		logger.SugarLogger.Debugf("group sync: skipping entity=%s discord=%s, guild member lookup failed: %v", entityID, discordID, err)
@@ -261,6 +345,9 @@ func reconcileOneWithSnapshot(entityID, discordID string, bindingsByGroup map[st
 		}
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	current, err := getEntityDiscordMemberships(entityID)
 	if err != nil {
 		return fmt.Errorf("fetch current memberships: %w", err)
@@ -271,6 +358,9 @@ func reconcileOneWithSnapshot(entityID, discordID string, bindingsByGroup map[st
 	}
 
 	for groupID := range desired {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if _, already := currentSet[groupID]; already {
 			continue
 		}
@@ -281,6 +371,9 @@ func reconcileOneWithSnapshot(entityID, discordID string, bindingsByGroup map[st
 		logger.SugarLogger.Infof("group sync: added entity %s to group %s (DISCORD)", entityID, groupID)
 	}
 	for groupID := range currentSet {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if _, keep := desired[groupID]; keep {
 			continue
 		}

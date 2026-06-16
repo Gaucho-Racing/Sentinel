@@ -7,6 +7,7 @@ import ApplicationDetailsPage from "@/pages/applications/ApplicationDetailsPage"
 import ApplicationEditPage from "@/pages/applications/ApplicationEditPage"
 import ApplicationNewPage from "@/pages/applications/ApplicationNewPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
+import LoginDiscordPage from "@/pages/auth/LoginDiscordPage"
 import LoginPage from "@/pages/auth/LoginPage"
 import DebugPage from "@/pages/debug/DebugPage"
 import GroupDetailsPage from "@/pages/groups/GroupDetailsPage"
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: "/auth/login", element: <LoginPage /> },
+  { path: "/auth/login/discord", element: <LoginDiscordPage /> },
   { path: "/oauth/authorize", element: <AuthorizePage /> },
   { path: "/saml/authorize", element: <SamlAuthorizePage /> },
   { path: "/onboard", element: <OnboardingPage /> },

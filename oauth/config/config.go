@@ -44,6 +44,15 @@ var DatabaseUser = os.Getenv("DATABASE_USER")
 var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
 var DatabaseName = os.Getenv("DATABASE_NAME")
 
+// Discord OAuth for "Continue with Discord" on the login page. The redirect
+// URI must byte-match the one the web client used in its authorize step —
+// Discord rejects the token exchange otherwise — so the web reads its own
+// VITE_ copy of this value and both must point at the same web callback
+// route (typically <origin>/auth/login/discord).
+var DiscordClientID     = os.Getenv("DISCORD_CLIENT_ID")
+var DiscordClientSecret = os.Getenv("DISCORD_CLIENT_SECRET")
+var DiscordRedirectURI  = os.Getenv("DISCORD_REDIRECT_URI")
+
 func IsProduction() bool {
 	return Env == "PROD"
 }

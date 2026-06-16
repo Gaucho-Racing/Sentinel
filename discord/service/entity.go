@@ -6,9 +6,12 @@ import (
 )
 
 type entityResponse struct {
-	ID   string         `json:"id"`
-	Type string         `json:"type"`
-	User map[string]any `json:"user"`
+	ID        string         `json:"id"`
+	Type      string         `json:"type"`
+	User      map[string]any `json:"user"`
+	EmailAuth struct {
+		Email string `json:"email"`
+	} `json:"email_auth"`
 }
 
 // GetEntityIDForDiscordUser resolves a Discord user ID to a Sentinel entity ID.
@@ -22,6 +25,19 @@ func GetEntityIDForDiscordUser(discordUserID string) string {
 		return ""
 	}
 	return entity.ID
+}
+
+// GetEntityEmailForDiscordUser resolves a Discord user ID to the linked
+// Sentinel entity's primary login email. Returns "" if no entity is linked
+// or the entity has no email auth row. Used by !verify to prefill the
+// already-onboarded login link.
+func GetEntityEmailForDiscordUser(discordUserID string) string {
+	var entity entityResponse
+	if err := sentinel.Get("/api/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
+		logger.SugarLogger.Debugf("No entity found for Discord user %s: %v", discordUserID, err)
+		return ""
+	}
+	return entity.EmailAuth.Email
 }
 
 // SyncDiscordUserAvatar mirrors a Discord user's avatar onto the linked

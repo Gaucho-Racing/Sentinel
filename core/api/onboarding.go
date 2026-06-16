@@ -113,3 +113,30 @@ func CreateEntityExternalAuth(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, auth)
 }
+
+type updateExternalAuthMetadataRequest struct {
+	Metadata model.JSONMap `json:"metadata" binding:"required"`
+}
+
+// UpdateEntityExternalAuthMetadata refreshes the per-provider metadata jsonb
+// on an existing external auth row. Login handlers call this on every
+// successful provider sign-in so the email / username / avatar that came
+// back from the provider stays current.
+func UpdateEntityExternalAuthMetadata(c *gin.Context) {
+	entityID := c.Param("entityID")
+	provider := c.Param("provider")
+	var req updateExternalAuthMetadataRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err := service.UpdateExternalAuthMetadata(entityID, provider, req.Metadata); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "external auth not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
+}

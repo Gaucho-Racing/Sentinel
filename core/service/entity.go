@@ -162,3 +162,21 @@ func CreateExternalAuthForEntity(auth model.EntityExternalAuth) (model.EntityExt
 	}
 	return auth, nil
 }
+
+// UpdateExternalAuthMetadata refreshes the provider-supplied metadata jsonb on
+// an existing external auth row. Used by login handlers to keep email /
+// username / avatar / etc. current across sessions. No-op (returns
+// gorm.ErrRecordNotFound) if no row matches — callers decide whether that's
+// fatal.
+func UpdateExternalAuthMetadata(entityID string, provider string, metadata model.JSONMap) error {
+	result := database.DB.Model(&model.EntityExternalAuth{}).
+		Where("entity_id = ? AND UPPER(provider) = UPPER(?)", entityID, provider).
+		Update("metadata", metadata)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}

@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -17,7 +18,14 @@ func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if entityID := service.GetEntityIDForDiscordUser(m.Author.ID); entityID != "" {
 		logger.SugarLogger.Infof("Discord user %s is already onboarded as %s", m.Author.ID, entityID)
-		dm, err := service.SendDirectMessage(m.Author.ID, fmt.Sprintf("You're already onboarded! Sign in at %s/auth/login", config.WebBaseURL))
+		loginURL := fmt.Sprintf("%s/auth/login", config.WebBaseURL)
+		// Pre-fill the email field on the login page if we know it — saves the
+		// user from typing it again, and works whether they sign in with
+		// email/password or "Continue with Discord."
+		if email := service.GetEntityEmailForDiscordUser(m.Author.ID); email != "" {
+			loginURL += "?email=" + url.QueryEscape(email)
+		}
+		dm, err := service.SendDirectMessage(m.Author.ID, fmt.Sprintf("You're already onboarded! Sign in at %s", loginURL))
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to DM onboarded user %s: %v", m.Author.ID, err)
 			service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> I couldn't DM you — enable DMs from server members and try again.", m.Author.ID), verifyReplyTTL)

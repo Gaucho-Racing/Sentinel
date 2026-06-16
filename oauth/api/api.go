@@ -44,6 +44,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/.well-known/openid-configuration", OpenIDConfiguration)
 
 	router.POST("/auth/login/email-password", LoginEmailPassword)
+	router.POST("/auth/login/discord", LoginDiscord)
 	router.POST("/auth/refresh", RefreshSession)
 }
 

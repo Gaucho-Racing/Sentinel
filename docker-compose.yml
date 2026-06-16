@@ -39,7 +39,7 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: sentinel
-      ISSUER: ${ISSUER:-http://localhost:10310}
+      ISSUER: http://localhost:10310
 
   discord:
     container_name: sentinel-discord
@@ -67,7 +67,7 @@ services:
       DISCORD_TOKEN: ${DISCORD_TOKEN}
       DISCORD_GUILD: ${DISCORD_GUILD}
       DISCORD_PREFIX: d!
-      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:10310}
+      WEB_BASE_URL: http://localhost:10310
 
   oauth:
     container_name: sentinel-oauth
@@ -92,7 +92,10 @@ services:
       KERBECS_ENDPOINT: http://kerbecs:10300
       KERBECS_USER: admin
       KERBECS_PASSWORD: admin
-      ISSUER: ${ISSUER:-http://localhost:10310}
+      ISSUER: http://localhost:10310
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_REDIRECT_URI: http://localhost:10310/auth/login/discord
 
   saml:
     container_name: sentinel-saml
@@ -117,7 +120,7 @@ services:
       KERBECS_ENDPOINT: http://kerbecs:10300
       KERBECS_USER: admin
       KERBECS_PASSWORD: admin
-      ISSUER: ${ISSUER:-http://localhost:10310}
+      ISSUER: http://localhost:10310
 
   web:
     container_name: sentinel-web
@@ -133,6 +136,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:10310
+      VITE_DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
 
   db:
     container_name: sentinel-db
