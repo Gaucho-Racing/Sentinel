@@ -36,6 +36,26 @@ var WebBaseURL = os.Getenv("WEB_BASE_URL")
 
 var OnboardingTokenTTL = 15 * time.Minute
 
+// GroupSyncInterval is how often the periodic reconcile cron fires. Event-
+// driven sync covers the happy path; the cron is a safety net for missed
+// gateway events (disconnects, restarts) and out-of-band changes that don't
+// emit an event (e.g. group allowed_sources flips on the core side). Parsed
+// once at startup via time.ParseDuration; an unparseable or unset value
+// falls back to 1h. Set to 0 (or any non-positive duration) to disable.
+var GroupSyncInterval = parseDurationOr("GROUP_SYNC_INTERVAL", time.Hour)
+
+func parseDurationOr(envKey string, fallback time.Duration) time.Duration {
+	raw := os.Getenv(envKey)
+	if raw == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return fallback
+	}
+	return d
+}
+
 func IsProduction() bool {
 	return Env == "PROD"
 }

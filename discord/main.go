@@ -20,6 +20,7 @@ func main() {
 	database.Init()
 	service.ConnectDiscord()
 	commands.InitializeBot()
+	service.StartReconcileCron()
 
 	api.Run()
 }

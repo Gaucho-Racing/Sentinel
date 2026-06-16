@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
@@ -193,6 +195,34 @@ func toSet(ss []string) map[string]struct{} {
 type externalAuthRow struct {
 	EntityID   string `json:"entity_id"`
 	ExternalID string `json:"external_id"`
+}
+
+// StartReconcileCron spawns a background goroutine that periodically calls
+// TriggerReconcileAll on config.GroupSyncInterval. Acts as a safety net for
+// drift the event stream might miss: dropped gateway events, bot restarts,
+// out-of-band core-side changes (e.g. group allowed_sources flips) that
+// don't surface as Discord events. A non-positive interval disables the
+// cron — useful in tests and one-off runs.
+//
+// Cancel-and-restart semantics in TriggerReconcileAll make this safe: if a
+// sweep is still running when the next tick fires, the in-flight sweep is
+// cancelled and replaced. The goroutine is leaked on process exit; we don't
+// have graceful-shutdown plumbing for it and the OS reaps everything anyway.
+func StartReconcileCron() {
+	interval := config.GroupSyncInterval
+	if interval <= 0 {
+		logger.SugarLogger.Infof("group sync: cron disabled (interval=%v)", interval)
+		return
+	}
+	logger.SugarLogger.Infof("group sync: cron enabled, interval=%v", interval)
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for range ticker.C {
+			logger.SugarLogger.Debugf("group sync: cron tick, kicking full sweep")
+			TriggerReconcileAll()
+		}
+	}()
 }
 
 // TriggerReconcileAll schedules a full reconciliation sweep over every

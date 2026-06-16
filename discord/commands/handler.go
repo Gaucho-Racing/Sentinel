@@ -2,6 +2,7 @@ package commands
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
@@ -10,11 +11,17 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
 
+// readyOnce guards the startup sweep so a gateway reconnect (which also
+// fires Ready) doesn't repeatedly kick the sweep. Subsequent reconnects
+// are covered by the periodic cron + per-user event reconciles anyway.
+var readyOnce sync.Once
+
 func InitializeBot() {
 	if service.Discord == nil {
 		logger.SugarLogger.Errorln("Discord session is not connected")
 		return
 	}
+	service.Discord.AddHandler(OnReady)
 	service.Discord.AddHandler(OnDiscordMessage)
 	service.Discord.AddHandler(OnDiscordReaction)
 	service.Discord.AddHandler(OnGuildMemberAdd)
@@ -119,11 +126,31 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 	}
 }
 
+// OnReady fires when the Discord gateway is connected and the initial guild
+// data is loaded. We kick a one-shot full reconcile to catch any drift that
+// accumulated while the bot was offline (missed role changes, users who
+// left the guild while we were down, etc). Reconnects also fire Ready; the
+// sync.Once guard keeps this to a single sweep per process.
+func OnReady(s *discordgo.Session, r *discordgo.Ready) {
+	readyOnce.Do(func() {
+		logger.SugarLogger.Infof("Discord gateway ready, kicking initial group sync")
+		service.TriggerReconcileAll()
+	})
+}
+
+// OnGuildMemberRemove fires when a user leaves (or is kicked/banned) the
+// configured guild. Strip their DISCORD-sourced group memberships so
+// access doesn't outlive guild membership. Reconcile with an empty role
+// set computes a "desired = {}" and removes every DISCORD-sourced row in
+// one diff — no separate code path required.
 func OnGuildMemberRemove(s *discordgo.Session, m *discordgo.GuildMemberRemove) {
 	if m.GuildID != config.DiscordGuild {
 		return
 	}
-	logger.SugarLogger.Infof("GuildMemberRemove: user=%s", m.User.ID)
+	logger.SugarLogger.Infof("GuildMemberRemove: user=%s, stripping DISCORD-sourced memberships", m.User.ID)
+	if err := service.ReconcileGroupsForDiscordUser(m.User.ID, []string{}); err != nil {
+		logger.SugarLogger.Errorf("group sync: leave-cleanup failed for %s: %v", m.User.ID, err)
+	}
 }
 
 func OnUserUpdate(s *discordgo.Session, u *discordgo.UserUpdate) {
