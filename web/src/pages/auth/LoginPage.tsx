@@ -33,13 +33,16 @@ const PROVIDERS: Array<{
   },
 ]
 
-// Mock latency for provider buttons that aren't real yet.
-const MOCK_LATENCY_MS = 1500
-
 // Convergence (login content collapses) -> checkmark draws -> hold -> navigate.
 const CONVERGE_MS = 250
 const CHECKMARK_DRAW_MS = 650 // circle (400) + check (250) starting at +350ms
 const HOLD_MS = 250
+
+// Discord's authorize endpoint. We only request `identify email` — the ID
+// is what we key external auth on; email is along for the ride so the
+// onboarding form can pre-fill if we ever wire that flow up.
+const DISCORD_AUTHORIZE_URL = "https://discord.com/oauth2/authorize"
+const DISCORD_SCOPES = "identify email"
 
 type LoginResponse = {
   access_token: string
@@ -100,11 +103,31 @@ export default function LoginPage() {
     handleSuccess()
   }
 
-  async function handleProvider(id: ProviderId) {
+  function handleProvider(id: ProviderId) {
     if (isBusy) return
-    setLoading(id)
-    await new Promise((resolve) => setTimeout(resolve, MOCK_LATENCY_MS))
-    handleSuccess()
+    if (id === "discord") {
+      const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID
+      if (!clientId) {
+        toast.error("Discord login isn't configured.")
+        return
+      }
+      setLoading("discord")
+      // The redirect_uri must byte-match what the oauth service uses at
+      // token-exchange time. Building it from window.location.origin keeps
+      // dev/prod aligned without another env var on the web side.
+      const params = new URLSearchParams({
+        client_id: clientId,
+        response_type: "code",
+        redirect_uri: `${window.location.origin}/auth/login/discord`,
+        scope: DISCORD_SCOPES,
+        // Round-trip the return path so the callback can land the user
+        // back where they were trying to go before being bounced to login.
+        state: from,
+      })
+      window.location.href = `${DISCORD_AUTHORIZE_URL}?${params.toString()}`
+      return
+    }
+    toast.info("Google login is coming soon.")
   }
 
   return (

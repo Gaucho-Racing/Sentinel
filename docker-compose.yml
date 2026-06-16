@@ -93,6 +93,9 @@ services:
       KERBECS_USER: admin
       KERBECS_PASSWORD: admin
       ISSUER: http://localhost:10310
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_REDIRECT_URI: http://localhost:10310/auth/login/discord
 
   saml:
     container_name: sentinel-saml
@@ -133,6 +136,7 @@ services:
       - "5173:5173"
     environment:
       VITE_API_URL: http://localhost:10310
+      VITE_DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
 
   db:
     container_name: sentinel-db
