@@ -86,6 +86,13 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:id/groups", GetApplicationGroups)
 	router.POST("/applications/:id/groups", AddApplicationGroup)
 	router.DELETE("/applications/:id/groups/:groupID", RemoveApplicationGroup)
+	router.GET("/applications/:id/service-accounts", ListServiceAccountsForApplication)
+	router.POST("/applications/:id/service-accounts", CreateServiceAccountForApp)
+	router.DELETE("/service-accounts/:id", DeleteServiceAccount)
+	router.GET("/service-accounts/:id/api-keys", ListAPIKeysForServiceAccount)
+	router.POST("/service-accounts/:id/api-keys", CreateAPIKeyForServiceAccount)
+	router.DELETE("/service-accounts/:id/api-keys/:keyID", RevokeAPIKey)
+
 	router.GET("/applications/:id/redirect-uris", GetApplicationRedirectURIs)
 	router.POST("/applications/:id/redirect-uris", AddApplicationRedirectURI)
 	router.DELETE("/applications/:id/redirect-uris", RemoveApplicationRedirectURI)
@@ -128,25 +135,84 @@ func AuthChecker() gin.HandlerFunc {
 		if c.GetHeader("Authorization") != "" {
 			authHeader := c.GetHeader("Authorization")
 			if strings.HasPrefix(authHeader, "Bearer ") {
-				claims, err := service.ValidateToken(strings.Split(authHeader, "Bearer ")[1])
-				if err != nil {
-					logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
-					c.AbortWithStatusJSON(401, gin.H{"error": err.Error()})
+				token := strings.Split(authHeader, "Bearer ")[1]
+				// Service-account API keys take the sk_ shape; everything
+				// else is treated as a JWT. The two paths set the same
+				// Auth-* context values so downstream gates don't have to
+				// care which credential type they got.
+				if service.HasAPIKeyPrefix(token) {
+					authenticateWithAPIKey(c, token)
 				} else {
-					logger.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Subject)
-					logger.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
-					logger.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
-					logger.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
-					c.Set("Auth-Token", strings.Split(authHeader, "Bearer ")[1])
-					c.Set("Auth-EntityID", claims.Subject)
-					c.Set("Auth-Audience", claims.Audience[0])
-					c.Set("Auth-Scope", claims.Scope)
-					c.Set("Auth-Claims", claims.CustomClaims)
+					authenticateWithJWT(c, token)
 				}
 			}
 		}
 		c.Next()
 	}
+}
+
+// authenticateWithJWT validates a bearer token as a Sentinel-issued JWT
+// and populates Auth-* context on success. On validation failure aborts
+// the request with a 401 — this mirrors the old AuthChecker behavior so
+// existing callers see no change.
+func authenticateWithJWT(c *gin.Context, token string) {
+	claims, err := service.ValidateToken(token)
+	if err != nil {
+		logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
+		c.AbortWithStatusJSON(401, gin.H{"error": err.Error()})
+		return
+	}
+	logger.SugarLogger.Infof("Decoded token: %s (%s)", claims.ID, claims.Subject)
+	logger.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
+	logger.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
+	logger.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
+	c.Set("Auth-Token", token)
+	c.Set("Auth-EntityID", claims.Subject)
+	c.Set("Auth-Audience", claims.Audience[0])
+	c.Set("Auth-Scope", claims.Scope)
+	c.Set("Auth-Claims", claims.CustomClaims)
+}
+
+// authenticateWithAPIKey validates a sk_ token, resolves the SA + app
+// (for the audience claim), and populates Auth-* context to match the
+// JWT path. Failure → 401. On success kicks a best-effort last_used_at
+// update in a goroutine so the response isn't slowed by an extra write.
+func authenticateWithAPIKey(c *gin.Context, token string) {
+	key, err := service.ValidateAPIKey(token)
+	if err != nil {
+		logger.SugarLogger.Errorln("Failed to validate api key: " + err.Error())
+		c.AbortWithStatusJSON(401, gin.H{"error": "invalid bearer"})
+		return
+	}
+	sa, err := service.GetServiceAccountByID(key.ServiceAccountID)
+	if err != nil {
+		// Key exists but its SA doesn't — orphaned row from a partial
+		// delete or a bug. Treat as invalid; the cleanup belongs
+		// elsewhere.
+		logger.SugarLogger.Errorf("api key %s references missing service account %s: %v", key.ID, key.ServiceAccountID, err)
+		c.AbortWithStatusJSON(401, gin.H{"error": "invalid bearer"})
+		return
+	}
+	app, err := service.GetApplicationByID(sa.ApplicationID)
+	if err != nil {
+		logger.SugarLogger.Errorf("service account %s references missing application %s: %v", sa.ID, sa.ApplicationID, err)
+		c.AbortWithStatusJSON(401, gin.H{"error": "invalid bearer"})
+		return
+	}
+
+	logger.SugarLogger.Infof("Decoded api key: %s (sa=%s entity=%s)", key.ID, sa.ID, sa.EntityID)
+	logger.SugarLogger.Infof("↳ Client ID: %s", app.ClientID)
+	logger.SugarLogger.Infof("↳ Scope: %s", key.Scope)
+	c.Set("Auth-Token", token)
+	c.Set("Auth-EntityID", sa.EntityID)
+	c.Set("Auth-Audience", app.ClientID)
+	c.Set("Auth-Scope", key.Scope)
+	c.Set("Auth-Claims", map[string]interface{}{})
+
+	// Background last_used_at update — don't slow the request on the
+	// extra write. Fire-and-forget is fine; we recover panics in the
+	// service layer.
+	go service.MarkAPIKeyUsed(key.ID)
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {

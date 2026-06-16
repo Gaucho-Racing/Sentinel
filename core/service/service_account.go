@@ -82,6 +82,30 @@ func DeleteServiceAccount(id string) error {
 	return nil
 }
 
+// CreateServiceAccountForApp is the all-in-one path the HTTP API uses to
+// stand up a new SA: mint an Entity (type SERVICE_ACCOUNT) and link a
+// ServiceAccount row to it. Two-step DB write rather than a transaction —
+// failure on the second step leaves an orphaned entity, which is
+// harmless (no auth path resolves it) and easily reaped if we ever care.
+func CreateServiceAccountForApp(applicationID, name, createdBy string) (model.ServiceAccount, error) {
+	entity, err := CreateEntity(model.Entity{
+		Type: model.EntityTypeServiceAccount,
+	})
+	if err != nil {
+		return model.ServiceAccount{}, err
+	}
+	sa, err := CreateServiceAccount(model.ServiceAccount{
+		EntityID:      entity.ID,
+		ApplicationID: applicationID,
+		Name:          name,
+		CreatedBy:     createdBy,
+	})
+	if err != nil {
+		return model.ServiceAccount{}, err
+	}
+	return sa, nil
+}
+
 func PopulateServiceAccount(sa *model.ServiceAccount) {
 	groups, err := GetGroupsForEntity(sa.EntityID)
 	if err != nil {

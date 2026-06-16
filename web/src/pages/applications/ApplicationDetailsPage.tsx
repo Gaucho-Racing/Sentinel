@@ -11,9 +11,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application, GroupWithLink } from "@/lib/applications"
-import type { Entity } from "@/lib/auth"
+import { loadSession, type Entity } from "@/lib/auth"
+
+import { ServiceAccountsCard } from "./ServiceAccountsCard"
 
 function initial(name: string) {
   return name.slice(0, 1).toUpperCase()
@@ -101,6 +104,14 @@ export default function ApplicationDetailsPage() {
   })
 
   const ownerId = query.data?.owner_id
+  const myEntityID = loadSession()?.entityId
+  const { isAdmin } = useAdmins()
+  // Owners and admins can manage service accounts on this app. The
+  // backend gates the same way (requireAppOwnerOrAdmin), so non-owners
+  // would just see 403s on every action — hide the section entirely
+  // rather than render a broken UI.
+  const canManageServiceAccounts =
+    !!ownerId && (ownerId === myEntityID || isAdmin)
   const ownerQuery = useQuery({
     queryKey: ["entity", ownerId],
     queryFn: async () => {
@@ -351,6 +362,10 @@ export default function ApplicationDetailsPage() {
             )}
           </CardContent>
         </Card>
+
+        {canManageServiceAccounts && app && (
+          <ServiceAccountsCard applicationID={app.id} />
+        )}
 
         <Card>
           <CardHeader>
