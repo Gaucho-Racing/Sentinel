@@ -64,6 +64,24 @@ func LoginDiscord(c *gin.Context) {
 		return
 	}
 
+	// Best-effort: refresh the provider metadata so the latest email /
+	// username / avatar we can see from Discord is on the row. Failures here
+	// shouldn't block the login — the session matters more than the audit.
+	metadata := map[string]any{
+		"email":       user.Email,
+		"username":    user.Username,
+		"global_name": user.GlobalName,
+		"avatar":      user.Avatar,
+		"verified":    user.Verified,
+	}
+	if err := sentinel.Patch(
+		"/api/core/entity/"+entity.ID+"/external-auth/DISCORD",
+		map[string]any{"metadata": metadata},
+		nil,
+	); err != nil {
+		logger.SugarLogger.Warnf("discord login: metadata refresh failed for entity %s: %v", entity.ID, err)
+	}
+
 	resp, err := mintFirstPartySession(c, entity.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

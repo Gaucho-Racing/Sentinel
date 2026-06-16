@@ -56,6 +56,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/entity/:entityID/email-auth", CreateEntityEmailAuth)
 	router.POST("/core/entity/:entityID/phone-auth", CreateEntityPhoneAuth)
 	router.POST("/core/entity/:entityID/external-auth", CreateEntityExternalAuth)
+	router.PATCH("/core/entity/:entityID/external-auth/:provider", UpdateEntityExternalAuthMetadata)
 	router.POST("/core/users", CreateOrUpdateUser)
 
 	router.POST("/core/applications/verify", VerifyClientCredentials)
