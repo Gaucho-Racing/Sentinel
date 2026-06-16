@@ -41,7 +41,7 @@ import {
 import type { Group, GroupMember, GroupOwner, GroupSource } from "@/lib/groups"
 
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
-import { GroupForm, type GroupFormValues } from "./GroupForm"
+import { groupNameError, GroupForm, type GroupFormValues } from "./GroupForm"
 import { GroupPickerDialog } from "./GroupPickerDialog"
 
 function DiscordSyncCard({
@@ -752,7 +752,7 @@ export default function GroupEditPage() {
           type="button"
           className="w-auto"
           loading={submitting}
-          disabled={!values.name.trim()}
+          disabled={!values.name.trim() || groupNameError(values.name) !== null}
           onClick={handleSubmit}
         >
           Save changes

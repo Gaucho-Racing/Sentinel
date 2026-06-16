@@ -12,6 +12,17 @@ export type GroupFormValues = {
   allowed_sources: GroupSource[]
 }
 
+// groupNameError returns the validation message for `name`, or null if valid.
+// Returns null on empty so callers can decide how to handle "required"
+// (most use `!name.trim()` directly to disable submit).
+export function groupNameError(name: string): string | null {
+  if (!name) return null
+  if (/\s/.test(name)) {
+    return "Group names cannot contain spaces. Try hyphens or underscores."
+  }
+  return null
+}
+
 const SOURCE_HINT: Record<GroupSource, string> = {
   DIRECT: "Owners add members manually or approve join requests.",
   DISCORD: "Members with a linked Discord role are added automatically.",
@@ -58,7 +69,11 @@ export function GroupForm({
           value={values.name}
           onChange={(e) => onChange({ ...values, name: e.target.value })}
           required
+          aria-invalid={groupNameError(values.name) !== null}
         />
+        {groupNameError(values.name) && (
+          <p className="text-xs text-destructive">{groupNameError(values.name)}</p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
@@ -117,7 +132,7 @@ export function GroupForm({
             className="w-auto"
             innerClassName={innerSurface === "card" ? "bg-card" : undefined}
             loading={submitting}
-            disabled={!values.name.trim()}
+            disabled={!values.name.trim() || groupNameError(values.name) !== null}
           >
             {submitLabel}
           </OutlineButton>

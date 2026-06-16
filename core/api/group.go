@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"time"
+	"unicode"
 
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -11,6 +12,19 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+// validateGroupName enforces the no-whitespace rule on group names so they
+// can be safely embedded in CLI args, URL paths, scope strings, etc.
+// without quoting concerns. Empty names are handled by the availability
+// check downstream — this only rejects valid-but-whitespace-bearing names.
+func validateGroupName(name string) error {
+	for _, r := range name {
+		if unicode.IsSpace(r) {
+			return errors.New("group names cannot contain spaces — try hyphens or underscores")
+		}
+	}
+	return nil
+}
 
 // validateMembershipExpiration enforces the 1-year cap on time-boxed
 // memberships and join requests. Uses AddDate(1, 0, 0) so leap years are
@@ -99,6 +113,11 @@ type upsertGroupRequest struct {
 func CreateOrUpdateGroup(c *gin.Context) {
 	var req upsertGroupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := validateGroupName(req.Name); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
