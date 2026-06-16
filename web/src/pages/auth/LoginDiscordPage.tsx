@@ -124,12 +124,16 @@ export default function LoginDiscordPage() {
           <div className="space-y-4">
             <div className="rounded-md border border-border/60 bg-muted/30 p-4 text-sm">
               <p>
-                Make sure you've joined the Gaucho Racing Discord and verified
-                your account. In the <strong>#verification</strong> channel, run:
+                Make sure you've joined the Gaucho Racing Discord. In the
+                <strong> #verification</strong> channel, run:
               </p>
               <pre className="mt-3 rounded bg-background px-3 py-2 font-mono text-xs">
-                !verify &lt;first name&gt; &lt;last name&gt; &lt;email&gt;
+                !verify
               </pre>
+              <p className="mt-3 text-muted-foreground">
+                The bot will DM you a link to finish setting up your Sentinel
+                account.
+              </p>
             </div>
             <a
               href={DISCORD_INVITE_URL}

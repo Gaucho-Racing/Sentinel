@@ -120,6 +120,10 @@ export default function LoginPage() {
         response_type: "code",
         redirect_uri: `${window.location.origin}/auth/login/discord`,
         scope: DISCORD_SCOPES,
+        // Skip Discord's consent screen on repeat logins. First-time users
+        // still see it (Discord ignores prompt=none until consent is on file
+        // for the requested scopes); subsequent sign-ins go straight back.
+        prompt: "none",
         // Round-trip the return path so the callback can land the user
         // back where they were trying to go before being bounced to login.
         state: from,
