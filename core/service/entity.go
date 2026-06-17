@@ -30,6 +30,15 @@ func CreateEntity(entity model.Entity) (model.Entity, error) {
 	return entity, nil
 }
 
+// DeleteEntity removes the bare Entity row. Cascade of associated rows
+// (email_auth, phone_auth, external_auth, user, service_account, group
+// memberships) is intentionally NOT done here — callers that delete a
+// derived row (e.g. ServiceAccount) decide whether to also delete the
+// underlying entity, so the rules are explicit at the call site.
+func DeleteEntity(id string) error {
+	return database.DB.Where("id = ?", id).Delete(&model.Entity{}).Error
+}
+
 func PopulateEntity(entity *model.Entity) {
 	var err error
 	entity.EmailAuth, err = GetEmailAuthForEntity(entity.ID)

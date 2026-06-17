@@ -188,6 +188,27 @@ func ValidateToken(token string) (*model.TokenClaims, error) {
 	return claims, nil
 }
 
+// DeleteTokensForEntity revokes every auth_token row for an entity. Used
+// when a service account is rotated (so the prior token stops working
+// immediately) or deleted (so outstanding tokens can't outlive their SA).
+// Idempotent — no error on zero matches.
+func DeleteTokensForEntity(entityID string) error {
+	return database.DB.Where("entity_id = ?", entityID).Delete(&model.Token{}).Error
+}
+
+// GetLatestTokenForEntity returns the most recently issued token row for
+// the entity, or gorm.ErrRecordNotFound if there isn't one. Used to
+// surface an SA's current credential metadata (scope, expiry) on the
+// list endpoint without forcing a separate per-SA call.
+func GetLatestTokenForEntity(entityID string) (model.Token, error) {
+	var token model.Token
+	err := database.DB.
+		Where("entity_id = ?", entityID).
+		Order("created_at DESC").
+		First(&token).Error
+	return token, err
+}
+
 func RevokeToken(id string) error {
 	result := database.DB.Where("id = ?", id).Delete(&model.Token{})
 	if result.Error != nil {

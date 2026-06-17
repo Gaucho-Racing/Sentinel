@@ -98,6 +98,14 @@ routes:
       strip_prefix: /api
     envelope: passthrough
 
+  - name: core-service-accounts
+    match:
+      path: /api/service-accounts/*
+    upstream: core
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
   - name: oauth
     match:
       path: /api/oauth/*

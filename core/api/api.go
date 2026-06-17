@@ -86,6 +86,12 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/applications/:id/groups", GetApplicationGroups)
 	router.POST("/applications/:id/groups", AddApplicationGroup)
 	router.DELETE("/applications/:id/groups/:groupID", RemoveApplicationGroup)
+	router.GET("/applications/:id/service-accounts", ListServiceAccountsForApplication)
+	router.POST("/applications/:id/service-accounts", CreateServiceAccountForApp)
+	router.DELETE("/service-accounts/:id", DeleteServiceAccount)
+	router.POST("/service-accounts/:id/rotate", RotateServiceAccountToken)
+	router.GET("/service-accounts/:id/token", GetServiceAccountToken)
+
 	router.GET("/applications/:id/redirect-uris", GetApplicationRedirectURIs)
 	router.POST("/applications/:id/redirect-uris", AddApplicationRedirectURI)
 	router.DELETE("/applications/:id/redirect-uris", RemoveApplicationRedirectURI)
@@ -128,7 +134,8 @@ func AuthChecker() gin.HandlerFunc {
 		if c.GetHeader("Authorization") != "" {
 			authHeader := c.GetHeader("Authorization")
 			if strings.HasPrefix(authHeader, "Bearer ") {
-				claims, err := service.ValidateToken(strings.Split(authHeader, "Bearer ")[1])
+				token := strings.Split(authHeader, "Bearer ")[1]
+				claims, err := service.ValidateToken(token)
 				if err != nil {
 					logger.SugarLogger.Errorln("Failed to validate token: " + err.Error())
 					c.AbortWithStatusJSON(401, gin.H{"error": err.Error()})
@@ -137,7 +144,7 @@ func AuthChecker() gin.HandlerFunc {
 					logger.SugarLogger.Infof("↳ Client ID: %s", claims.Audience[0])
 					logger.SugarLogger.Infof("↳ Issued at: %s", claims.IssuedAt.String())
 					logger.SugarLogger.Infof("↳ Expires at: %s", claims.ExpiresAt.String())
-					c.Set("Auth-Token", strings.Split(authHeader, "Bearer ")[1])
+					c.Set("Auth-Token", token)
 					c.Set("Auth-EntityID", claims.Subject)
 					c.Set("Auth-Audience", claims.Audience[0])
 					c.Set("Auth-Scope", claims.Scope)
