@@ -128,6 +128,17 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		return
 	}
 
+	// Create vs. update have different trust requirements. Anyone with a
+	// valid bearer can create a group (they become the auto-added owner
+	// below). Updates have to clear the owner-or-admin gate against the
+	// existing group — without this check, anyone could rename or
+	// rewrite allowed_sources on any group, including the Admins group.
+	if existing.ID == "" {
+		Require(c, RequestTokenExists(c))
+	} else if !requireGroupOwnerOrAdmin(c, existing.ID) {
+		return
+	}
+
 	available, err := service.IsGroupNameAvailable(req.Name, existing.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -207,6 +218,9 @@ func DeleteGroup(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "the Admins group cannot be deleted"})
 		return
 	}
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	if err := service.DeleteGroup(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -236,6 +250,9 @@ type addGroupMemberRequest struct {
 
 func AddGroupMember(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	var req addGroupMemberRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -266,6 +283,9 @@ func AddGroupMember(c *gin.Context) {
 
 func RemoveGroupMember(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	entityID := c.Param("entityID")
 	source := c.Query("source")
 	if err := service.DeleteGroupMember(id, entityID, source); err != nil {
@@ -296,6 +316,9 @@ type addGroupOwnerRequest struct {
 
 func AddGroupOwner(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	var req addGroupOwnerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -315,6 +338,9 @@ func AddGroupOwner(c *gin.Context) {
 
 func RemoveGroupOwner(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	entityID := c.Param("entityID")
 	if err := service.DeleteGroupOwner(id, entityID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -362,6 +388,15 @@ func CreateGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Users request to join groups on their own behalf — the bearer's
+	// entity must match the requested entity_id. The only way around
+	// that is admin or internal; group owners can't backdoor people in
+	// via this endpoint (they'd use AddGroupMember directly).
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasEntityID(c, req.EntityID),
+		RequestUserIsAdmin(c),
+	))
 	if err := validateMembershipExpiration(req.HasExpiration, req.ExpiresAt); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -397,6 +432,10 @@ type reviewJoinRequestRequest struct {
 }
 
 func ApproveGroupJoinRequest(c *gin.Context) {
+	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	requestID := c.Param("requestID")
 	var req reviewJoinRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -452,6 +491,10 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 }
 
 func RejectGroupJoinRequest(c *gin.Context) {
+	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	requestID := c.Param("requestID")
 	var req reviewJoinRequestRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -479,6 +522,10 @@ func RejectGroupJoinRequest(c *gin.Context) {
 }
 
 func DeleteGroupJoinRequest(c *gin.Context) {
+	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	requestID := c.Param("requestID")
 	if err := service.DeleteJoinRequest(requestID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -495,12 +542,24 @@ type createJoinRequestCommentRequest struct {
 }
 
 func CreateJoinRequestComment(c *gin.Context) {
+	id := c.Param("id")
 	requestID := c.Param("requestID")
 	var req createJoinRequestCommentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	// Comments are scoped to the join-request thread: the requester
+	// (commenting on their own request) and the group's owners /
+	// admins (reviewing the request) are the legitimate posters.
+	// Bearer must match the comment's claimed entity_id; the owner/
+	// admin path bypasses the self check.
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasEntityID(c, req.EntityID),
+		RequestUserIsGroupOwner(c, id),
+		RequestUserIsAdmin(c),
+	))
 	comment, err := service.CreateJoinRequestComment(model.GroupJoinRequestComment{
 		RequestID: requestID,
 		EntityID:  req.EntityID,
@@ -514,7 +573,26 @@ func CreateJoinRequestComment(c *gin.Context) {
 }
 
 func DeleteJoinRequestComment(c *gin.Context) {
+	id := c.Param("id")
 	commentID := c.Param("commentID")
+	// Look up the comment first so we can authorize against its
+	// claimed author (the entity who posted it can delete their own
+	// comment; otherwise owner/admin/internal).
+	comment, err := service.GetJoinRequestComment(commentID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasEntityID(c, comment.EntityID),
+		RequestUserIsGroupOwner(c, id),
+		RequestUserIsAdmin(c),
+	))
 	if err := service.DeleteJoinRequestComment(commentID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

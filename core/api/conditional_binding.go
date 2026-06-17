@@ -25,6 +25,9 @@ type createConditionalBindingRequest struct {
 
 func CreateGroupConditionalBinding(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	var req createConditionalBindingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -57,6 +60,9 @@ func CreateGroupConditionalBinding(c *gin.Context) {
 
 func DeleteGroupConditionalBinding(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	bindingID := c.Param("bindingID")
 	if err := service.DeleteConditionalBinding(id, bindingID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
