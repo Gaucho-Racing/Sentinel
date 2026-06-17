@@ -21,6 +21,13 @@ type generateTokenRequest struct {
 }
 
 func GenerateToken(c *gin.Context) {
+	// Minting an arbitrary token for ANY entity at ANY scope is the
+	// highest-blast-radius operation in core — a successful call grants
+	// the caller a JWT identifying themselves as whoever they like, with
+	// whatever permissions they specify (including sentinel:all itself).
+	// Reserved for first-party automations carrying sentinel:all.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	var req generateTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -53,6 +60,11 @@ func ValidateToken(c *gin.Context) {
 }
 
 func RevokeToken(c *gin.Context) {
+	// Revoking arbitrary tokens lets a caller deny any user service
+	// access by ID. Same trust level as minting — reserved for
+	// first-party automations carrying sentinel:all.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	id := c.Param("id")
 	if err := service.RevokeToken(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
