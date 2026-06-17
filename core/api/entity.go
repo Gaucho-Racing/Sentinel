@@ -112,6 +112,11 @@ func ListExternalAuthsByProvider(c *gin.Context) {
 }
 
 func CreateEntityLogin(c *gin.Context) {
+	// Login rows are the audit log of token issuance. Writing into
+	// them is reserved for the oauth service (which records each
+	// session it mints); admins/users shouldn't be backdating their
+	// own entries.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	var login model.EntityLogin
 	if err := c.ShouldBindJSON(&login); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
