@@ -290,3 +290,36 @@ func RequestTokenHasUserID(c *gin.Context, userID string) bool {
 func RequestUserIsAdmin(c *gin.Context) bool {
 	return service.IsAdmin(GetRequestTokenEntityID(c))
 }
+
+// RequestUserIsGroupOwner reports whether the bearer's subject entity
+// is on the GroupOwner roster for groupID. Used by gates that let the
+// owners of a group manage its members and join requests without
+// requiring global admin elevation. Returns false for unauth'd
+// requests and on any lookup error.
+func RequestUserIsGroupOwner(c *gin.Context, groupID string) bool {
+	entityID := GetRequestTokenEntityID(c)
+	if entityID == "" {
+		return false
+	}
+	owner, err := service.GetGroupOwner(groupID, entityID)
+	return err == nil && owner.EntityID != ""
+}
+
+// requireGroupOwnerOrAdmin is the standard gate for endpoints that
+// mutate group state — members, owners, join requests, conditional
+// bindings. Group owners can manage their own group; admins override;
+// sentinel:all bypasses (matches the codebase-wide convention where
+// the scope is reserved for first-party internal automation). Aborts
+// with 403 on failure and returns false; otherwise returns true and
+// the caller continues.
+func requireGroupOwnerOrAdmin(c *gin.Context, groupID string) bool {
+	if Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestUserIsGroupOwner(c, groupID),
+		RequestUserIsAdmin(c),
+	) {
+		return true
+	}
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "you are not authorized to manage this group"})
+	return false
+}

@@ -254,6 +254,17 @@ func GetCommentsForJoinRequest(requestID string) ([]model.GroupJoinRequestCommen
 	return comments, nil
 }
 
+// GetJoinRequestComment returns a single comment by ID. Used by the
+// delete handler to authorize the requester against the comment's
+// claimed author before letting them delete it.
+func GetJoinRequestComment(id string) (model.GroupJoinRequestComment, error) {
+	var comment model.GroupJoinRequestComment
+	if err := database.DB.Where("id = ?", id).First(&comment).Error; err != nil {
+		return model.GroupJoinRequestComment{}, err
+	}
+	return comment, nil
+}
+
 func CreateJoinRequestComment(comment model.GroupJoinRequestComment) (model.GroupJoinRequestComment, error) {
 	if comment.ID == "" {
 		comment.ID = ulid.Make().Prefixed("gjrc")
