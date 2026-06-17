@@ -1,6 +1,11 @@
 package model
 
-import "time"
+import (
+	"strings"
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type User struct {
 	ID                    string    `json:"id" gorm:"primaryKey"`
@@ -27,4 +32,9 @@ type User struct {
 
 func (User) TableName() string {
 	return "user"
+}
+
+func (u *User) BeforeSave(tx *gorm.DB) error {
+	u.Username = strings.ToLower(u.Username)
+	return nil
 }
