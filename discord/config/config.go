@@ -34,6 +34,16 @@ var DiscordPrefix = os.Getenv("DISCORD_PREFIX")
 
 var WebBaseURL = os.Getenv("WEB_BASE_URL")
 
+// InternalBootstrapSecret is the shared secret this service uses at
+// startup to exchange for its pre-seeded bearer JWT from core. Must
+// match core's INTERNAL_BOOTSTRAP_SECRET.
+var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
+
+// InternalServiceName is the SA name on core that this service exchanges
+// the bootstrap secret for. Must match a value in
+// core/jobs/init.go::InternalServiceAccountNames.
+const InternalServiceName = "sentinel-discord"
+
 var OnboardingTokenTTL = 15 * time.Minute
 
 // GroupSyncInterval is how often the periodic reconcile cron fires. Event-

@@ -44,6 +44,16 @@ var DatabaseUser = os.Getenv("DATABASE_USER")
 var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
 var DatabaseName = os.Getenv("DATABASE_NAME")
 
+// InternalBootstrapSecret is the shared secret this service uses at
+// startup to exchange for its pre-seeded bearer JWT from core. Must
+// match core's INTERNAL_BOOTSTRAP_SECRET.
+var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
+
+// InternalServiceName is the SA name on core that this service exchanges
+// the bootstrap secret for. Must match a value in
+// core/jobs/init.go::InternalServiceAccountNames.
+const InternalServiceName = "sentinel-oauth"
+
 // Discord OAuth for "Continue with Discord" on the login page. The redirect
 // URI must byte-match the one the web client used in its authorize step —
 // Discord rejects the token exchange otherwise — so the web reads its own

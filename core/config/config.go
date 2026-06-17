@@ -25,6 +25,16 @@ var Issuer = os.Getenv("ISSUER")
 // Idempotent; safe to set in any environment.
 var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")
 
+// InternalBootstrapSecret is the shared secret non-core services use to
+// exchange for their pre-seeded bearer JWT at startup. Set the same
+// value on every service in deploy config; rotating it requires a
+// rolling restart so each service can re-fetch its bearer.
+//
+// The bootstrap endpoint (POST /core/internal/bootstrap-token) refuses
+// anything if this is empty — better to fail closed than accept any
+// request when the secret hasn't been configured.
+var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
+
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")

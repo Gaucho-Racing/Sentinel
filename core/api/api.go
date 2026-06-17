@@ -63,6 +63,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/core/applications/client/:clientID/groups", GetApplicationGroupsByClientID)
 	router.POST("/core/saml/sp/resolve", ResolveSAMLServiceProvider)
 	router.POST("/core/login/email-password", LoginEmailPassword)
+	router.POST("/core/internal/bootstrap-token", BootstrapToken)
 
 	router.GET("/entities/@me", GetMe)
 	router.GET("/entities/:id", GetEntity)
