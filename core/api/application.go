@@ -43,6 +43,14 @@ func GetApplicationByID(c *gin.Context) {
 }
 
 func GetApplicationByClientID(c *gin.Context) {
+	// Resolving an app from a client_id leaks the owner_id and
+	// internal metadata. The oauth/saml services use it to look up
+	// the app a token request is targeting, so internal automation
+	// must work; admins also have full read.
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestUserIsAdmin(c),
+	))
 	clientID := c.Param("clientID")
 	app, err := service.GetApplicationByClientID(clientID)
 	if err != nil {
@@ -215,11 +223,11 @@ func GetApplicationGroups(c *gin.Context) {
 }
 
 // GetApplicationGroupsByClientID returns an application's group links resolved
-// by client_id. Internal (/core) route, unauthenticated, for service-to-service
-// use by the oauth service when it resolves the groups claim and enforces the
-// access gate — the public /applications/:id/groups route requires a bearer
-// the oauth service doesn't carry.
+// by client_id. Internal-only route — the oauth service uses it to resolve the
+// groups claim and enforce the access gate. Now that oauth carries its own SA
+// bearer, the gate is sentinel:all (matches the other internal-only reads).
 func GetApplicationGroupsByClientID(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	clientID := c.Param("clientID")
 	app, err := service.GetApplicationByClientID(clientID)
 	if err != nil {

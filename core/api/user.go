@@ -40,6 +40,16 @@ func CheckUsername(c *gin.Context) {
 
 func GetUserByID(c *gin.Context) {
 	id := c.Param("id")
+	// User profile carries email, phone, name, etc. Self / admin /
+	// internal only. The user:read scope is allowed when the caller
+	// is reading themselves (matches the existing patterns on
+	// GetUserLogins and GetUserRecentApplications).
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasUserID(c, id),
+		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
+		RequestUserIsAdmin(c),
+	))
 	user, err := service.GetUserByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -114,6 +124,15 @@ func DeleteUser(c *gin.Context) {
 
 func GetUserGroups(c *gin.Context) {
 	id := c.Param("id")
+	// Same authorization-signal concern as GetEntityGroups — leaking
+	// who has admin-equivalent groups would be a recon win for an
+	// attacker. Self / admin / internal only.
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasUserID(c, id),
+		RequestTokenHasScope(c, "groups:read") && RequestTokenHasUserID(c, id),
+		RequestUserIsAdmin(c),
+	))
 	user, err := service.GetUserByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {

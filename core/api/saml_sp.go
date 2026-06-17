@@ -107,6 +107,9 @@ type resolveSAMLRequest struct {
 // typically URLs (e.g. https://sp.example.com/metadata) whose `://` and slashes
 // break a single-segment path param.
 func ResolveSAMLServiceProvider(c *gin.Context) {
+	// Internal-only route, used by the SAML service to look up an SP
+	// at /saml/sso. SAML service now carries its own SA bearer.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	var req resolveSAMLRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
