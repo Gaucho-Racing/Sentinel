@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gaucho-racing/sentinel/core/config"
+	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -176,6 +177,11 @@ func linkAdminsGroupToSentinelApp() {
 	logger.SugarLogger.Infof("Linked Admins group to Sentinel application")
 }
 
+// SentinelCoreServiceAccountName is the kebab-case identifier this SA
+// goes by. Matches the docker container name (sentinel-core) and the
+// naming convention used by every other internal SA.
+const SentinelCoreServiceAccountName = "sentinel-core"
+
 func initializeDefaultServiceAccounts() {
 	_, err := service.GetServiceAccountByID(SentinelCoreServiceAccountID)
 	if err == gorm.ErrRecordNotFound {
@@ -183,7 +189,7 @@ func initializeDefaultServiceAccounts() {
 			ID:            SentinelCoreServiceAccountID,
 			EntityID:      SentinelCoreEntityID,
 			ApplicationID: SentinelApplicationID,
-			Name:          "Sentinel Core",
+			Name:          SentinelCoreServiceAccountName,
 			CreatedBy:     SentinelCoreServiceAccountID,
 		})
 		if err != nil {
@@ -194,7 +200,16 @@ func initializeDefaultServiceAccounts() {
 	} else if err != nil {
 		logger.SugarLogger.Fatalf("Failed to check for Sentinel core service account: %v", err)
 	} else {
-		logger.SugarLogger.Infoln("Sentinel core service account already exists")
+		// Migrate any existing row (older builds seeded the name as
+		// "Sentinel Core" — Title Case with a space). Idempotent: the
+		// UPDATE is a no-op when the value already matches.
+		if err := database.DB.Model(&model.ServiceAccount{}).
+			Where("id = ? AND name <> ?", SentinelCoreServiceAccountID, SentinelCoreServiceAccountName).
+			Update("name", SentinelCoreServiceAccountName).Error; err != nil {
+			logger.SugarLogger.Errorf("Failed to normalize Sentinel core SA name: %v", err)
+		} else {
+			logger.SugarLogger.Infoln("Sentinel core service account already exists")
+		}
 	}
 }
 
