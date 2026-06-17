@@ -40,6 +40,7 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: sentinel
       ISSUER: http://localhost:10310
+      INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
 
   discord:
     container_name: sentinel-discord
@@ -68,6 +69,7 @@ services:
       DISCORD_GUILD: ${DISCORD_GUILD}
       DISCORD_PREFIX: d!
       WEB_BASE_URL: http://localhost:10310
+      INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
 
   oauth:
     container_name: sentinel-oauth
@@ -96,6 +98,7 @@ services:
       DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_REDIRECT_URI: http://localhost:10310/auth/login/discord
+      INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
 
   saml:
     container_name: sentinel-saml
@@ -121,6 +124,7 @@ services:
       KERBECS_USER: admin
       KERBECS_PASSWORD: admin
       ISSUER: http://localhost:10310
+      INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
 
   web:
     container_name: sentinel-web

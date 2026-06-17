@@ -22,9 +22,10 @@ var allowedSATTLs = map[int]struct{}{
 
 // requireAppOwnerOrAdmin gates write access to an app's service accounts.
 // Mirrors the existing pattern on ApplicationDetailsPage: the app's owner
-// can manage their own resources, and global admins can override. Returns
-// the resolved app on success — the caller usually needs it anyway, so
-// returning it here saves a second lookup.
+// can manage their own resources, global admins can override, and any
+// first-party automation carrying sentinel:all skips the check entirely
+// (matches the codebase-wide convention where sentinel:all is the
+// internal-services bypass scope). Returns the resolved app on success.
 func requireAppOwnerOrAdmin(c *gin.Context, appID string) (model.Application, bool) {
 	app, err := service.GetApplicationByID(appID)
 	if err != nil {
@@ -36,6 +37,7 @@ func requireAppOwnerOrAdmin(c *gin.Context, appID string) (model.Application, bo
 		return model.Application{}, false
 	}
 	if !Any(
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasEntityID(c, app.OwnerID),
 		RequestUserIsAdmin(c),
 	) {
@@ -168,6 +170,7 @@ func GetServiceAccountToken(c *gin.Context) {
 		return
 	}
 	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasEntityID(c, sa.CreatedBy),
 		RequestUserIsAdmin(c),
 	))

@@ -86,22 +86,33 @@ func reconcileGroupsForDiscordUserCtx(ctx context.Context, discordUserID string,
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	current, err := getEntityDiscordMemberships(entity.ID)
+	allMemberships, err := getEntityMemberships(entity.ID)
 	if err != nil {
 		return fmt.Errorf("fetch current memberships: %w", err)
 	}
 
 	desiredSet := toSet(desired)
-	currentSet := make(map[string]struct{}, len(current))
-	for _, m := range current {
-		currentSet[m.GroupID] = struct{}{}
+	// allMemberSet = every group the entity is in via any source. Used
+	// for the "should I add?" check so we skip groups where the user is
+	// already a member via DIRECT or CONDITIONAL — otherwise the
+	// (group_id, entity_id) primary key trips on the add.
+	allMemberSet := make(map[string]struct{}, len(allMemberships))
+	// discordMemberSet = DISCORD-sourced rows only. The delete loop
+	// considers these alone, scoped to source=DISCORD on the delete
+	// call so we never touch DIRECT/CONDITIONAL rows.
+	discordMemberSet := make(map[string]struct{}, len(allMemberships))
+	for _, m := range allMemberships {
+		allMemberSet[m.GroupID] = struct{}{}
+		if m.Source == "DISCORD" {
+			discordMemberSet[m.GroupID] = struct{}{}
+		}
 	}
 
 	for groupID := range desiredSet {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if _, already := currentSet[groupID]; already {
+		if _, already := allMemberSet[groupID]; already {
 			continue
 		}
 		if err := addDiscordGroupMember(groupID, entity.ID); err != nil {
@@ -110,7 +121,7 @@ func reconcileGroupsForDiscordUserCtx(ctx context.Context, discordUserID string,
 		}
 		logger.SugarLogger.Infof("group sync: added entity %s to group %s (DISCORD)", entity.ID, groupID)
 	}
-	for groupID := range currentSet {
+	for groupID := range discordMemberSet {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -161,9 +172,15 @@ func computeDesiredDiscordGroups(userRoles []string) ([]string, error) {
 	return desired, nil
 }
 
-func getEntityDiscordMemberships(entityID string) ([]groupMemberRow, error) {
+// getEntityMemberships returns every group_member row for the entity,
+// regardless of source. Callers (the reconcile diff) derive two sets
+// from the result: one for "is already a member via anything" (used to
+// skip ADDs) and one for "is a DISCORD-sourced member" (used to drive
+// DELETEs). Fetching all in one round-trip keeps the per-user reconcile
+// to a single core lookup for the membership state.
+func getEntityMemberships(entityID string) ([]groupMemberRow, error) {
 	var rows []groupMemberRow
-	if err := sentinel.Get("/api/core/entity/"+entityID+"/memberships?source=DISCORD", &rows); err != nil {
+	if err := sentinel.Get("/api/core/entity/"+entityID+"/memberships", &rows); err != nil {
 		return nil, err
 	}
 	return rows, nil
@@ -348,20 +365,27 @@ func reconcileOneWithSnapshot(ctx context.Context, entityID, discordID string, b
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	current, err := getEntityDiscordMemberships(entityID)
+	allMemberships, err := getEntityMemberships(entityID)
 	if err != nil {
 		return fmt.Errorf("fetch current memberships: %w", err)
 	}
-	currentSet := make(map[string]struct{}, len(current))
-	for _, m := range current {
-		currentSet[m.GroupID] = struct{}{}
+	// Same two-set pattern as the per-user reconcile: skip ADDs when
+	// the entity is already a member via any source; only consider
+	// DISCORD rows for DELETEs.
+	allMemberSet := make(map[string]struct{}, len(allMemberships))
+	discordMemberSet := make(map[string]struct{}, len(allMemberships))
+	for _, m := range allMemberships {
+		allMemberSet[m.GroupID] = struct{}{}
+		if m.Source == "DISCORD" {
+			discordMemberSet[m.GroupID] = struct{}{}
+		}
 	}
 
 	for groupID := range desired {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if _, already := currentSet[groupID]; already {
+		if _, already := allMemberSet[groupID]; already {
 			continue
 		}
 		if err := addDiscordGroupMember(groupID, entityID); err != nil {
@@ -370,7 +394,7 @@ func reconcileOneWithSnapshot(ctx context.Context, entityID, discordID string, b
 		}
 		logger.SugarLogger.Infof("group sync: added entity %s to group %s (DISCORD)", entityID, groupID)
 	}
-	for groupID := range currentSet {
+	for groupID := range discordMemberSet {
 		if err := ctx.Err(); err != nil {
 			return err
 		}

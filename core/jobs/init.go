@@ -1,9 +1,11 @@
 package jobs
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/gaucho-racing/sentinel/core/config"
+	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -16,12 +18,38 @@ const SentinelApplicationID = "app_01kpy5f8263c4rqnhn9v2akdvf"
 const SentinelCoreEntityID = "ent_01kpy5f8263c4rqnhn9y920fkn"
 const SentinelCoreServiceAccountID = "sa_01kpy5f8263c4rqnhn9zejxyhk"
 
+// InternalServiceAccountNames is the closed set of pre-seeded SAs that
+// non-core services exchange the bootstrap secret for. Each name maps
+// 1:1 to a running container in docker-compose (sentinel-discord, etc.)
+// so each service can fetch its own token by passing its own name.
+//
+// The exchange endpoint refuses any name not in this slice — defense
+// in depth so a leaked bootstrap secret can't be used to harvest tokens
+// for arbitrary (admin-created) service accounts.
+var InternalServiceAccountNames = []string{
+	"sentinel-discord",
+	"sentinel-oauth",
+	"sentinel-saml",
+}
+
+// IsInternalServiceAccountName reports whether name is on the
+// closed-set internal allowlist. Used to gate the bootstrap exchange.
+func IsInternalServiceAccountName(name string) bool {
+	for _, n := range InternalServiceAccountNames {
+		if n == name {
+			return true
+		}
+	}
+	return false
+}
+
 func InitializeCore() {
 	initializeDefaultApplications()
 	initializeDefaultEntities()
 	initializeDefaultServiceAccounts()
 	initializeAdminsGroup()
 	linkAdminsGroupToSentinelApp()
+	initializeInternalServiceAccounts()
 	logger.SugarLogger.Infoln("Finished initializing sentinel-core")
 }
 
@@ -149,6 +177,11 @@ func linkAdminsGroupToSentinelApp() {
 	logger.SugarLogger.Infof("Linked Admins group to Sentinel application")
 }
 
+// SentinelCoreServiceAccountName is the kebab-case identifier this SA
+// goes by. Matches the docker container name (sentinel-core) and the
+// naming convention used by every other internal SA.
+const SentinelCoreServiceAccountName = "sentinel-core"
+
 func initializeDefaultServiceAccounts() {
 	_, err := service.GetServiceAccountByID(SentinelCoreServiceAccountID)
 	if err == gorm.ErrRecordNotFound {
@@ -156,7 +189,7 @@ func initializeDefaultServiceAccounts() {
 			ID:            SentinelCoreServiceAccountID,
 			EntityID:      SentinelCoreEntityID,
 			ApplicationID: SentinelApplicationID,
-			Name:          "Sentinel Core",
+			Name:          SentinelCoreServiceAccountName,
 			CreatedBy:     SentinelCoreServiceAccountID,
 		})
 		if err != nil {
@@ -167,6 +200,58 @@ func initializeDefaultServiceAccounts() {
 	} else if err != nil {
 		logger.SugarLogger.Fatalf("Failed to check for Sentinel core service account: %v", err)
 	} else {
-		logger.SugarLogger.Infoln("Sentinel core service account already exists")
+		// Migrate any existing row (older builds seeded the name as
+		// "Sentinel Core" — Title Case with a space). Idempotent: the
+		// UPDATE is a no-op when the value already matches.
+		if err := database.DB.Model(&model.ServiceAccount{}).
+			Where("id = ? AND name <> ?", SentinelCoreServiceAccountID, SentinelCoreServiceAccountName).
+			Update("name", SentinelCoreServiceAccountName).Error; err != nil {
+			logger.SugarLogger.Errorf("Failed to normalize Sentinel core SA name: %v", err)
+		} else {
+			logger.SugarLogger.Infoln("Sentinel core service account already exists")
+		}
+	}
+}
+
+// initializeInternalServiceAccounts ensures each non-core service has a
+// pre-seeded SA with a minted bearer token. Idempotent on both axes:
+//
+//   - Looks up the SA by name; only creates if missing.
+//   - Mints a token only if SignedToken is empty (a fresh SA, or one
+//     whose token was lost when auth_token rows were wiped).
+//
+// Internal SAs deliberately bypass the human-grade scope allowlist —
+// service-to-service traffic needs broad access to do system work
+// (group writes, token issuance, etc.). The bootstrap exchange endpoint
+// is the only way to get these tokens out of core; admins can't mint
+// or rotate them through the UI.
+func initializeInternalServiceAccounts() {
+	for _, name := range InternalServiceAccountNames {
+		sa, err := service.GetServiceAccountByName(name)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			sa, err = service.CreateServiceAccountForApp(
+				SentinelApplicationID,
+				name,
+				"sentinel:all",
+				0, // never expires
+				SentinelCoreEntityID,
+			)
+			if err != nil {
+				logger.SugarLogger.Errorf("Failed to create internal SA %s: %v", name, err)
+				continue
+			}
+			logger.SugarLogger.Infof("Created internal service account %s (id=%s, entity=%s)", name, sa.ID, sa.EntityID)
+		} else if err != nil {
+			logger.SugarLogger.Errorf("Failed to look up internal SA %s: %v", name, err)
+			continue
+		}
+
+		if sa.SignedToken == "" {
+			if _, _, err := service.MintServiceAccountToken(sa); err != nil {
+				logger.SugarLogger.Errorf("Failed to mint token for internal SA %s: %v", name, err)
+				continue
+			}
+			logger.SugarLogger.Infof("Minted bootstrap token for internal service account %s", name)
+		}
 	}
 }

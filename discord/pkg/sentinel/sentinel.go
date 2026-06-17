@@ -5,12 +5,77 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/discord/pkg/kerbecs"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/go-resty/resty/v2"
 )
+
+// bearer is the service-account JWT this process uses to authenticate
+// to other Sentinel services. Configured once at startup via Bootstrap.
+// Reads via RLock so the request hot path doesn't serialize on writes.
+var (
+	bearer   string
+	bearerMu sync.RWMutex
+)
+
+// SetBearer wires a bearer token into the client. Subsequent Get/Post/...
+// calls send it as Authorization: Bearer. Empty string clears the
+// header — useful for tests that want to exercise the unauth'd path.
+func SetBearer(token string) {
+	bearerMu.Lock()
+	defer bearerMu.Unlock()
+	bearer = token
+}
+
+func getBearer() string {
+	bearerMu.RLock()
+	defer bearerMu.RUnlock()
+	return bearer
+}
+
+// Bootstrap exchanges INTERNAL_BOOTSTRAP_SECRET for this service's
+// pre-seeded bearer JWT and configures the client. Call once at
+// startup, before any other sentinel request. The bootstrap call
+// itself goes out without a bearer; core's /core/internal/bootstrap-token
+// validates the shared secret in the X-Bootstrap-Secret header instead.
+//
+// Retries with linear backoff (~10s total) to absorb the docker-compose
+// boot race — sentinel-core's HTTP listener may not be up the moment
+// this service starts, even with depends_on.
+func Bootstrap(serviceName, secret string) error {
+	if secret == "" {
+		return errors.New("INTERNAL_BOOTSTRAP_SECRET is not configured")
+	}
+	var lastErr error
+	for attempt := 0; attempt < 5; attempt++ {
+		if attempt > 0 {
+			time.Sleep(time.Duration(attempt) * time.Second)
+		}
+		var out struct {
+			Token string `json:"token"`
+		}
+		err := Post(
+			"/api/core/internal/bootstrap-token",
+			map[string]string{"name": serviceName},
+			&out,
+			map[string]string{"X-Bootstrap-Secret": secret},
+		)
+		if err == nil && out.Token != "" {
+			SetBearer(out.Token)
+			return nil
+		}
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = errors.New("bootstrap exchange returned empty token")
+		}
+		logger.SugarLogger.Warnf("bootstrap attempt %d failed: %v", attempt+1, lastErr)
+	}
+	return fmt.Errorf("bootstrap failed after retries: %w", lastErr)
+}
 
 // Sentinel-side error categories — wrapped into APIError.Err so callers
 // can errors.Is on them and pick the right user-facing message.
@@ -76,6 +141,13 @@ func do(method, route string, body, result interface{}, headers []map[string]str
 		return &APIError{Method: method, Route: route, Err: err}
 	}
 	req := client.R()
+	// Attach the service's bearer when one is set — Bootstrap installs
+	// it at startup. The explicit `headers` param (used by Bootstrap
+	// itself for the X-Bootstrap-Secret header) overrides nothing here;
+	// it's additive, applied after SetAuthToken.
+	if b := getBearer(); b != "" {
+		req = req.SetAuthToken(b)
+	}
 	if body != nil {
 		req = req.SetBody(body)
 	}
