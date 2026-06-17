@@ -208,13 +208,23 @@ func MintServiceAccountToken(sa model.ServiceAccount) (model.Token, string, erro
 	// membership change takes effect on the next request rather than
 	// waiting for the SA to rotate.
 	claims := map[string]any{
-		"type":  "service_account",
-		"sa_id": sa.ID,
+		"type":               "service_account",
+		"service_account_id": sa.ID,
 	}
 
 	raw, tokenID, err := GenerateToken(sa.EntityID, app.ClientID, sa.Scope, ttlSeconds, claims)
 	if err != nil {
 		return model.Token{}, "", err
+	}
+
+	// Persist the signed JWT on the SA row so the view-token endpoint
+	// can re-reveal it later. Failure here doesn't unwind the mint —
+	// the token is valid, we just lose the ability to re-show it. Log
+	// loudly so an operator notices.
+	if err := database.DB.Model(&model.ServiceAccount{}).
+		Where("id = ?", sa.ID).
+		Update("signed_token", raw).Error; err != nil {
+		logger.SugarLogger.Errorf("Failed to persist signed token for SA %s: %v", sa.ID, err)
 	}
 
 	var token model.Token

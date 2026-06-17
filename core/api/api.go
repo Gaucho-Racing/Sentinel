@@ -90,6 +90,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/applications/:id/service-accounts", CreateServiceAccountForApp)
 	router.DELETE("/service-accounts/:id", DeleteServiceAccount)
 	router.POST("/service-accounts/:id/rotate", RotateServiceAccountToken)
+	router.GET("/service-accounts/:id/token", GetServiceAccountToken)
 
 	router.GET("/applications/:id/redirect-uris", GetApplicationRedirectURIs)
 	router.POST("/applications/:id/redirect-uris", AddApplicationRedirectURI)

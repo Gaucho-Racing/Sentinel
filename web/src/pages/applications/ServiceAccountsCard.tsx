@@ -1,6 +1,7 @@
 import {
   Check,
   Copy,
+  Eye,
   KeyRound,
   Plus,
   RefreshCw,
@@ -35,6 +36,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAdmins } from "@/lib/admin"
+import { loadSession } from "@/lib/auth"
 import {
   isNeverExpires,
   SA_ALLOWED_SCOPES,
@@ -44,6 +47,7 @@ import {
   useCreateServiceAccount,
   useDeleteServiceAccount,
   useRotateServiceAccountToken,
+  useViewServiceAccountToken,
   type SAScope,
   type ServiceAccount,
   type ServiceAccountWithToken,
@@ -78,6 +82,11 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
   const sasQuery = useApplicationServiceAccounts(applicationID)
   const [createOpen, setCreateOpen] = useState(false)
   const [revealed, setRevealed] = useState<ServiceAccountWithToken | null>(null)
+  // Viewer identity drives the "View token" affordance: only the SA's
+  // creator (or any admin) can re-reveal the persisted JWT. Owners who
+  // didn't create a given SA can still rotate to get a fresh token.
+  const myEntityID = loadSession()?.entityId ?? ""
+  const { isAdmin } = useAdmins()
 
   const sas = sasQuery.data ?? []
 
@@ -108,7 +117,8 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
                 key={sa.id}
                 sa={sa}
                 applicationID={applicationID}
-                onRotated={(result) => setRevealed(result)}
+                canViewToken={isAdmin || sa.created_by === myEntityID}
+                onRevealToken={(result) => setRevealed(result)}
               />
             ))}
           </ul>
@@ -142,17 +152,30 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
 function ServiceAccountItem({
   sa,
   applicationID,
-  onRotated,
+  canViewToken,
+  onRevealToken,
 }: {
   sa: ServiceAccount
   applicationID: string
-  onRotated: (result: ServiceAccountWithToken) => void
+  canViewToken: boolean
+  onRevealToken: (result: ServiceAccountWithToken) => void
 }) {
+  const viewToken = useViewServiceAccountToken()
   const [confirmRotate, setConfirmRotate] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const scopes = sa.scope.trim() ? sa.scope.split(/\s+/) : []
   const tokenExp = sa.active_token?.expires_at
+  const hasActiveToken = !!sa.active_token
+
+  async function handleView() {
+    try {
+      const token = await viewToken.mutateAsync(sa.id)
+      onRevealToken({ service_account: sa, token })
+    } catch (e) {
+      toast.error(extractError(e, "Couldn't load token."))
+    }
+  }
 
   return (
     <li className="rounded-md border border-border/60 bg-muted/40 p-3">
@@ -166,6 +189,17 @@ function ServiceAccountItem({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {canViewToken && hasActiveToken && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={handleView}
+              disabled={viewToken.isPending}
+              title="View token"
+            >
+              <Eye className="size-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -216,7 +250,7 @@ function ServiceAccountItem({
         applicationID={applicationID}
         onRotated={(result) => {
           setConfirmRotate(false)
-          onRotated(result)
+          onRevealToken(result)
         }}
       />
 

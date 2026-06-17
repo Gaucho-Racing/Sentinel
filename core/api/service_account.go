@@ -150,6 +150,34 @@ func RotateServiceAccountToken(c *gin.Context) {
 	c.JSON(http.StatusOK, serviceAccountWithToken{ServiceAccount: sa, Token: raw})
 }
 
+// GetServiceAccountToken returns the raw signed JWT that was issued at
+// the SA's last mint. Visibility is intentionally narrower than the
+// other SA endpoints: only the SA's creator or a global admin can
+// re-reveal the token. App owners who didn't create the SA can still
+// rotate to get a fresh one — that path goes through the standard
+// owner-or-admin gate.
+func GetServiceAccountToken(c *gin.Context) {
+	id := c.Param("id")
+	sa, err := service.GetServiceAccountByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "service account not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, Any(
+		RequestTokenHasEntityID(c, sa.CreatedBy),
+		RequestUserIsAdmin(c),
+	))
+	if sa.SignedToken == "" {
+		c.JSON(http.StatusNotFound, gin.H{"error": "no active token; rotate to mint a new one"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"token": sa.SignedToken})
+}
+
 func DeleteServiceAccount(c *gin.Context) {
 	id := c.Param("id")
 	sa, err := service.GetServiceAccountByID(id)

@@ -118,6 +118,22 @@ export function useRotateServiceAccountToken(applicationID: string) {
   })
 }
 
+// useViewServiceAccountToken fetches the raw signed JWT for an SA on
+// demand. Backend gates this to (creator || admin) — callers that don't
+// satisfy the gate get a 403 and should hide the trigger UI in the
+// first place. Mutation rather than query so the token isn't auto-
+// fetched on mount and isn't cached across views.
+export function useViewServiceAccountToken() {
+  return useMutation({
+    mutationFn: async (saID: string) => {
+      const res = await api.get<{ token: string }>(
+        `/service-accounts/${saID}/token`,
+      )
+      return res.data.token
+    },
+  })
+}
+
 export function useDeleteServiceAccount(applicationID: string) {
   const qc = useQueryClient()
   return useMutation({
