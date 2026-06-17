@@ -29,6 +29,8 @@ type discordChannel struct {
 }
 
 func GetRoles(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	roles, err := service.GetGuildRoles()
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to fetch guild roles: %v", err)
@@ -52,6 +54,8 @@ func GetRoles(c *gin.Context) {
 }
 
 func GetChannels(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	channels, err := service.GetGuildChannels()
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to fetch guild channels: %v", err)
