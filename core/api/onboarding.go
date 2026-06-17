@@ -14,6 +14,11 @@ type createEntityRequest struct {
 }
 
 func CreateEntity(c *gin.Context) {
+	// Entities are the root identity row that everything else hangs
+	// off (users, service accounts, group memberships). Creation is
+	// reserved for internal automation — the discord onboarding flow
+	// is the canonical caller and now carries sentinel:all via its SA.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	var req createEntityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -37,6 +42,12 @@ type createEmailAuthRequest struct {
 // (password reset, email change). Picks the service-layer function based
 // on whether a row already exists.
 func CreateEntityEmailAuth(c *gin.Context) {
+	// This endpoint upserts an entity's email + password — the entire
+	// account-takeover primitive in one call. Reserved for internal
+	// callers (discord onboarding mints the initial email auth; future
+	// password-reset flows would go through a separate token-mediated
+	// path before hitting this handler).
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	entityID := c.Param("entityID")
 	var req createEmailAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,6 +87,9 @@ type createPhoneAuthRequest struct {
 }
 
 func CreateEntityPhoneAuth(c *gin.Context) {
+	// Same trust level as the other entity-auth writers: internal
+	// onboarding only.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	entityID := c.Param("entityID")
 	var req createPhoneAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -96,6 +110,10 @@ type createExternalAuthRequest struct {
 }
 
 func CreateEntityExternalAuth(c *gin.Context) {
+	// Linking an external identity (DISCORD, GITHUB, etc.) to an
+	// entity is account-takeover-adjacent — anyone able to write this
+	// row can claim any entity. Internal callers only.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	entityID := c.Param("entityID")
 	var req createExternalAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -123,6 +141,10 @@ type updateExternalAuthMetadataRequest struct {
 // successful provider sign-in so the email / username / avatar that came
 // back from the provider stays current.
 func UpdateEntityExternalAuthMetadata(c *gin.Context) {
+	// Called by login handlers on every successful provider sign-in
+	// (oauth-discord-login refreshes the cached email/username/avatar
+	// after a successful Discord exchange). Internal callers only.
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
 	entityID := c.Param("entityID")
 	provider := c.Param("provider")
 	var req updateExternalAuthMetadataRequest

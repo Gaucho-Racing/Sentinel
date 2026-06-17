@@ -63,6 +63,27 @@ func CreateOrUpdateUser(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// Create vs update have different trust requirements. Creates are
+	// reserved for internal onboarding (sentinel:all) or admins —
+	// arbitrary user creation through this endpoint would be an
+	// account-fabrication primitive. Updates allow the user to edit
+	// their own profile, plus the usual admin/internal overrides.
+	if existing.ID == "" {
+		Require(c, Any(
+			RequestTokenHasScope(c, "sentinel:all"),
+			RequestUserIsAdmin(c),
+		))
+	} else {
+		Require(c, Any(
+			RequestTokenHasScope(c, "sentinel:all"),
+			RequestTokenHasUserID(c, existing.ID),
+			RequestTokenHasEntityID(c, existing.EntityID),
+			RequestTokenHasScope(c, "user:write") && RequestTokenHasUserID(c, existing.ID),
+			RequestUserIsAdmin(c),
+		))
+	}
+
 	if existing.ID != "" {
 		user, err = service.UpdateUser(user)
 	} else {
@@ -76,6 +97,13 @@ func CreateOrUpdateUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
+	// Deleting a user is admin-only — no self-delete path through
+	// this endpoint (a separate account-closure flow would handle
+	// that with the right cleanup).
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestUserIsAdmin(c),
+	))
 	id := c.Param("id")
 	if err := service.DeleteUser(id); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
