@@ -50,7 +50,6 @@ func Init() {
 			&model.GroupJoinRequestComment{},
 			&model.GroupOwner{},
 			&model.GroupConditionalBinding{},
-			&model.APIKey{},
 			&model.SigningKey{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")

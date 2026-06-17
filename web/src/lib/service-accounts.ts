@@ -3,39 +3,66 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 import type { Group } from "@/lib/groups"
 
-// Mirror of core/model/service_account.go::ServiceAccount.
+// Mirror of core/model/jwt.go::Token — the auth_token row.
+export type Token = {
+  id: string
+  entity_id: string
+  client_id: string
+  scope: string
+  expires_at: string
+  created_at: string
+}
+
+// Mirror of core/model/service_account.go::ServiceAccount with the
+// PopulateServiceAccount-injected fields (groups, active_token).
 export type ServiceAccount = {
   id: string
   entity_id: string
   application_id: string
   name: string
+  scope: string
+  ttl_days: number
   created_by: string
   groups: Group[]
+  // Null when the SA has no active token row (revoked, never minted,
+  // or was deleted out-of-band).
+  active_token: Token | null
   created_at: string
 }
 
-// Mirror of core/model/api_key.go::APIKey. Note: `hashed_secret` is
-// json:"-" on the backend, so it never appears on the wire.
-export type APIKey = {
-  id: string
-  service_account_id: string
-  name: string
-  key_id: string
-  scope: string
-  // null = never expires
-  expires_at: string | null
-  last_used_at: string | null
-  created_at: string
-  created_by: string
-}
-
-// Returned ONCE on POST /service-accounts/:id/api-keys — `token` is the
-// raw sk_<key_id>_<secret> string. Subsequent GETs of the key never
-// include it; the user has to copy this on creation or revoke and remint.
-export type APIKeyWithToken = {
-  key: APIKey
+// Returned on POST /applications/:id/service-accounts and
+// POST /service-accounts/:id/rotate. The `token` field is the raw JWT
+// — exposed ONCE on create + rotate and never on subsequent reads.
+export type ServiceAccountWithToken = {
+  service_account: ServiceAccount
   token: string
 }
+
+// The scopes the backend's ValidateServiceAccountScope accepts. Kept
+// in sync with core/service/service_account.go::ServiceAccountAllowedScopes.
+// Read-only by design — *:write scopes route through human-authed flows.
+export const SA_ALLOWED_SCOPES = [
+  "user:read",
+  "groups:read",
+  "applications:read",
+] as const
+
+export type SAScope = (typeof SA_ALLOWED_SCOPES)[number]
+
+export const SA_SCOPE_DESCRIPTIONS: Record<SAScope, string> = {
+  "user:read": "Read user and entity profiles",
+  "groups:read": "Read group memberships",
+  "applications:read": "Read application details",
+}
+
+// TTL_PRESETS is the dropdown shown on the create / rotate dialogs.
+// Values are days; 0 = never expires (issued with a ~100-year JWT exp).
+export const TTL_PRESETS: { label: string; days: number }[] = [
+  { label: "30 days", days: 30 },
+  { label: "90 days", days: 90 },
+  { label: "365 days", days: 365 },
+  { label: "Never", days: 0 },
+]
 
 export function useApplicationServiceAccounts(applicationID: string) {
   return useQuery({
@@ -50,13 +77,36 @@ export function useApplicationServiceAccounts(applicationID: string) {
   })
 }
 
+export type CreateServiceAccountInput = {
+  name: string
+  scope: string
+  ttl_days: number
+}
+
 export function useCreateServiceAccount(applicationID: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (name: string) => {
-      const res = await api.post<ServiceAccount>(
+    mutationFn: async (input: CreateServiceAccountInput) => {
+      const res = await api.post<ServiceAccountWithToken>(
         `/applications/${applicationID}/service-accounts`,
-        { name },
+        input,
+      )
+      return res.data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({
+        queryKey: ["application", applicationID, "service-accounts"],
+      })
+    },
+  })
+}
+
+export function useRotateServiceAccountToken(applicationID: string) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (saID: string) => {
+      const res = await api.post<ServiceAccountWithToken>(
+        `/service-accounts/${saID}/rotate`,
       )
       return res.data
     },
@@ -82,57 +132,13 @@ export function useDeleteServiceAccount(applicationID: string) {
   })
 }
 
-export function useServiceAccountAPIKeys(saID: string) {
-  return useQuery({
-    queryKey: ["service-account", saID, "api-keys"],
-    queryFn: async () => {
-      const res = await api.get<APIKey[]>(`/service-accounts/${saID}/api-keys`)
-      return res.data
-    },
-    enabled: !!saID,
-  })
+// isNeverExpires reports whether an expires_at date is far enough in
+// the future to render as "Never" rather than a literal date. SA tokens
+// with ttl_days=0 are issued with a ~100-year exp; anything past 50
+// years from now is effectively non-expiring.
+export function isNeverExpires(expiresAt: string | null | undefined): boolean {
+  if (!expiresAt) return false
+  const t = new Date(expiresAt).getTime()
+  const fiftyYears = 50 * 365 * 24 * 60 * 60 * 1000
+  return t - Date.now() > fiftyYears
 }
-
-export type CreateAPIKeyInput = {
-  name: string
-  // 0 = never expires
-  ttl_days: number
-  scope: string
-}
-
-export function useCreateAPIKey(saID: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (input: CreateAPIKeyInput) => {
-      const res = await api.post<APIKeyWithToken>(
-        `/service-accounts/${saID}/api-keys`,
-        input,
-      )
-      return res.data
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["service-account", saID, "api-keys"] })
-    },
-  })
-}
-
-export function useRevokeAPIKey(saID: string) {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: async (keyID: string) => {
-      await api.delete(`/service-accounts/${saID}/api-keys/${keyID}`)
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["service-account", saID, "api-keys"] })
-    },
-  })
-}
-
-// TTL_PRESETS is the dropdown shown on the create-key dialog. Values are
-// days; 0 maps to "never expires" on the backend.
-export const TTL_PRESETS: { label: string; days: number }[] = [
-  { label: "30 days", days: 30 },
-  { label: "90 days", days: 90 },
-  { label: "365 days", days: 365 },
-  { label: "Never", days: 0 },
-]

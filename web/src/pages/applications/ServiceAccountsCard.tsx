@@ -1,9 +1,10 @@
 import {
+  Check,
   Copy,
   KeyRound,
   Plus,
+  RefreshCw,
   Trash2,
-  X,
 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
@@ -35,31 +36,37 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  isNeverExpires,
+  SA_ALLOWED_SCOPES,
+  SA_SCOPE_DESCRIPTIONS,
   TTL_PRESETS,
   useApplicationServiceAccounts,
-  useCreateAPIKey,
   useCreateServiceAccount,
   useDeleteServiceAccount,
-  useRevokeAPIKey,
-  useServiceAccountAPIKeys,
-  type APIKey,
-  type APIKeyWithToken,
+  useRotateServiceAccountToken,
+  type SAScope,
   type ServiceAccount,
+  type ServiceAccountWithToken,
 } from "@/lib/service-accounts"
 
-function formatTime(iso: string | null | undefined): string {
+function formatDate(iso: string | null | undefined): string {
   if (!iso) return "—"
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleDateString(undefined, {
     year: "numeric",
     month: "short",
     day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   })
 }
 
-function maskedKeyID(keyID: string): string {
-  return `sk_${keyID.slice(0, 8)}…`
+function expirySummary(expiresAt: string | null | undefined): string {
+  if (!expiresAt) return "No active token"
+  if (isNeverExpires(expiresAt)) return "Never expires"
+  const t = new Date(expiresAt).getTime()
+  const ms = t - Date.now()
+  if (ms <= 0) return `Expired ${formatDate(expiresAt)}`
+  const days = Math.round(ms / (24 * 60 * 60 * 1000))
+  if (days < 30) return `Expires in ${days} day${days === 1 ? "" : "s"}`
+  return `Expires ${formatDate(expiresAt)}`
 }
 
 function extractError(e: unknown, fallback: string): string {
@@ -70,6 +77,7 @@ function extractError(e: unknown, fallback: string): string {
 export function ServiceAccountsCard({ applicationID }: { applicationID: string }) {
   const sasQuery = useApplicationServiceAccounts(applicationID)
   const [createOpen, setCreateOpen] = useState(false)
+  const [revealed, setRevealed] = useState<ServiceAccountWithToken | null>(null)
 
   const sas = sasQuery.data ?? []
 
@@ -82,8 +90,8 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
         </CardTitle>
         <CardDescription>
           Non-human identities for this application. Each service account
-          can have one or more API keys that authenticate to Sentinel as
-          the service account.
+          gets a single bearer JWT that authenticates to Sentinel; rotate
+          it to swap the token without recreating the account.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -100,6 +108,7 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
                 key={sa.id}
                 sa={sa}
                 applicationID={applicationID}
+                onRotated={(result) => setRevealed(result)}
               />
             ))}
           </ul>
@@ -116,6 +125,15 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
         open={createOpen}
         onOpenChange={setCreateOpen}
         applicationID={applicationID}
+        onCreated={(result) => {
+          setCreateOpen(false)
+          setRevealed(result)
+        }}
+      />
+
+      <RevealTokenDialog
+        result={revealed}
+        onClose={() => setRevealed(null)}
       />
     </Card>
   )
@@ -124,134 +142,90 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
 function ServiceAccountItem({
   sa,
   applicationID,
+  onRotated,
 }: {
   sa: ServiceAccount
   applicationID: string
+  onRotated: (result: ServiceAccountWithToken) => void
 }) {
-  const keysQuery = useServiceAccountAPIKeys(sa.id)
-  const [createKeyOpen, setCreateKeyOpen] = useState(false)
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
-  const [revealed, setRevealed] = useState<APIKeyWithToken | null>(null)
-  const [revokeTarget, setRevokeTarget] = useState<APIKey | null>(null)
+  const [confirmRotate, setConfirmRotate] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const keys = keysQuery.data ?? []
+  const scopes = sa.scope.trim() ? sa.scope.split(/\s+/) : []
+  const tokenExp = sa.active_token?.expires_at
 
   return (
     <li className="rounded-md border border-border/60 bg-muted/40 p-3">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-mono text-sm">{sa.name}</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Created {formatTime(sa.created_at)}
-            <span className="mx-1.5">·</span>
             <code className="font-mono">{sa.id}</code>
+            <span className="mx-1.5">·</span>
+            Created {formatDate(sa.created_at)}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          onClick={() => setConfirmDeleteOpen(true)}
-          title="Delete service account"
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
-      </div>
-
-      <div className="mt-3 space-y-2">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground">
-          API keys
-        </p>
-        {keysQuery.isLoading ? (
-          <Skeleton className="h-10 w-full" />
-        ) : keys.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No API keys yet.</p>
-        ) : (
-          <ul className="space-y-2">
-            {keys.map((k) => (
-              <APIKeyRow
-                key={k.id}
-                k={k}
-                onRevoke={() => setRevokeTarget(k)}
-              />
-            ))}
-          </ul>
-        )}
-        <div className="pt-1">
+        <div className="flex shrink-0 items-center gap-1">
           <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setCreateKeyOpen(true)}
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setConfirmRotate(true)}
+            title="Rotate token"
           >
-            <Plus className="mr-1 size-3.5" />
-            New API key
+            <RefreshCw className="size-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setConfirmDelete(true)}
+            title="Delete service account"
+          >
+            <Trash2 className="size-3.5" />
           </Button>
         </div>
       </div>
 
-      <CreateAPIKeyDialog
-        open={createKeyOpen}
-        onOpenChange={setCreateKeyOpen}
-        saID={sa.id}
-        onCreated={(result) => {
-          setCreateKeyOpen(false)
-          setRevealed(result)
+      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+        <div>
+          <p className="uppercase tracking-wider text-muted-foreground">Scope</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            {scopes.length === 0 ? (
+              <span className="text-muted-foreground">No scope</span>
+            ) : (
+              scopes.map((s) => (
+                <span
+                  key={s}
+                  className="inline-flex items-center rounded-md border border-border/60 bg-background/60 px-2 py-0.5 font-mono text-xs"
+                >
+                  {s}
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+        <div>
+          <p className="uppercase tracking-wider text-muted-foreground">Token</p>
+          <p className="mt-1">{expirySummary(tokenExp)}</p>
+        </div>
+      </div>
+
+      <RotateTokenDialog
+        open={confirmRotate}
+        onOpenChange={setConfirmRotate}
+        sa={sa}
+        applicationID={applicationID}
+        onRotated={(result) => {
+          setConfirmRotate(false)
+          onRotated(result)
         }}
       />
 
-      <RevealAPIKeyDialog
-        token={revealed?.token ?? null}
-        keyName={revealed?.key.name ?? ""}
-        onClose={() => setRevealed(null)}
-      />
-
-      <RevokeAPIKeyDialog
-        target={revokeTarget}
-        saID={sa.id}
-        onClose={() => setRevokeTarget(null)}
-      />
-
       <DeleteServiceAccountDialog
-        open={confirmDeleteOpen}
-        onOpenChange={setConfirmDeleteOpen}
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
         sa={sa}
         applicationID={applicationID}
-        keyCount={keys.length}
       />
-    </li>
-  )
-}
-
-function APIKeyRow({ k, onRevoke }: { k: APIKey; onRevoke: () => void }) {
-  return (
-    <li className="flex items-center justify-between gap-3 rounded-md border border-border/60 bg-background/60 px-3 py-2">
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">{k.name}</span>
-          <code className="font-mono text-xs text-muted-foreground">
-            {maskedKeyID(k.key_id)}
-          </code>
-        </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          <span>Last used {formatTime(k.last_used_at)}</span>
-          <span>
-            {k.expires_at ? `Expires ${formatTime(k.expires_at)}` : "Never expires"}
-          </span>
-          {k.scope && (
-            <span>
-              Scope: <code className="font-mono">{k.scope}</code>
-            </span>
-          )}
-        </div>
-      </div>
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        onClick={onRevoke}
-        title="Revoke key"
-      >
-        <X className="size-3.5" />
-      </Button>
     </li>
   )
 }
@@ -260,24 +234,47 @@ function CreateServiceAccountDialog({
   open,
   onOpenChange,
   applicationID,
+  onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   applicationID: string
+  onCreated: (result: ServiceAccountWithToken) => void
 }) {
   const createSA = useCreateServiceAccount(applicationID)
   const [name, setName] = useState("")
+  const [scopeSet, setScopeSet] = useState<Set<SAScope>>(new Set())
+  // 365-day default — picked over the PR #78 "90 days" since the user
+  // chose 1 year as the default for SA tokens.
+  const [ttlDays, setTtlDays] = useState("365")
 
   useEffect(() => {
-    if (open) setName("")
+    if (open) {
+      setName("")
+      setScopeSet(new Set())
+      setTtlDays("365")
+    }
   }, [open])
+
+  function toggleScope(s: SAScope) {
+    setScopeSet((prev) => {
+      const next = new Set(prev)
+      if (next.has(s)) next.delete(s)
+      else next.add(s)
+      return next
+    })
+  }
 
   async function handleCreate() {
     const trimmed = name.trim()
     if (!trimmed) return
     try {
-      await createSA.mutateAsync(trimmed)
-      onOpenChange(false)
+      const result = await createSA.mutateAsync({
+        name: trimmed,
+        scope: [...scopeSet].join(" "),
+        ttl_days: parseInt(ttlDays, 10),
+      })
+      onCreated(result)
     } catch (e) {
       toast.error(extractError(e, "Couldn't create service account."))
     }
@@ -297,22 +294,78 @@ function CreateServiceAccountDialog({
           </div>
           <DialogTitle>New service account</DialogTitle>
           <DialogDescription>
-            Pick a name that's clear about what this account does. Service
-            accounts get API keys that authenticate to Sentinel as a
-            non-human identity.
+            A service account gets one bearer JWT, shown <strong>once</strong>{" "}
+            after creation. Pick a name that's clear about what this account
+            does and the scopes it needs.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2">
-          <Label htmlFor="sa-name">Name</Label>
-          <Input
-            id="sa-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. mapache-ingest"
-            autoFocus
-            disabled={createSA.isPending}
-          />
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="sa-name">Name</Label>
+            <Input
+              id="sa-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. mapache-ingest"
+              autoFocus
+              disabled={createSA.isPending}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Scope</Label>
+            <ul className="space-y-1.5">
+              {SA_ALLOWED_SCOPES.map((s) => {
+                const checked = scopeSet.has(s)
+                return (
+                  <li key={s}>
+                    <button
+                      type="button"
+                      onClick={() => toggleScope(s)}
+                      disabled={createSA.isPending}
+                      className="flex w-full items-center gap-2.5 rounded-md border border-border/60 bg-background/60 px-3 py-2 text-left transition-colors hover:bg-muted/40 disabled:opacity-50"
+                    >
+                      <span
+                        className={
+                          "flex size-4 shrink-0 items-center justify-center rounded border " +
+                          (checked
+                            ? "border-gr-pink bg-gr-pink text-white"
+                            : "border-border bg-background")
+                        }
+                      >
+                        {checked && <Check className="size-3" />}
+                      </span>
+                      <span className="flex flex-col">
+                        <code className="font-mono text-sm">{s}</code>
+                        <span className="text-xs text-muted-foreground">
+                          {SA_SCOPE_DESCRIPTIONS[s]}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sa-ttl">Token expires after</Label>
+            <Select
+              value={ttlDays}
+              onValueChange={setTtlDays}
+              disabled={createSA.isPending}
+            >
+              <SelectTrigger id="sa-ttl">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TTL_PRESETS.map((preset) => (
+                  <SelectItem key={preset.days} value={String(preset.days)}>
+                    {preset.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="flex justify-end gap-2 pt-1">
@@ -340,43 +393,27 @@ function CreateServiceAccountDialog({
   )
 }
 
-function CreateAPIKeyDialog({
+function RotateTokenDialog({
   open,
   onOpenChange,
-  saID,
-  onCreated,
+  sa,
+  applicationID,
+  onRotated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  saID: string
-  onCreated: (result: APIKeyWithToken) => void
+  sa: ServiceAccount
+  applicationID: string
+  onRotated: (result: ServiceAccountWithToken) => void
 }) {
-  const createKey = useCreateAPIKey(saID)
-  const [name, setName] = useState("")
-  // 90 days is the agreed default. The dropdown also offers 30 / 365 / never.
-  const [ttlDays, setTtlDays] = useState("90")
-  const [scope, setScope] = useState("")
+  const rotate = useRotateServiceAccountToken(applicationID)
 
-  useEffect(() => {
-    if (open) {
-      setName("")
-      setTtlDays("90")
-      setScope("")
-    }
-  }, [open])
-
-  async function handleCreate() {
-    const trimmed = name.trim()
-    if (!trimmed) return
+  async function handleRotate() {
     try {
-      const result = await createKey.mutateAsync({
-        name: trimmed,
-        ttl_days: parseInt(ttlDays, 10),
-        scope: scope.trim(),
-      })
-      onCreated(result)
+      const result = await rotate.mutateAsync(sa.id)
+      onRotated(result)
     } catch (e) {
-      toast.error(extractError(e, "Couldn't create API key."))
+      toast.error(extractError(e, "Couldn't rotate token."))
     }
   }
 
@@ -384,69 +421,27 @@ function CreateAPIKeyDialog({
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        if (!createKey.isPending) onOpenChange(o)
+        if (!rotate.isPending) onOpenChange(o)
       }}
     >
       <DialogContent className="gap-5 sm:max-w-md">
         <DialogHeader className="gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
-            <KeyRound className="size-5" />
+            <RefreshCw className="size-5" />
           </div>
-          <DialogTitle>New API key</DialogTitle>
+          <DialogTitle>Rotate token for {sa.name}?</DialogTitle>
           <DialogDescription>
-            The full key is shown <strong>once</strong> after creation and
-            never again — copy it then.
+            Mints a fresh JWT with the same scope and TTL. Any client still
+            using the previous token will start getting 401s immediately —
+            redeploy them with the new token after you copy it.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="key-name">Name</Label>
-            <Input
-              id="key-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. production-ingest"
-              autoFocus
-              disabled={createKey.isPending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="key-ttl">Expires after</Label>
-            <Select
-              value={ttlDays}
-              onValueChange={setTtlDays}
-              disabled={createKey.isPending}
-            >
-              <SelectTrigger id="key-ttl">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TTL_PRESETS.map((preset) => (
-                  <SelectItem key={preset.days} value={String(preset.days)}>
-                    {preset.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="key-scope">Scope</Label>
-            <Input
-              id="key-scope"
-              value={scope}
-              onChange={(e) => setScope(e.target.value)}
-              placeholder="space-separated, leave blank for none"
-              disabled={createKey.isPending}
-            />
-          </div>
-        </div>
 
         <div className="flex justify-end gap-2 pt-1">
           <Button
             type="button"
             variant="ghost"
-            disabled={createKey.isPending}
+            disabled={rotate.isPending}
             onClick={() => onOpenChange(false)}
           >
             Cancel
@@ -455,11 +450,11 @@ function CreateAPIKeyDialog({
             type="button"
             size="sm"
             className="w-auto"
-            loading={createKey.isPending}
-            disabled={!name.trim() || createKey.isPending}
-            onClick={handleCreate}
+            loading={rotate.isPending}
+            disabled={rotate.isPending}
+            onClick={handleRotate}
           >
-            Create key
+            Rotate token
           </OutlineButton>
         </div>
       </DialogContent>
@@ -467,24 +462,22 @@ function CreateAPIKeyDialog({
   )
 }
 
-function RevealAPIKeyDialog({
-  token,
-  keyName,
+function RevealTokenDialog({
+  result,
   onClose,
 }: {
-  token: string | null
-  keyName: string
+  result: ServiceAccountWithToken | null
   onClose: () => void
 }) {
   function copyToken() {
-    if (!token) return
-    void navigator.clipboard.writeText(token)
-    toast.success("API key copied")
+    if (!result) return
+    void navigator.clipboard.writeText(result.token)
+    toast.success("Token copied")
   }
 
   return (
     <Dialog
-      open={token !== null}
+      open={result !== null}
       onOpenChange={(o) => {
         if (!o) onClose()
       }}
@@ -494,21 +487,21 @@ function RevealAPIKeyDialog({
           <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
             <KeyRound className="size-5" />
           </div>
-          <DialogTitle>Copy your API key</DialogTitle>
+          <DialogTitle>Copy your bearer token</DialogTitle>
           <DialogDescription>
-            This is the only time the full key for <strong>{keyName}</strong>{" "}
-            will be shown. Save it somewhere safe — if you lose it you'll
-            have to revoke and mint a new one.
+            This is the only time the full token for{" "}
+            <strong>{result?.service_account.name}</strong> will be shown.
+            Save it somewhere safe — if you lose it you'll have to rotate.
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5">
-          <code className="flex-1 break-all font-mono text-xs">{token}</code>
+          <code className="flex-1 break-all font-mono text-xs">{result?.token}</code>
           <Button
             variant="ghost"
             size="icon-sm"
             onClick={copyToken}
-            title="Copy key"
+            title="Copy token"
           >
             <Copy className="size-3.5" />
           </Button>
@@ -529,83 +522,16 @@ function RevealAPIKeyDialog({
   )
 }
 
-function RevokeAPIKeyDialog({
-  target,
-  saID,
-  onClose,
-}: {
-  target: APIKey | null
-  saID: string
-  onClose: () => void
-}) {
-  const revoke = useRevokeAPIKey(saID)
-
-  async function handleRevoke() {
-    if (!target) return
-    try {
-      await revoke.mutateAsync(target.id)
-      toast.success(`Revoked ${target.name}`)
-      onClose()
-    } catch (e) {
-      toast.error(extractError(e, "Couldn't revoke key."))
-    }
-  }
-
-  return (
-    <Dialog
-      open={target !== null}
-      onOpenChange={(o) => {
-        if (!o && !revoke.isPending) onClose()
-      }}
-    >
-      <DialogContent className="gap-5 sm:max-w-md">
-        <DialogHeader className="gap-3">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive">
-            <Trash2 className="size-5" />
-          </div>
-          <DialogTitle>Revoke {target?.name}?</DialogTitle>
-          <DialogDescription>
-            Any client still using this key will start getting 401s
-            immediately. This can't be undone — you'd need to mint a fresh
-            key and redeploy.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex justify-end gap-2 pt-1">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={revoke.isPending}
-            onClick={onClose}
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={revoke.isPending}
-            onClick={handleRevoke}
-          >
-            {revoke.isPending ? "Revoking…" : "Revoke key"}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 function DeleteServiceAccountDialog({
   open,
   onOpenChange,
   sa,
   applicationID,
-  keyCount,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   sa: ServiceAccount
   applicationID: string
-  keyCount: number
 }) {
   const deleteSA = useDeleteServiceAccount(applicationID)
 
@@ -633,10 +559,9 @@ function DeleteServiceAccountDialog({
           </div>
           <DialogTitle>Delete {sa.name}?</DialogTitle>
           <DialogDescription>
-            {keyCount === 0
-              ? "This service account has no keys. Deleting it removes the account row and frees the name."
-              : `Every API key on this service account will be revoked (${keyCount} key${keyCount === 1 ? "" : "s"} total). Any clients still using them will start getting 401s.`}{" "}
-            This can't be undone.
+            The service account and its active token are removed
+            immediately. Any client still using the token will start
+            getting 401s. This can't be undone.
           </DialogDescription>
         </DialogHeader>
 
