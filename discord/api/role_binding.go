@@ -11,6 +11,8 @@ import (
 // ListRoleBindings returns all role bindings, optionally filtered by group_id.
 // Used by the web UI (per-group view) and by reconciliation (full sweep).
 func ListRoleBindings(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	groupID := c.Query("group_id")
 	var (
 		bindings []model.GroupDiscordRoleBinding
@@ -34,6 +36,8 @@ type createRoleBindingRequest struct {
 }
 
 func CreateRoleBinding(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	var req createRoleBindingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -59,6 +63,8 @@ func CreateRoleBinding(c *gin.Context) {
 // required to scope the delete — protects against URL tampering that would
 // otherwise let a caller delete a binding they don't own access to.
 func DeleteRoleBinding(c *gin.Context) {
+	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+
 	bindingID := c.Param("bindingID")
 	groupID := c.Query("group_id")
 	if groupID == "" {
