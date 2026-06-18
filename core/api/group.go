@@ -49,6 +49,8 @@ func validateMembershipExpiration(hasExpiration bool, expiresAt time.Time) error
 }
 
 func GetAllGroups(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+
 	groups, err := service.GetAllGroups()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -90,6 +92,8 @@ func cascadeRemovedSources(groupID string, before model.StringSlice, after []str
 }
 
 func GetGroupByID(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+
 	id := c.Param("id")
 	group, err := service.GetGroupByID(id)
 	if err != nil {
@@ -128,13 +132,18 @@ func CreateOrUpdateGroup(c *gin.Context) {
 		return
 	}
 
-	// Create vs. update have different trust requirements. Anyone with a
-	// valid bearer can create a group (they become the auto-added owner
-	// below). Updates have to clear the owner-or-admin gate against the
-	// existing group — without this check, anyone could rename or
-	// rewrite allowed_sources on any group, including the Admins group.
+	// Create vs. update have different trust requirements. Creating a
+	// group is a scoped action: first-party tokens (sentinel:all) and
+	// third-party tokens that explicitly request groups:write may create;
+	// the creator becomes the auto-added owner below. Updates have to
+	// clear the owner-or-admin gate against the existing group —
+	// without this check, anyone could rename or rewrite allowed_sources
+	// on any group, including the Admins group.
 	if existing.ID == "" {
-		Require(c, RequestTokenExists(c))
+		Require(c, Any(
+			RequestTokenHasScope(c, "sentinel:all"),
+			RequestTokenHasScope(c, "groups:write"),
+		))
 	} else if !requireGroupOwnerOrAdmin(c, existing.ID) {
 		return
 	}
@@ -203,6 +212,8 @@ func CreateOrUpdateGroup(c *gin.Context) {
 }
 
 func GetGroupApplications(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+
 	id := c.Param("id")
 	apps, err := service.GetApplicationsForGroup(id)
 	if err != nil {
@@ -231,6 +242,8 @@ func DeleteGroup(c *gin.Context) {
 // Members
 
 func GetGroupMembers(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+
 	id := c.Param("id")
 	members, err := service.GetMembersForGroup(id)
 	if err != nil {
@@ -300,6 +313,8 @@ func RemoveGroupMember(c *gin.Context) {
 // Owners
 
 func GetGroupOwners(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+
 	id := c.Param("id")
 	owners, err := service.GetOwnersForGroup(id)
 	if err != nil {
@@ -353,6 +368,9 @@ func RemoveGroupOwner(c *gin.Context) {
 
 func GetGroupJoinRequests(c *gin.Context) {
 	id := c.Param("id")
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
 	requests, err := service.GetJoinRequestsByGroup(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -372,6 +390,14 @@ func GetGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	// Applicants can read their own request; otherwise the group's
+	// owner roster, admins, and internal services can see it.
+	Require(c, Any(
+		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasEntityID(c, request.EntityID),
+		RequestUserIsGroupOwner(c, request.GroupID),
+		RequestUserIsAdmin(c),
+	))
 	c.JSON(http.StatusOK, request)
 }
 

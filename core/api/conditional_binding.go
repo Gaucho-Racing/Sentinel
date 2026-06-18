@@ -10,6 +10,8 @@ import (
 )
 
 func GetGroupConditionalBindings(c *gin.Context) {
+	Require(c, RequestTokenExists(c))
+
 	id := c.Param("id")
 	bindings, err := service.GetConditionalBindingsForGroup(id)
 	if err != nil {
