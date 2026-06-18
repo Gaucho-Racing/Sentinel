@@ -51,6 +51,11 @@ func ValidateAuthorize(c *gin.Context) {
 
 	entityID := c.Query("entity_id")
 	if entityID != "" {
+		// entity_id must match the bearer's subject — otherwise an
+		// attacker holding any sso_request stash ID could ask the
+		// access gate about any user.
+		Require(c, RequestTokenHasEntityID(c, entityID))
+
 		if err := service.CheckAccessGate(entityID, sp.ClientID); err != nil {
 			if errors.Is(err, service.ErrAccessDenied) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": sp.AppName, "app_icon_url": sp.AppIconURL})
@@ -85,6 +90,12 @@ func Authorize(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	// The bearer's subject becomes the assertion subject — req.EntityID
+	// is only honored if it matches. Without this check, possession of
+	// any sso_request stash would let a caller mint a signed SAML
+	// response for an arbitrary user.
+	Require(c, RequestTokenHasEntityID(c, req.EntityID))
 
 	// Peek at the stash without consuming it: we only delete it once the
 	// assertion is successfully issued, so a transient failure leaves the
