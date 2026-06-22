@@ -99,6 +99,7 @@ services:
       DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
       DISCORD_REDIRECT_URI: http://localhost:10310/auth/login/discord
       INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
+      TEAM_GOOGLE_CLIENT_ID: ${TEAM_GOOGLE_CLIENT_ID}
 
   saml:
     container_name: sentinel-saml
