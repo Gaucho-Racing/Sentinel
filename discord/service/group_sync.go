@@ -308,13 +308,30 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 		}
 	}
 
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	memberRoles, err := fetchAllGuildMemberRoles(ctx)
+	if err != nil {
+		return fmt.Errorf("fetch guild members: %w", err)
+	}
+
 	logger.SugarLogger.Infof("group sync: starting full sweep over %d onboarded discord users", len(auths))
 	for _, a := range auths {
 		if err := ctx.Err(); err != nil {
 			logger.SugarLogger.Infof("group sync: sweep cancelled mid-iteration after %d users", indexOf(auths, a))
 			return err
 		}
-		if err := reconcileOneWithSnapshot(ctx, a.EntityID, a.ExternalID, bindingsByGroup, discordEnabled); err != nil {
+		// Absent from the authoritative member list means the user has left
+		// the guild. Skip rather than strip — OnGuildMemberRemove already
+		// handles leave-cleanup, and skipping avoids touching memberships if
+		// the bulk fetch returned a partial picture.
+		roles, present := memberRoles[a.ExternalID]
+		if !present {
+			logger.SugarLogger.Debugf("group sync: skipping entity=%s discord=%s, not in guild member list", a.EntityID, a.ExternalID)
+			continue
+		}
+		if err := reconcileOneWithSnapshot(ctx, a.EntityID, roles, bindingsByGroup, discordEnabled); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
 			}
@@ -323,6 +340,40 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 	}
 	logger.SugarLogger.Infof("group sync: full sweep complete")
 	return nil
+}
+
+// fetchAllGuildMemberRoles returns an authoritative discordUserID -> role IDs
+// map for the whole guild, paginated over the GuildMembers REST endpoint
+// (1000 per page). The full sweep uses this instead of per-user State cache
+// lookups: the State cache can hold partial members with stale or empty
+// Roles, which silently yields the wrong desired set. ctx is checked between
+// pages so a cancellation lands at the next page boundary.
+func fetchAllGuildMemberRoles(ctx context.Context) (map[string][]string, error) {
+	roles := make(map[string][]string)
+	after := ""
+	for {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		members, err := Discord.GuildMembers(config.DiscordGuild, after, 1000)
+		if err != nil {
+			return nil, err
+		}
+		if len(members) == 0 {
+			break
+		}
+		for _, m := range members {
+			if m.User == nil {
+				continue
+			}
+			roles[m.User.ID] = m.Roles
+			after = m.User.ID
+		}
+		if len(members) < 1000 {
+			break
+		}
+	}
+	return roles, nil
 }
 
 // indexOf returns the index of row in auths, or -1 if not found. Used only
@@ -338,18 +389,11 @@ func indexOf(auths []externalAuthRow, row externalAuthRow) int {
 }
 
 // reconcileOneWithSnapshot reconciles a single onboarded user using
-// pre-fetched binding + allowed_sources snapshots. Reads current Discord
-// roles via the guild-member lookup (state cache then REST fallback).
-// Users no longer present in the guild are skipped rather than stripped —
-// a transient lookup failure shouldn't aggressively remove memberships.
-func reconcileOneWithSnapshot(ctx context.Context, entityID, discordID string, bindingsByGroup map[string][]model.GroupDiscordRoleBinding, discordEnabled map[string]bool) error {
+// pre-fetched binding + allowed_sources snapshots and the user's
+// authoritative Discord roles (from the sweep's bulk member fetch).
+func reconcileOneWithSnapshot(ctx context.Context, entityID string, roles []string, bindingsByGroup map[string][]model.GroupDiscordRoleBinding, discordEnabled map[string]bool) error {
 	if err := ctx.Err(); err != nil {
 		return err
-	}
-	member, err := GetGuildMember(discordID)
-	if err != nil {
-		logger.SugarLogger.Debugf("group sync: skipping entity=%s discord=%s, guild member lookup failed: %v", entityID, discordID, err)
-		return nil
 	}
 
 	desired := make(map[string]struct{})
@@ -357,7 +401,7 @@ func reconcileOneWithSnapshot(ctx context.Context, entityID, discordID string, b
 		if !discordEnabled[groupID] {
 			continue
 		}
-		if EvaluateDiscordMembership(bs, member.Roles) {
+		if EvaluateDiscordMembership(bs, roles) {
 			desired[groupID] = struct{}{}
 		}
 	}
