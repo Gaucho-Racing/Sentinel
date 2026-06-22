@@ -38,6 +38,12 @@ var RefreshTokenTTL int
 // to every OAuth app's filter set.
 const SentinelClientID = "sentinel"
 
+// TeamGoogleClientID is the client_id of the shared Google Workspace account
+// application (team@gauchoracing.com). Identity-override lookups key on it, so
+// it's read from the environment to stay correct across deployments. When
+// unset, no override is registered for it.
+var TeamGoogleClientID = os.Getenv("TEAM_GOOGLE_CLIENT_ID")
+
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")
