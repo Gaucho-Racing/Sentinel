@@ -67,6 +67,13 @@ var validInitialRoles = map[string]bool{
 	"mentor":  true,
 	"sponsor": true,
 	"other":   true,
+	"guest":   true,
+}
+
+// isUCSBEmail reports whether the email's domain is ucsb.edu (case-insensitive).
+func isUCSBEmail(email string) bool {
+	parts := strings.SplitN(email, "@", 2)
+	return len(parts) == 2 && strings.EqualFold(parts[1], "ucsb.edu")
 }
 
 func ConsumeOnboardingToken(c *gin.Context) {
@@ -84,14 +91,15 @@ func ConsumeOnboardingToken(c *gin.Context) {
 		return
 	}
 
-	if req.GraduationYear > 0 && req.GraduationYear < time.Now().Year() {
-		parts := strings.SplitN(req.Email, "@", 2)
-		if len(parts) == 2 && strings.EqualFold(parts[1], "ucsb.edu") {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "UCSB emails expire after graduation. Update your graduation year or use a personal email.",
-			})
-			return
-		}
+	if req.GraduationYear > 0 && req.GraduationYear < time.Now().Year() && isUCSBEmail(req.Email) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "UCSB emails expire after graduation. Update your graduation year or use a personal email.",
+		})
+		return
+	}
+
+	if req.InitialRole == "member" && !isUCSBEmail(req.Email) {
+		req.InitialRole = "guest"
 	}
 
 	entityID, err := service.ConsumeOnboardingToken(id, service.OnboardingConsumePayload{
