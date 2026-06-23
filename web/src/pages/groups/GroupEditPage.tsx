@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Bot, Plus, Sparkles, Trash2, X } from "lucide-react"
+import { ArrowLeft, Bot, Mail, Plus, Sparkles, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -9,6 +9,7 @@ import { PageContainer } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,7 @@ import {
   useGroupDiscordBindings,
   type GroupDiscordRoleBinding,
 } from "@/lib/discord"
+import { useGroupGoogleBinding } from "@/lib/google"
 import type { Group, GroupMember, GroupOwner, GroupSource } from "@/lib/groups"
 
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
@@ -226,6 +228,48 @@ function ConditionalSyncCard({
   )
 }
 
+function GoogleSyncCard({
+  email,
+  onChange,
+  onSyncNow,
+  syncing,
+}: {
+  email: string
+  onChange: (email: string) => void
+  onSyncNow: () => void
+  syncing: boolean
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="size-4 text-muted-foreground" />
+          Google Group sync
+        </CardTitle>
+        <CardDescription>
+          Mirror this group's members into a Google Group. Everyone in the group is
+          synced as a MEMBER; owners and managers added directly in Google are left
+          untouched. Leave blank to disable. Changes apply on Save.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <Input
+          type="email"
+          autoComplete="off"
+          placeholder="team-aero@gauchoracing.com"
+          value={email}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        <div className="pt-1">
+          <Button type="button" variant="outline" disabled={syncing} onClick={onSyncNow}>
+            {syncing ? "Syncing…" : "Sync now"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function LinkedApplicationsCard({
   links,
   allApps,
@@ -368,6 +412,7 @@ export default function GroupEditPage() {
 
   const bindingsQuery = useGroupDiscordBindings(id ?? "")
   const conditionalBindingsQuery = useGroupConditionalBindings(id ?? "")
+  const googleBindingQuery = useGroupGoogleBinding(id ?? "")
 
   // All groups, used by the conditional editor to resolve required_group_ids
   // → names for the chips and to feed the picker dialog. Cheap query for
@@ -411,6 +456,12 @@ export default function GroupEditPage() {
   const [values, setValues] = useState<GroupFormValues | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // Google Group binding (1:1). Staged like the rest of the page — applied on
+  // Save by diffing against the server binding. Null until the query settles so
+  // we don't briefly show an empty field over an existing binding.
+  const [googleEmail, setGoogleEmail] = useState("")
+  const [googleEmailInitialized, setGoogleEmailInitialized] = useState(false)
+  const [syncingGoogle, setSyncingGoogle] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [cascadeConfirmOpen, setCascadeConfirmOpen] = useState(false)
   // Pending binding state — staged changes are applied to the server in
@@ -510,6 +561,28 @@ export default function GroupEditPage() {
   }, [query.data, values])
 
   useEffect(() => {
+    if (!googleBindingQuery.isLoading && !googleEmailInitialized) {
+      setGoogleEmail(googleBindingQuery.data?.google_group_email ?? "")
+      setGoogleEmailInitialized(true)
+    }
+  }, [googleBindingQuery.isLoading, googleBindingQuery.data, googleEmailInitialized])
+
+  async function handleSyncGoogleNow() {
+    setSyncingGoogle(true)
+    try {
+      await api.post("/google/reconcile")
+      toast.success("Google sync triggered")
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Couldn't trigger Google sync."
+      toast.error(message)
+    } finally {
+      setSyncingGoogle(false)
+    }
+  }
+
+  useEffect(() => {
     if (linkedAppsQuery.data && !appLinksInitialized) {
       const m = new Map<string, boolean>()
       for (const a of linkedAppsQuery.data) m.set(a.id, a.required)
@@ -590,6 +663,27 @@ export default function GroupEditPage() {
           })
         }
       }
+      // Google Group binding is 1:1, so diff the input against the server
+      // binding: clear/replace deletes the old row, a non-empty value upserts.
+      // Not gated on allowed_sources — Google is an outbound projection, not a
+      // membership source.
+      const serverGoogleBinding = googleBindingQuery.data ?? null
+      const desiredGoogleEmail = googleEmail.trim()
+      const currentGoogleEmail = serverGoogleBinding?.google_group_email ?? ""
+      if (desiredGoogleEmail !== currentGoogleEmail) {
+        if (serverGoogleBinding) {
+          await api.delete(`/google/group-bindings/${serverGoogleBinding.id}`, {
+            params: { group_id: id },
+          })
+        }
+        if (desiredGoogleEmail) {
+          await api.post(`/google/group-bindings`, {
+            group_id: id,
+            google_group_email: desiredGoogleEmail,
+          })
+        }
+      }
+
       // Diff application links against the server state. POST is upsert,
       // so we send any link whose required flag differs (or doesn't exist
       // yet); DELETE anything the server has that's no longer in our state.
@@ -620,6 +714,7 @@ export default function GroupEditPage() {
       qc.invalidateQueries({ queryKey: ["group", id] })
       qc.invalidateQueries({ queryKey: ["group", id, "members"] })
       qc.invalidateQueries({ queryKey: ["group", id, "discord-bindings"] })
+      qc.invalidateQueries({ queryKey: ["group", id, "google-binding"] })
       qc.invalidateQueries({ queryKey: ["group", id, "applications"] })
       toast.success("Group updated")
       navigate(`/groups/${id}`)
@@ -685,6 +780,7 @@ export default function GroupEditPage() {
     membersQuery.isLoading ||
     bindingsQuery.isLoading ||
     conditionalBindingsQuery.isLoading ||
+    googleBindingQuery.isLoading ||
     adminsLoading
   ) {
     return (
@@ -794,6 +890,13 @@ export default function GroupEditPage() {
             onRemoveBinding={handleRemoveConditionalBinding}
           />
         )}
+
+        <GoogleSyncCard
+          email={googleEmail}
+          onChange={setGoogleEmail}
+          onSyncNow={handleSyncGoogleNow}
+          syncing={syncingGoogle}
+        />
 
         <LinkedApplicationsCard
           links={appLinkList}
