@@ -49,8 +49,11 @@ var GoogleServiceAccount = os.Getenv("GOOGLE_SERVICE_ACCOUNT")
 // is set.
 var GoogleAdminSubject = os.Getenv("GOOGLE_ADMIN_SUBJECT")
 
-// GoogleSyncInterval is how often the reconcile cron fires.
-const GoogleSyncInterval = time.Hour
+// GoogleSyncInterval is how often the reconcile cron fires. Sync is one-way and
+// not latency-critical (mailing-list membership), so a periodic full sweep —
+// rather than per-change event triggers from core — keeps the dependency graph
+// clean while landing changes within the interval.
+const GoogleSyncInterval = 15 * time.Minute
 
 // GoogleSyncMaxRemovals caps how many members a single per-group reconcile may
 // delete. If a run wants to remove more than this, it skips the removals for
