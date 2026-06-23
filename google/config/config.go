@@ -6,7 +6,7 @@ import (
 )
 
 const Name = "sentinel-google"
-const Version = "5.6.4"
+const Version = "5.7.0"
 
 func FormattedNameWithVersion() string {
 	return Name + ":v" + Version
