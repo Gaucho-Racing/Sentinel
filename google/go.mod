@@ -4,6 +4,7 @@ go 1.25.6
 
 require (
 	github.com/fatih/color v1.19.0
+	github.com/gaucho-racing/ulid-go v1.1.0
 	github.com/gin-contrib/cors v1.7.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-resty/resty/v2 v2.17.2

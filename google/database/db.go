@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gaucho-racing/sentinel/google/config"
+	"github.com/gaucho-racing/sentinel/google/model"
 	"github.com/gaucho-racing/sentinel/google/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -28,7 +29,10 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		// Models and AutoMigration are added with the group-binding work.
+		db.AutoMigrate(
+			&model.GroupGoogleBinding{},
+		)
+		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}
 }
