@@ -2,7 +2,6 @@ package config
 
 import (
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -50,40 +49,14 @@ var GoogleServiceAccount = os.Getenv("GOOGLE_SERVICE_ACCOUNT")
 // is set.
 var GoogleAdminSubject = os.Getenv("GOOGLE_ADMIN_SUBJECT")
 
-// GoogleSyncInterval is how often the reconcile cron fires. Parsed once at
-// startup; an unparseable or unset value falls back to 1h. Set to 0 (or any
-// non-positive duration) to disable the cron.
-var GoogleSyncInterval = parseDurationOr("GOOGLE_SYNC_INTERVAL", time.Hour)
+// GoogleSyncInterval is how often the reconcile cron fires.
+const GoogleSyncInterval = time.Hour
 
 // GoogleSyncMaxRemovals caps how many members a single per-group reconcile may
 // delete. If a run wants to remove more than this, it skips the removals for
 // that group and logs loudly — a guard against draining a group when core
 // returns an empty/partial member set (e.g. mid-outage).
-var GoogleSyncMaxRemovals = parseIntOr("GOOGLE_SYNC_MAX_REMOVALS", 25)
-
-func parseDurationOr(envKey string, fallback time.Duration) time.Duration {
-	raw := os.Getenv(envKey)
-	if raw == "" {
-		return fallback
-	}
-	d, err := time.ParseDuration(raw)
-	if err != nil {
-		return fallback
-	}
-	return d
-}
-
-func parseIntOr(envKey string, fallback int) int {
-	raw := os.Getenv(envKey)
-	if raw == "" {
-		return fallback
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil {
-		return fallback
-	}
-	return n
-}
+const GoogleSyncMaxRemovals = 25
 
 func IsProduction() bool {
 	return Env == "PROD"

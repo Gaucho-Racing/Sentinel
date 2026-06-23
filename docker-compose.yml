@@ -17,6 +17,7 @@ services:
       - oauth
       - discord
       - saml
+      - google
       - web
 
   core:

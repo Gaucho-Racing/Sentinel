@@ -180,21 +180,16 @@ func TriggerReconcile() {
 	go runSweep()
 }
 
-// StartReconcileCron runs a periodic sweep on config.GoogleSyncInterval. A
-// non-positive interval (or disabled sync) turns the cron off.
+// StartReconcileCron runs a periodic sweep on config.GoogleSyncInterval. The
+// cron is off only when sync isn't configured.
 func StartReconcileCron() {
 	if directorySvc == nil {
 		logger.SugarLogger.Infoln("google sync: cron disabled (sync not configured)")
 		return
 	}
-	interval := config.GoogleSyncInterval
-	if interval <= 0 {
-		logger.SugarLogger.Infof("google sync: cron disabled (interval=%v)", interval)
-		return
-	}
-	logger.SugarLogger.Infof("google sync: cron enabled, interval=%v", interval)
+	logger.SugarLogger.Infof("google sync: cron enabled, interval=%v", config.GoogleSyncInterval)
 	go func() {
-		ticker := time.NewTicker(interval)
+		ticker := time.NewTicker(config.GoogleSyncInterval)
 		defer ticker.Stop()
 		for range ticker.C {
 			runSweep()
