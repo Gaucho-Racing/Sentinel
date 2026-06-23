@@ -37,6 +37,10 @@ func InitializeRouter() *gin.Engine {
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/google/ping", Ping)
+
+	router.GET("/google/group-bindings", ListGoogleBindings)
+	router.POST("/google/group-bindings", CreateGoogleBinding)
+	router.DELETE("/google/group-bindings/:bindingID", DeleteGoogleBinding)
 }
 
 // GetClientIP returns the originating client IP, preferring Cloudflare's
