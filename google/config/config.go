@@ -2,6 +2,8 @@ package config
 
 import (
 	"os"
+	"strconv"
+	"time"
 )
 
 const Name = "sentinel-google"
@@ -37,6 +39,58 @@ var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
 // core/jobs/init.go::InternalServiceAccountNames.
 const InternalServiceName = "sentinel-google"
 
+// GoogleServiceAccount is the JSON key for the service account used to call the
+// Admin SDK Directory API. It must have domain-wide delegation granted for the
+// admin.directory.group.member scope. When empty, Google sync is disabled and
+// the service runs as a no-op (binding CRUD still works).
+var GoogleServiceAccount = os.Getenv("GOOGLE_SERVICE_ACCOUNT")
+
+// GoogleAdminSubject is the super-admin user the service account impersonates
+// (domain-wide delegation requires a subject). Required when GoogleServiceAccount
+// is set.
+var GoogleAdminSubject = os.Getenv("GOOGLE_ADMIN_SUBJECT")
+
+// GoogleSyncInterval is how often the reconcile cron fires. Parsed once at
+// startup; an unparseable or unset value falls back to 1h. Set to 0 (or any
+// non-positive duration) to disable the cron.
+var GoogleSyncInterval = parseDurationOr("GOOGLE_SYNC_INTERVAL", time.Hour)
+
+// GoogleSyncMaxRemovals caps how many members a single per-group reconcile may
+// delete. If a run wants to remove more than this, it skips the removals for
+// that group and logs loudly — a guard against draining a group when core
+// returns an empty/partial member set (e.g. mid-outage).
+var GoogleSyncMaxRemovals = parseIntOr("GOOGLE_SYNC_MAX_REMOVALS", 25)
+
+func parseDurationOr(envKey string, fallback time.Duration) time.Duration {
+	raw := os.Getenv(envKey)
+	if raw == "" {
+		return fallback
+	}
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		return fallback
+	}
+	return d
+}
+
+func parseIntOr(envKey string, fallback int) int {
+	raw := os.Getenv(envKey)
+	if raw == "" {
+		return fallback
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil {
+		return fallback
+	}
+	return n
+}
+
 func IsProduction() bool {
 	return Env == "PROD"
+}
+
+// GoogleSyncEnabled reports whether the service has the credentials needed to
+// talk to Google. When false, the reconcile engine no-ops.
+func GoogleSyncEnabled() bool {
+	return GoogleServiceAccount != "" && GoogleAdminSubject != ""
 }
