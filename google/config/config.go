@@ -56,7 +56,7 @@ const GoogleSyncInterval = time.Hour
 // delete. If a run wants to remove more than this, it skips the removals for
 // that group and logs loudly — a guard against draining a group when core
 // returns an empty/partial member set (e.g. mid-outage).
-const GoogleSyncMaxRemovals = 25
+const GoogleSyncMaxRemovals = 100
 
 func IsProduction() bool {
 	return Env == "PROD"

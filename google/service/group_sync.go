@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/google/config"
@@ -143,41 +143,47 @@ func ReconcileAll(ctx context.Context) error {
 			return err
 		}
 		if err := reconcileBinding(ctx, b); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return err
+			}
 			logger.SugarLogger.Errorf("google sync: reconcile failed for group=%s google=%s: %v", b.GroupID, b.GoogleGroupEmail, err)
 		}
 	}
 	return nil
 }
 
-// sweepRunning serializes sweeps: a trigger that arrives while one is in flight
-// is dropped (not queued). Safe because every sweep re-reads live state.
-var sweepRunning atomic.Bool
+// sweepJob serializes sweeps with cancel-and-restart: a trigger that arrives
+// while one is in flight cancels it and runs a fresh sweep with the latest
+// state. Safe because every sweep re-reads live state and reconcile is
+// idempotent.
+var sweepJob syncJob
 
 func runSweep() {
 	if directorySvc == nil {
 		logger.SugarLogger.Debugln("google sync: skipping sweep, sync disabled")
 		return
 	}
-	if !sweepRunning.CompareAndSwap(false, true) {
-		logger.SugarLogger.Infoln("google sync: sweep already running, skipping this trigger")
-		return
-	}
-	defer sweepRunning.Store(false)
+	sweepJob.Start(func(ctx context.Context) {
+		ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+		defer cancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	logger.SugarLogger.Infoln("google sync: starting reconcile sweep")
-	if err := ReconcileAll(ctx); err != nil {
-		logger.SugarLogger.Errorf("google sync: sweep failed: %v", err)
-		return
-	}
-	logger.SugarLogger.Infoln("google sync: reconcile sweep complete")
+		logger.SugarLogger.Infoln("google sync: starting reconcile sweep")
+		if err := ReconcileAll(ctx); err != nil {
+			if errors.Is(err, context.Canceled) {
+				logger.SugarLogger.Debugln("google sync: sweep cancelled by newer trigger")
+				return
+			}
+			logger.SugarLogger.Errorf("google sync: sweep failed: %v", err)
+			return
+		}
+		logger.SugarLogger.Infoln("google sync: reconcile sweep complete")
+	})
 }
 
-// TriggerReconcile kicks a sweep in the background and returns immediately.
+// TriggerReconcile kicks a sweep and returns immediately. A sweep already in
+// flight is cancelled in favor of this one.
 func TriggerReconcile() {
-	go runSweep()
+	runSweep()
 }
 
 // StartReconcileCron runs a periodic sweep on config.GoogleSyncInterval. The
