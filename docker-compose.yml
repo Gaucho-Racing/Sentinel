@@ -127,6 +127,31 @@ services:
       ISSUER: http://localhost:10310
       INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
 
+  google:
+    container_name: sentinel-google
+    image: golang:1.26-alpine
+    restart: always
+    working_dir: /app
+    command: >
+      sh -c "go install github.com/air-verse/air@latest && air"
+    volumes:
+      - ./google:/app
+      - google_gopath:/go
+    depends_on:
+      - db
+    environment:
+      ENV: DEV
+      PORT: 9995
+      DATABASE_HOST: db
+      DATABASE_PORT: 5432
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_NAME: sentinel
+      KERBECS_ENDPOINT: http://kerbecs:10300
+      KERBECS_USER: admin
+      KERBECS_PASSWORD: admin
+      INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
+
   web:
     container_name: sentinel-web
     image: node:22-alpine
@@ -162,4 +187,5 @@ volumes:
   discord_gopath:
   oauth_gopath:
   saml_gopath:
+  google_gopath:
   web_node_modules:

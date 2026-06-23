@@ -30,6 +30,7 @@ var InternalServiceAccountNames = []string{
 	"sentinel-discord",
 	"sentinel-oauth",
 	"sentinel-saml",
+	"sentinel-google",
 }
 
 // IsInternalServiceAccountName reports whether name is on the
