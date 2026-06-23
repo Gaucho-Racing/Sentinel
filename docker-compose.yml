@@ -17,6 +17,7 @@ services:
       - oauth
       - discord
       - saml
+      - google
       - web
 
   core:
@@ -151,6 +152,8 @@ services:
       KERBECS_USER: admin
       KERBECS_PASSWORD: admin
       INTERNAL_BOOTSTRAP_SECRET: ${INTERNAL_BOOTSTRAP_SECRET}
+      GOOGLE_SERVICE_ACCOUNT: ${GOOGLE_SERVICE_ACCOUNT}
+      GOOGLE_ADMIN_SUBJECT: ${GOOGLE_ADMIN_SUBJECT}
 
   web:
     container_name: sentinel-web

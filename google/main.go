@@ -7,6 +7,7 @@ import (
 	"github.com/gaucho-racing/sentinel/google/pkg/kerbecs"
 	"github.com/gaucho-racing/sentinel/google/pkg/logger"
 	"github.com/gaucho-racing/sentinel/google/pkg/sentinel"
+	"github.com/gaucho-racing/sentinel/google/service"
 )
 
 func main() {
@@ -25,6 +26,11 @@ func main() {
 	}
 
 	database.Init()
+
+	if err := service.InitGoogleClient(); err != nil {
+		logger.SugarLogger.Fatalf("Failed to initialize Google client: %v", err)
+	}
+	service.StartReconcileCron()
 
 	api.Run()
 }
