@@ -48,12 +48,15 @@ function SizePicker({
 }
 
 export function TeamStep({ data, update }: StepProps) {
+  const showSae = data.role === "member"
   return (
     <div className="space-y-6">
       <div className="space-y-2">
         <h2 className="text-lg font-semibold tracking-tight">Team gear</h2>
         <p className="text-sm text-muted-foreground">
-          Sizes for team apparel. SAE registration is optional and can be added later.
+          {showSae
+            ? "Sizes for team apparel. SAE registration is optional and can be added later."
+            : "Sizes for team apparel."}
         </p>
       </div>
 
@@ -72,15 +75,17 @@ export function TeamStep({ data, update }: StepProps) {
           onChange={update}
         />
 
-        <div className="space-y-2">
-          <Label htmlFor="saeRegistrationNumber">SAE registration number</Label>
-          <Input
-            id="saeRegistrationNumber"
-            placeholder="Optional"
-            value={data.saeRegistrationNumber}
-            onChange={(e) => update({ saeRegistrationNumber: e.target.value })}
-          />
-        </div>
+        {showSae && (
+          <div className="space-y-2">
+            <Label htmlFor="saeRegistrationNumber">SAE registration number</Label>
+            <Input
+              id="saeRegistrationNumber"
+              placeholder="Optional"
+              value={data.saeRegistrationNumber}
+              onChange={(e) => update({ saeRegistrationNumber: e.target.value })}
+            />
+          </div>
+        )}
       </div>
     </div>
   )

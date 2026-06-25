@@ -23,6 +23,8 @@ type User struct {
 	ShirtSize             string    `json:"shirt_size"`
 	JacketSize            string    `json:"jacket_size"`
 	SAERegistrationNumber string    `json:"sae_registration_number"`
+	OccupationTitle       string    `json:"occupation_title"`
+	OccupationCompany     string    `json:"occupation_company"`
 	AvatarURL             string    `json:"avatar_url"`
 	InitialRole           string    `json:"initial_role"`
 	Groups                []string  `json:"groups" gorm:"-"`

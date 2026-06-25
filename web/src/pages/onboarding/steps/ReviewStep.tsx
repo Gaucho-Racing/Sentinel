@@ -57,16 +57,27 @@ export function ReviewStep({ data }: { data: OnboardingData }) {
           <Row label="Phone" value={data.phoneNumber} />
         </Section>
 
-        <Section title="Academic">
-          <Row label="Level" value={LEVEL_LABELS[data.graduateLevel] ?? ""} />
-          <Row label="Grad year" value={data.graduationYear} />
-          <Row label="Major" value={data.major} />
-        </Section>
+        {data.role !== "guest" && (
+          <Section title="Academic">
+            <Row label="Level" value={LEVEL_LABELS[data.graduateLevel] ?? ""} />
+            <Row label="Grad year" value={data.graduationYear} />
+            <Row label="Major" value={data.major} />
+          </Section>
+        )}
+
+        {data.role !== "member" && (
+          <Section title="Occupation">
+            <Row label="Title" value={data.occupationTitle} />
+            <Row label="Company" value={data.occupationCompany} />
+          </Section>
+        )}
 
         <Section title="Team">
           <Row label="Shirt size" value={data.shirtSize} />
           <Row label="Jacket size" value={data.jacketSize} />
-          <Row label="SAE #" value={data.saeRegistrationNumber} />
+          {data.role === "member" && (
+            <Row label="SAE #" value={data.saeRegistrationNumber} />
+          )}
         </Section>
       </div>
     </div>

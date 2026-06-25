@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/discord/config"
@@ -17,6 +18,7 @@ import (
 var (
 	ErrOnboardingTokenNotFound = errors.New("onboarding token not found")
 	ErrOnboardingTokenInvalid  = errors.New("onboarding token expired or already used")
+	ErrUsernameTaken           = errors.New("username is already taken")
 )
 
 // CreateOnboardingTokenForDiscordUser invalidates any unused tokens for the
@@ -78,6 +80,8 @@ type OnboardingConsumePayload struct {
 	ShirtSize             string
 	JacketSize            string
 	SAERegistrationNumber string
+	OccupationTitle       string
+	OccupationCompany     string
 	InitialRole           string
 }
 
@@ -94,6 +98,24 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 	birthday, err := time.Parse("2006-01-02", p.Birthday)
 	if err != nil {
 		return "", fmt.Errorf("invalid birthday format (want YYYY-MM-DD): %w", err)
+	}
+
+	// Final username availability check before we create the entity.
+	// Narrows the race window between the live check on the form and
+	// the DB unique constraint on `user.username` — the constraint
+	// remains the authoritative safeguard, but losing the race after
+	// the entity exists would orphan the entity.
+	var usernameCheck struct {
+		Available bool `json:"available"`
+	}
+	if err := sentinel.Get(
+		fmt.Sprintf("/api/users/check-username?username=%s", url.QueryEscape(p.Username)),
+		&usernameCheck,
+	); err != nil {
+		return "", fmt.Errorf("check username: %w", err)
+	}
+	if !usernameCheck.Available {
+		return "", ErrUsernameTaken
 	}
 
 	var entityResp struct {
@@ -118,6 +140,8 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 		"shirt_size":              p.ShirtSize,
 		"jacket_size":             p.JacketSize,
 		"sae_registration_number": p.SAERegistrationNumber,
+		"occupation_title":        p.OccupationTitle,
+		"occupation_company":      p.OccupationCompany,
 		"avatar_url":              token.DiscordAvatarURL,
 		"initial_role":            p.InitialRole,
 	}
