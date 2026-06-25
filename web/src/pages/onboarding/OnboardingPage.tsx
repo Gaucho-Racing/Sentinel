@@ -21,6 +21,7 @@ import { OnboardingProgress } from "@/pages/onboarding/OnboardingProgress"
 import { AcademicStep } from "@/pages/onboarding/steps/AcademicStep"
 import { CredentialsStep } from "@/pages/onboarding/steps/CredentialsStep"
 import { IdentityStep, type UsernameAvailability } from "@/pages/onboarding/steps/IdentityStep"
+import { OccupationStep } from "@/pages/onboarding/steps/OccupationStep"
 import { PersonalStep } from "@/pages/onboarding/steps/PersonalStep"
 import { ReviewStep } from "@/pages/onboarding/steps/ReviewStep"
 import { TeamStep } from "@/pages/onboarding/steps/TeamStep"
@@ -38,7 +39,6 @@ const HOLD_MS = 250
 const STEP_SLIDE_PX = 24
 
 const STUDENT_DOMAIN = "ucsb.edu"
-const NON_STUDENT_ROLES = ["Alumni", "Mentor", "Sponsor", "Other"]
 
 const stepVariants: Variants = {
   enter: (dir: "forward" | "back") => ({
@@ -66,22 +66,28 @@ type TokenInfoResponse = {
   discord_avatar_url: string
 }
 
-type StepId = "welcome" | "credentials" | "identity" | "personal" | "academic" | "team" | "review"
+type StepId =
+  | "welcome"
+  | "credentials"
+  | "identity"
+  | "personal"
+  | "academic"
+  | "occupation"
+  | "team"
+  | "review"
 
-const STEPS: StepId[] = [
-  "welcome",
-  "credentials",
-  "identity",
-  "personal",
-  "academic",
-  "team",
-  "review",
-]
+function stepsForRole(role: OnboardingData["role"]): StepId[] {
+  const steps: StepId[] = ["welcome", "credentials", "identity", "personal"]
+  if (role !== "guest") steps.push("academic")
+  if (role === "alumni" || role === "guest") steps.push("occupation")
+  steps.push("team", "review")
+  return steps
+}
 
 function isStepValid(step: StepId, data: OnboardingData): boolean {
   switch (step) {
     case "welcome":
-      return true
+      return data.role.length > 0
     case "credentials":
       return (
         data.email.trim().length > 0 &&
@@ -105,6 +111,10 @@ function isStepValid(step: StepId, data: OnboardingData): boolean {
         data.graduationYear.length > 0 &&
         data.major.trim().length > 0
       )
+    case "occupation":
+      return (
+        data.occupationTitle.trim().length > 0 && data.occupationCompany.trim().length > 0
+      )
     case "team":
       return data.shirtSize.length > 0 && data.jacketSize.length > 0
     case "review":
@@ -122,11 +132,7 @@ export default function OnboardingPage() {
   const [data, setData] = useState<OnboardingData>(EMPTY_ONBOARDING_DATA)
   const [submitting, setSubmitting] = useState(false)
   const [transitioning, setTransitioning] = useState(false)
-  const [confirmedNonStudentDomain, setConfirmedNonStudentDomain] = useState<
-    string | null
-  >(null)
-  const [nonStudentRole, setNonStudentRole] = useState<string | null>(null)
-  const [studentDialogOpen, setStudentDialogOpen] = useState(false)
+  const [emailRoleDialogOpen, setEmailRoleDialogOpen] = useState(false)
   const [tokenState, setTokenState] = useState<TokenState>({ status: "loading" })
   const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>("idle")
 
@@ -158,17 +164,20 @@ export default function OnboardingPage() {
     }
   }, [token])
 
-  const currentStep = STEPS[stepIndex]
-  const isLast = stepIndex === STEPS.length - 1
+  const steps = useMemo(() => stepsForRole(data.role), [data.role])
+  const currentStep = steps[Math.min(stepIndex, steps.length - 1)]
+  const isLast = stepIndex === steps.length - 1
   const isFirst = stepIndex === 0
   const canProceed = useMemo(() => isStepValid(currentStep, data), [currentStep, data])
 
   const emailDomain = data.email.split("@")[1]?.toLowerCase() ?? ""
-  const needsStudentConfirm =
-    currentStep === "credentials" &&
-    emailDomain.includes(".") &&
-    emailDomain !== STUDENT_DOMAIN &&
-    confirmedNonStudentDomain !== emailDomain
+  const hasFullDomain = emailDomain.includes(".")
+  const memberNeedsUcsbEmail =
+    data.role === "member" && hasFullDomain && emailDomain !== STUDENT_DOMAIN
+  const alumniRejectsUcsbEmail =
+    data.role === "alumni" && emailDomain === STUDENT_DOMAIN
+  const emailRoleMismatch =
+    currentStep === "credentials" && (memberNeedsUcsbEmail || alumniRejectsUcsbEmail)
 
   function update(patch: Partial<OnboardingData>) {
     setData((prev) => ({ ...prev, ...patch }))
@@ -177,13 +186,6 @@ export default function OnboardingPage() {
   function advance() {
     setDirection("forward")
     setStepIndex((i) => i + 1)
-  }
-
-  function handleConfirmNonStudent(role: string) {
-    setNonStudentRole(role)
-    setConfirmedNonStudentDomain(emailDomain)
-    setStudentDialogOpen(false)
-    advance()
   }
 
   async function handleNext() {
@@ -202,24 +204,19 @@ export default function OnboardingPage() {
       return
     }
 
-    if (currentStep === "academic") {
+    if (currentStep === "academic" && data.role === "member") {
       const gradYear = parseInt(data.graduationYear, 10)
       const currentYear = new Date().getFullYear()
-      if (
-        Number.isFinite(gradYear) &&
-        gradYear > 0 &&
-        gradYear < currentYear &&
-        emailDomain === STUDENT_DOMAIN
-      ) {
+      if (Number.isFinite(gradYear) && gradYear > 0 && gradYear < currentYear) {
         toast.error(
-          "UCSB emails expire after graduation. Update your graduation year or use a personal email.",
+          "Current members can't have a graduation year in the past. Update your graduation year or pick Alumni on the first step.",
         )
         return
       }
     }
 
-    if (needsStudentConfirm) {
-      setStudentDialogOpen(true)
+    if (emailRoleMismatch) {
+      setEmailRoleDialogOpen(true)
       return
     }
 
@@ -228,10 +225,7 @@ export default function OnboardingPage() {
       return
     }
 
-    const initialRole =
-      confirmedNonStudentDomain === emailDomain && nonStudentRole
-        ? nonStudentRole.toLowerCase()
-        : "member"
+    const initialRole = data.role === "guest" ? "other" : data.role || "member"
 
     const payload = {
       email: data.email,
@@ -242,12 +236,19 @@ export default function OnboardingPage() {
       gender: data.gender,
       birthday: data.birthday,
       phone_number: data.phoneNumber,
-      graduate_level: data.graduateLevel,
-      graduation_year: data.graduationYear ? parseInt(data.graduationYear, 10) : 0,
-      major: data.major,
+      graduate_level: data.role === "guest" ? "none" : data.graduateLevel,
+      graduation_year:
+        data.role === "guest"
+          ? 0
+          : data.graduationYear
+            ? parseInt(data.graduationYear, 10)
+            : 0,
+      major: data.role === "guest" ? "" : data.major,
       shirt_size: data.shirtSize,
       jacket_size: data.jacketSize,
-      sae_registration_number: data.saeRegistrationNumber,
+      sae_registration_number: data.role === "member" ? data.saeRegistrationNumber : "",
+      occupation_title: data.role === "member" ? "" : data.occupationTitle,
+      occupation_company: data.role === "member" ? "" : data.occupationCompany,
       initial_role: initialRole,
     }
 
@@ -306,12 +307,12 @@ export default function OnboardingPage() {
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">Set up your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Step {stepIndex + 1} of {STEPS.length}
+              Step {stepIndex + 1} of {steps.length}
             </p>
           </div>
         </div>
 
-        <OnboardingProgress step={stepIndex} total={STEPS.length} />
+        <OnboardingProgress step={stepIndex} total={steps.length} />
 
         <AnimatePresence mode="wait" custom={direction} initial={false}>
           <motion.div
@@ -323,7 +324,9 @@ export default function OnboardingPage() {
             exit="exit"
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            {currentStep === "welcome" && <WelcomeStep identity={tokenState.identity} />}
+            {currentStep === "welcome" && (
+              <WelcomeStep identity={tokenState.identity} data={data} update={update} />
+            )}
             {currentStep === "credentials" && (
               <CredentialsStep data={data} update={update} />
             )}
@@ -339,17 +342,15 @@ export default function OnboardingPage() {
               <AcademicStep
                 data={data}
                 update={update}
-                nonStudentRole={
-                  confirmedNonStudentDomain === emailDomain &&
-                  nonStudentRole &&
-                  nonStudentRole !== "Alumni"
-                    ? nonStudentRole
-                    : null
-                }
-                isAlumni={
-                  confirmedNonStudentDomain === emailDomain &&
-                  nonStudentRole === "Alumni"
-                }
+                nonStudentRole={data.role === "guest" ? "Guest" : null}
+                isAlumni={data.role === "alumni"}
+              />
+            )}
+            {currentStep === "occupation" && (
+              <OccupationStep
+                data={data}
+                update={update}
+                isAlumni={data.role === "alumni"}
               />
             )}
             {currentStep === "team" && <TeamStep data={data} update={update} />}
@@ -388,46 +389,42 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      <Dialog open={studentDialogOpen} onOpenChange={setStudentDialogOpen}>
+      <Dialog open={emailRoleDialogOpen} onOpenChange={setEmailRoleDialogOpen}>
         <DialogContent showCloseButton={false} className="gap-5 sm:max-w-md">
           <DialogHeader className="gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-white">
               <GraduationCap className="size-5" />
             </div>
-            <DialogTitle>Are you a current student?</DialogTitle>
-            <DialogDescription>
-              You're using{" "}
-              <span className="font-mono text-foreground">@{emailDomain}</span>{" "}
-              instead of @ucsb.edu. Current students should use their UCSB email so we
-              can verify enrollment.
-            </DialogDescription>
+            {data.role === "alumni" ? (
+              <>
+                <DialogTitle>Use a personal email</DialogTitle>
+                <DialogDescription>
+                  UCSB emails expire after graduation. Sign up with a personal email
+                  so you keep access after your{" "}
+                  <span className="font-mono text-foreground">@ucsb.edu</span>{" "}
+                  account is deactivated.
+                </DialogDescription>
+              </>
+            ) : (
+              <>
+                <DialogTitle>UCSB email required</DialogTitle>
+                <DialogDescription>
+                  Current members must sign up with their{" "}
+                  <span className="font-mono text-foreground">@ucsb.edu</span> email
+                  so we can verify enrollment. You're using{" "}
+                  <span className="font-mono text-foreground">@{emailDomain}</span>.
+                </DialogDescription>
+              </>
+            )}
           </DialogHeader>
 
           <OutlineButton
             type="button"
             innerClassName="bg-popover"
-            onClick={() => setStudentDialogOpen(false)}
+            onClick={() => setEmailRoleDialogOpen(false)}
           >
-            I'll use my UCSB email
+            {data.role === "alumni" ? "Use a different email" : "Use my UCSB email"}
           </OutlineButton>
-
-          <div className="space-y-2.5">
-            <p className="text-sm text-foreground/80">
-              Or, if you're not a student, I'm a/an:
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {NON_STUDENT_ROLES.map((role) => (
-                <button
-                  key={role}
-                  type="button"
-                  onClick={() => handleConfirmNonStudent(role)}
-                  className="rounded-full border border-border bg-background px-3 py-1 text-sm text-foreground transition-colors hover:border-foreground/60 hover:bg-muted/40"
-                >
-                  {role}
-                </button>
-              ))}
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
     </main>

@@ -58,16 +58,18 @@ type consumeRequest struct {
 	ShirtSize             string `json:"shirt_size" binding:"required"`
 	JacketSize            string `json:"jacket_size" binding:"required"`
 	SAERegistrationNumber string `json:"sae_registration_number"`
+	OccupationTitle       string `json:"occupation_title"`
+	OccupationCompany     string `json:"occupation_company"`
 	InitialRole           string `json:"initial_role" binding:"required"`
 }
 
 var validInitialRoles = map[string]bool{
-	"member":  true,
-	"alumni":  true,
-	"mentor":  true,
-	"sponsor": true,
-	"other":   true,
+	"member": true,
+	"alumni": true,
+	"other":  true,
 }
+
+const ucsbEmailDomain = "ucsb.edu"
 
 func ConsumeOnboardingToken(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
@@ -84,11 +86,29 @@ func ConsumeOnboardingToken(c *gin.Context) {
 		return
 	}
 
-	if req.GraduationYear > 0 && req.GraduationYear < time.Now().Year() {
-		parts := strings.SplitN(req.Email, "@", 2)
-		if len(parts) == 2 && strings.EqualFold(parts[1], "ucsb.edu") {
+	emailDomain := ""
+	if parts := strings.SplitN(req.Email, "@", 2); len(parts) == 2 {
+		emailDomain = strings.ToLower(parts[1])
+	}
+
+	switch req.InitialRole {
+	case "member":
+		if emailDomain != ucsbEmailDomain {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "UCSB emails expire after graduation. Update your graduation year or use a personal email.",
+				"error": "current members must sign up with their @ucsb.edu email",
+			})
+			return
+		}
+		if req.GraduationYear > 0 && req.GraduationYear < time.Now().Year() {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "current members can't have a graduation year in the past",
+			})
+			return
+		}
+	case "alumni":
+		if emailDomain == ucsbEmailDomain {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "alumni must sign up with a personal email since @ucsb.edu addresses expire after graduation",
 			})
 			return
 		}
@@ -109,6 +129,8 @@ func ConsumeOnboardingToken(c *gin.Context) {
 		ShirtSize:             req.ShirtSize,
 		JacketSize:            req.JacketSize,
 		SAERegistrationNumber: req.SAERegistrationNumber,
+		OccupationTitle:       req.OccupationTitle,
+		OccupationCompany:     req.OccupationCompany,
 		InitialRole:           req.InitialRole,
 	})
 
@@ -118,6 +140,9 @@ func ConsumeOnboardingToken(c *gin.Context) {
 		return
 	case errors.Is(err, service.ErrOnboardingTokenInvalid):
 		c.JSON(http.StatusGone, gin.H{"error": err.Error()})
+		return
+	case errors.Is(err, service.ErrUsernameTaken):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	case err != nil:
 		logger.SugarLogger.Errorf("Failed to consume onboarding token %s: %v", id, err)

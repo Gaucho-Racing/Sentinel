@@ -1,4 +1,7 @@
+export type OnboardingRole = "member" | "alumni" | "guest"
+
 export type OnboardingData = {
+  role: OnboardingRole | ""
   email: string
   password: string
   passwordConfirm: string
@@ -14,6 +17,8 @@ export type OnboardingData = {
   shirtSize: string
   jacketSize: string
   saeRegistrationNumber: string
+  occupationTitle: string
+  occupationCompany: string
 }
 
 export type DiscordIdentity = {
@@ -23,6 +28,7 @@ export type DiscordIdentity = {
 }
 
 export const EMPTY_ONBOARDING_DATA: OnboardingData = {
+  role: "",
   email: "",
   password: "",
   passwordConfirm: "",
@@ -38,6 +44,8 @@ export const EMPTY_ONBOARDING_DATA: OnboardingData = {
   shirtSize: "",
   jacketSize: "",
   saeRegistrationNumber: "",
+  occupationTitle: "",
+  occupationCompany: "",
 }
 
 export type StepProps = {
