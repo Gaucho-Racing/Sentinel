@@ -66,10 +66,14 @@ type consumeRequest struct {
 var validInitialRoles = map[string]bool{
 	"member": true,
 	"alumni": true,
-	"other":  true,
+	"guest":  true,
 }
 
-const ucsbEmailDomain = "ucsb.edu"
+// isUCSBEmail reports whether the email's domain is ucsb.edu (case-insensitive).
+func isUCSBEmail(email string) bool {
+	parts := strings.SplitN(email, "@", 2)
+	return len(parts) == 2 && strings.EqualFold(parts[1], "ucsb.edu")
+}
 
 func ConsumeOnboardingToken(c *gin.Context) {
 	c.Header("Cache-Control", "no-store")
@@ -86,14 +90,9 @@ func ConsumeOnboardingToken(c *gin.Context) {
 		return
 	}
 
-	emailDomain := ""
-	if parts := strings.SplitN(req.Email, "@", 2); len(parts) == 2 {
-		emailDomain = strings.ToLower(parts[1])
-	}
-
 	switch req.InitialRole {
 	case "member":
-		if emailDomain != ucsbEmailDomain {
+		if !isUCSBEmail(req.Email) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "current members must sign up with their @ucsb.edu email",
 			})
@@ -106,7 +105,7 @@ func ConsumeOnboardingToken(c *gin.Context) {
 			return
 		}
 	case "alumni":
-		if emailDomain == ucsbEmailDomain {
+		if isUCSBEmail(req.Email) {
 			c.JSON(http.StatusBadRequest, gin.H{
 				"error": "alumni must sign up with a personal email since @ucsb.edu addresses expire after graduation",
 			})

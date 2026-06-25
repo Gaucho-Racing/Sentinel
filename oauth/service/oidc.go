@@ -9,19 +9,21 @@ import (
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 )
 
+type oidcUser struct {
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	AvatarURL string `json:"avatar_url"`
+}
+
 type oidcEntity struct {
 	ID        string `json:"id"`
 	Type      string `json:"type"`
 	EmailAuth struct {
 		Email string `json:"email"`
 	} `json:"email_auth"`
-	User *struct {
-		Username  string `json:"username"`
-		FirstName string `json:"first_name"`
-		LastName  string `json:"last_name"`
-		Email     string `json:"email"`
-		AvatarURL string `json:"avatar_url"`
-	} `json:"user"`
+	User *oidcUser `json:"user"`
 }
 
 func fetchOIDCEntity(entityID string) (oidcEntity, error) {
@@ -83,6 +85,7 @@ func BuildIDTokenClaims(entityID string, clientID string, scope string, nonce st
 	if err != nil {
 		return nil, err
 	}
+	e = applyIdentityOverride(clientID, e)
 	claims := identityClaims(e, scope)
 	if GroupsClaimAllowed(scope) {
 		groups, err := FilteredGroups(entityID, clientID)
@@ -109,6 +112,7 @@ func BuildUserInfoClaims(entityID string, clientID string, scope string) (map[st
 	if err != nil {
 		return nil, err
 	}
+	e = applyIdentityOverride(clientID, e)
 	claims := identityClaims(e, scope)
 	if GroupsClaimAllowed(scope) {
 		groups, err := FilteredGroups(entityID, clientID)

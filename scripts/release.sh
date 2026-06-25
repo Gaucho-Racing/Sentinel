@@ -91,8 +91,8 @@ fi
 # Go services have a Version constant in config/config.go that needs bumping.
 # IMAGES is the full set whose workflows publish on a tag push — web is
 # tag-triggered too but has no Go version constant to bump.
-GO_SERVICES=("core" "oauth" "discord" "saml")
-IMAGES=("core" "oauth" "discord" "saml" "web")
+GO_SERVICES=("core" "oauth" "discord" "saml" "google")
+IMAGES=("core" "oauth" "discord" "saml" "google" "web")
 
 echo ""
 echo "=== Release Summary ==="

@@ -225,7 +225,7 @@ export default function OnboardingPage() {
       return
     }
 
-    const initialRole = data.role === "guest" ? "other" : data.role || "member"
+    const initialRole = data.role || "member"
 
     const payload = {
       email: data.email,

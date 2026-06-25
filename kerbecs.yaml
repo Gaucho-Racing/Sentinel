@@ -51,6 +51,12 @@ upstreams:
     instances:
       - http://saml:9996
 
+  google:
+    name: sentinel-google
+    version: 0.1.0
+    instances:
+      - http://google:9995
+
   web:
     name: sentinel-web
     version: 0.1.0
@@ -126,6 +132,14 @@ routes:
     match:
       path: /api/discord/*
     upstream: discord
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
+  - name: google
+    match:
+      path: /api/google/*
+    upstream: google
     rewrite:
       strip_prefix: /api
     envelope: passthrough

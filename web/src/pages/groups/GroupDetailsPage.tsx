@@ -6,6 +6,7 @@ import {
   Crown,
   Hourglass,
   Inbox,
+  Mail,
   Pencil,
   Search,
   Shield,
@@ -66,6 +67,7 @@ import {
   type DurationUnit,
 } from "@/lib/duration"
 import { fuzzyFilter } from "@/lib/fuzzy"
+import { useGroupGoogleBinding } from "@/lib/google"
 import {
   SOURCE_LABEL,
   type Group,
@@ -390,6 +392,7 @@ export default function GroupDetailsPage() {
   const discordBindingsQuery = useGroupDiscordBindings(id ?? "")
   const discordRolesQuery = useDiscordRoles()
   const conditionalBindingsQuery = useGroupConditionalBindings(id ?? "")
+  const googleBindingQuery = useGroupGoogleBinding(id ?? "")
   // Fetch ALL groups once so we can resolve required_group_ids → names for
   // the conditional-binding chips. Cheap query for typical org scale.
   const allGroupsQuery = useQuery({
@@ -838,6 +841,23 @@ export default function GroupDetailsPage() {
                     </ul>
                   )}
                 </section>
+
+                {googleBindingQuery.data && (
+                  <section className="border-t border-border/60 pt-6">
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Google Group
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Members are mirrored into this Google Group.
+                    </p>
+                    <div className="mt-3 flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2">
+                      <Mail className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="truncate font-mono text-sm">
+                        {googleBindingQuery.data.google_group_email}
+                      </span>
+                    </div>
+                  </section>
+                )}
 
                 <section className="border-t border-border/60 pt-6">
                   <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">

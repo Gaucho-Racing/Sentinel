@@ -15,7 +15,7 @@ on:
 env:
   INFRA_REPO: Gaucho-Racing/infrastructure
   KUSTOMIZATION: infra/kubernetes/manifests/sentinel/kustomization.yaml
-  SERVICES: "core oauth discord saml web"
+  SERVICES: "core oauth discord saml google web"
 
 jobs:
   infra-pr:
@@ -62,7 +62,7 @@ jobs:
           # Surgically rewrite the newTag of each sentinel-* image only, leaving
           # rincon/kerbecs and all comments/formatting untouched for a clean diff.
           awk -v new="$NEW" '
-            $0 ~ "- name: ghcr.io/gaucho-racing/sentinel-(core|oauth|discord|saml|web)$" { insent=1; print; next }
+            $0 ~ "- name: ghcr.io/gaucho-racing/sentinel-(core|oauth|discord|saml|google|web)$" { insent=1; print; next }
             insent==1 && $1=="newTag:" { sub(/newTag:[[:space:]]*.*/, "newTag: " new); insent=0 }
             { print }
           ' "$KUSTOMIZATION" > "$KUSTOMIZATION.tmp" && mv "$KUSTOMIZATION.tmp" "$KUSTOMIZATION"

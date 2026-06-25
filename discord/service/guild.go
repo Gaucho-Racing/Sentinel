@@ -51,7 +51,7 @@ func DiscordRolesForInitialRole(initialRole string) []string {
 		return []string{config.MembersDiscordRoleID}
 	case "alumni":
 		return []string{config.AlumniDiscordRoleID}
-	case "other":
+	case "guest":
 		return []string{config.GuestDiscordRoleID}
 	default:
 		return nil
