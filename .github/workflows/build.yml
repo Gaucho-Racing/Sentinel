@@ -1,0 +1,90 @@
+name: build
+run-name: Check Sentinel service builds
+
+on:
+  workflow_run:
+    workflows:
+      - web
+    types:
+      - completed
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: Commit SHA to check. Defaults to main.
+        required: false
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build
+    steps:
+      - name: Check workflow results
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
+          INPUT_SHA: ${{ inputs.sha }}
+        run: |
+          set -euo pipefail
+
+          sha="$INPUT_SHA"
+          if [ -z "$sha" ]; then
+            sha="$TRIGGER_SHA"
+          fi
+          if [ -z "$sha" ]; then
+            sha="$(gh api "repos/$REPO/branches/main" --jq '.commit.sha')"
+          fi
+
+          wait_for_workflow() {
+            local label="$1"
+            local workflow="$2"
+            local result=""
+
+            for attempt in $(seq 1 90); do
+              result="$(
+                gh api --method GET "repos/$REPO/actions/workflows/$workflow/runs" \
+                  -f branch=main \
+                  -f head_sha="$sha" \
+                  -f per_page=1 \
+                  --jq '(.workflow_runs[0] // empty) | [.status, (.conclusion // ""), .html_url] | @tsv'
+              )"
+
+              if [ -n "$result" ]; then
+                local status conclusion url
+                IFS=$'\t' read -r status conclusion url <<< "$result"
+                echo "$label: $status ${conclusion:-pending} $url"
+
+                if [ "$status" = "completed" ]; then
+                  if [ "$conclusion" = "success" ]; then
+                    return 0
+                  fi
+
+                  echo "$label failed with conclusion: $conclusion"
+                  return 1
+                fi
+              else
+                echo "$label: waiting for workflow run for $sha"
+              fi
+
+              if [ "$attempt" -eq 90 ]; then
+                echo "$label did not complete for $sha before timeout"
+                return 1
+              fi
+
+              sleep 10
+            done
+          }
+
+          wait_for_workflow "core" "core.yml"
+          wait_for_workflow "oauth" "oauth.yml"
+          wait_for_workflow "discord" "discord.yml"
+          wait_for_workflow "saml" "saml.yml"
+          wait_for_workflow "google" "google.yml"
+          wait_for_workflow "web" "web.yml"
