@@ -2,13 +2,11 @@ name: build
 run-name: Check Sentinel service builds
 
 on:
-  workflow_run:
-    workflows:
-      - web
-    types:
-      - completed
+  push:
     branches:
-      - main
+      - "**"
+    tags:
+      - "**"
   workflow_dispatch:
     inputs:
       sha:
@@ -29,14 +27,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-          TRIGGER_SHA: ${{ github.event.workflow_run.head_sha }}
           INPUT_SHA: ${{ inputs.sha }}
+          CURRENT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
 
           sha="$INPUT_SHA"
           if [ -z "$sha" ]; then
-            sha="$TRIGGER_SHA"
+            sha="$CURRENT_SHA"
           fi
           if [ -z "$sha" ]; then
             sha="$(gh api "repos/$REPO/branches/main" --jq '.commit.sha')"
@@ -50,7 +48,6 @@ jobs:
             for attempt in $(seq 1 90); do
               result="$(
                 gh api --method GET "repos/$REPO/actions/workflows/$workflow/runs" \
-                  -f branch=main \
                   -f head_sha="$sha" \
                   -f per_page=1 \
                   --jq '(.workflow_runs[0] // empty) | [.status, (.conclusion // ""), .html_url] | @tsv'
