@@ -261,6 +261,13 @@ type addGroupMemberRequest struct {
 	ExpiresAt     time.Time `json:"expires_at"`
 }
 
+func requestAddedBy(c *gin.Context, claimed string) string {
+	if RequestTokenHasScope(c, "sentinel:all") && claimed != "" {
+		return claimed
+	}
+	return GetRequestTokenEntityID(c)
+}
+
 func AddGroupMember(c *gin.Context) {
 	id := c.Param("id")
 	if !requireGroupOwnerOrAdmin(c, id) {
@@ -271,15 +278,55 @@ func AddGroupMember(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	group, err := service.GetGroupByID(id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := service.GetEntityByID(req.EntityID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "entity not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	if err := validateMembershipExpiration(req.HasExpiration, req.ExpiresAt); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	source := req.Source
+	if source == "" {
+		source = string(model.GroupMemberSourceDirect)
+	}
+	if source != string(model.GroupMemberSourceDirect) && !RequestTokenHasScope(c, "sentinel:all") {
+		c.JSON(http.StatusForbidden, gin.H{"error": "only internal services can add synced group members"})
+		return
+	}
+	if source == string(model.GroupMemberSourceDirect) &&
+		!containsSource(group.AllowedSources, model.GroupMemberSourceDirect) &&
+		!RequestTokenHasScope(c, "sentinel:all") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "direct memberships are not enabled for this group"})
+		return
+	}
+	_, err = service.GetGroupMember(id, req.EntityID)
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "entity is already a member of this group"})
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	member, err := service.CreateGroupMember(model.GroupMember{
 		GroupID:       id,
 		EntityID:      req.EntityID,
-		Source:        req.Source,
-		AddedBy:       req.AddedBy,
+		Source:        source,
+		AddedBy:       requestAddedBy(c, req.AddedBy),
 		HasExpiration: req.HasExpiration,
 		ExpiresAt:     req.ExpiresAt,
 	})
@@ -339,10 +386,35 @@ func AddGroupOwner(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if _, err := service.GetGroupByID(id); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "group not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if _, err := service.GetEntityByID(req.EntityID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "entity not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	_, err := service.GetGroupOwner(id, req.EntityID)
+	if err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "entity is already an owner of this group"})
+		return
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	owner, err := service.CreateGroupOwner(model.GroupOwner{
 		GroupID:  id,
 		EntityID: req.EntityID,
-		AddedBy:  req.AddedBy,
+		AddedBy:  requestAddedBy(c, req.AddedBy),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -625,4 +697,3 @@ func DeleteJoinRequestComment(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "comment deleted"})
 }
-
