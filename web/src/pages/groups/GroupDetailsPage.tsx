@@ -77,6 +77,7 @@ import {
   type GroupSource,
 } from "@/lib/groups"
 
+import { AddGroupPersonDialog } from "./AddGroupPersonDialog"
 import { ReviewRequestDialog } from "./ReviewRequestDialog"
 
 const MEMBER_PREVIEW_COUNT = 6
@@ -343,6 +344,8 @@ export default function GroupDetailsPage() {
   const [customUnit, setCustomUnit] = useState<DurationUnit>("days")
   const [cancelling, setCancelling] = useState(false)
   const [cancelConfirmOpen, setCancelConfirmOpen] = useState(false)
+  const [addPersonOpen, setAddPersonOpen] = useState(false)
+  const [addPersonMode, setAddPersonMode] = useState<"member" | "owner">("member")
 
   const groupQuery = useQuery({
     queryKey: ["group", id],
@@ -565,6 +568,12 @@ export default function GroupDetailsPage() {
 
   const directCount = members.filter((m) => m.source === "DIRECT").length
   const syncedCount = members.filter((m) => m.source === "DISCORD" || m.source === "CONDITIONAL").length
+  const directMembershipsEnabled = group.allowed_sources?.includes("DIRECT") ?? false
+
+  function openAddPerson(mode: "member" | "owner") {
+    setAddPersonMode(mode)
+    setAddPersonOpen(true)
+  }
 
   return (
     <PageContainer>
@@ -900,6 +909,20 @@ export default function GroupDetailsPage() {
             <CardDescription>
               Can edit the group, manage members, and approve requests. Global admins inherit these permissions.
             </CardDescription>
+            {isOwner && (
+              <CardAction>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => openAddPerson("owner")}
+                >
+                  <Crown className="size-3.5" />
+                  Add owner
+                </Button>
+              </CardAction>
+            )}
           </CardHeader>
           <CardContent>
             {ownersQuery.isLoading ? (
@@ -928,6 +951,26 @@ export default function GroupDetailsPage() {
             <CardDescription>
               {members.length} total · {directCount} direct · {syncedCount} synced
             </CardDescription>
+            {isOwner && (
+              <CardAction>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  disabled={!directMembershipsEnabled}
+                  title={
+                    directMembershipsEnabled
+                      ? undefined
+                      : "Enable direct source before adding direct members"
+                  }
+                  onClick={() => openAddPerson("member")}
+                >
+                  <UserPlus className="size-3.5" />
+                  Add member
+                </Button>
+              </CardAction>
+            )}
           </CardHeader>
           <CardContent>
             <div className="relative mb-4">
@@ -1125,6 +1168,18 @@ export default function GroupDetailsPage() {
         action={reviewTarget?.action ?? "approve"}
         reviewerEntityID={myEntityID}
       />
+
+      {addPersonOpen && (
+        <AddGroupPersonDialog
+          open={addPersonOpen}
+          onOpenChange={setAddPersonOpen}
+          groupID={id ?? ""}
+          groupName={group.name}
+          initialMode={addPersonMode}
+          existingMemberEntityIDs={members.map((member) => member.entity_id)}
+          existingOwnerEntityIDs={owners.map((owner) => owner.entity_id)}
+        />
+      )}
     </PageContainer>
   )
 }
