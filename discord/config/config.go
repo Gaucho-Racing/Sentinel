@@ -6,7 +6,7 @@ import (
 )
 
 const Name = "sentinel-discord"
-const Version = "5.8.0"
+const Version = "5.8.1"
 
 func FormattedNameWithVersion() string {
 	return Name + ":v" + Version
