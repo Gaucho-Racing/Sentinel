@@ -7,7 +7,7 @@ import {
   RefreshCw,
   Trash2,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
@@ -131,15 +131,17 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
         </div>
       </CardContent>
 
-      <CreateServiceAccountDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        applicationID={applicationID}
-        onCreated={(result) => {
-          setCreateOpen(false)
-          setRevealed(result)
-        }}
-      />
+      {createOpen && (
+        <CreateServiceAccountDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          applicationID={applicationID}
+          onCreated={(result) => {
+            setCreateOpen(false)
+            setRevealed(result)
+          }}
+        />
+      )}
 
       <RevealTokenDialog
         result={revealed}
@@ -177,6 +179,16 @@ function ServiceAccountItem({
     }
   }
 
+  async function handleCopy() {
+    try {
+      const token = await viewToken.mutateAsync(sa.id)
+      await navigator.clipboard.writeText(token)
+      toast.success("Token copied")
+    } catch (e) {
+      toast.error(extractError(e, "Couldn't copy token."))
+    }
+  }
+
   return (
     <li className="rounded-md border border-border/60 bg-muted/40 p-3">
       <div className="flex items-start justify-between gap-3">
@@ -190,15 +202,26 @@ function ServiceAccountItem({
         </div>
         <div className="flex shrink-0 items-center gap-1">
           {canViewToken && hasActiveToken && (
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={handleView}
-              disabled={viewToken.isPending}
-              title="View token"
-            >
-              <Eye className="size-3.5" />
-            </Button>
+            <>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleView}
+                disabled={viewToken.isPending}
+                title="Reveal token"
+              >
+                <Eye className="size-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={handleCopy}
+                disabled={viewToken.isPending}
+                title="Copy token"
+              >
+                <Copy className="size-3.5" />
+              </Button>
+            </>
           )}
           <Button
             variant="ghost"
@@ -282,14 +305,6 @@ function CreateServiceAccountDialog({
   // chose 1 year as the default for SA tokens.
   const [ttlDays, setTtlDays] = useState("365")
 
-  useEffect(() => {
-    if (open) {
-      setName("")
-      setScopeSet(new Set())
-      setTtlDays("365")
-    }
-  }, [open])
-
   function toggleScope(s: SAScope) {
     setScopeSet((prev) => {
       const next = new Set(prev)
@@ -328,9 +343,8 @@ function CreateServiceAccountDialog({
           </div>
           <DialogTitle>New service account</DialogTitle>
           <DialogDescription>
-            A service account gets one bearer JWT, shown <strong>once</strong>{" "}
-            after creation. Pick a name that's clear about what this account
-            does and the scopes it needs.
+            A service account gets one bearer JWT. The creator and admins
+            can reveal or copy the active token later.
           </DialogDescription>
         </DialogHeader>
 
@@ -505,8 +519,10 @@ function RevealTokenDialog({
 }) {
   function copyToken() {
     if (!result) return
-    void navigator.clipboard.writeText(result.token)
-    toast.success("Token copied")
+    void navigator.clipboard
+      .writeText(result.token)
+      .then(() => toast.success("Token copied"))
+      .catch(() => toast.error("Couldn't copy token."))
   }
 
   return (
@@ -523,9 +539,8 @@ function RevealTokenDialog({
           </div>
           <DialogTitle>Copy your bearer token</DialogTitle>
           <DialogDescription>
-            This is the only time the full token for{" "}
-            <strong>{result?.service_account.name}</strong> will be shown.
-            Save it somewhere safe — if you lose it you'll have to rotate.
+            The active token for <strong>{result?.service_account.name}</strong>.
+            The creator and admins can reveal or copy it again later.
           </DialogDescription>
         </DialogHeader>
 

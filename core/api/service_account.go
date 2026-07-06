@@ -174,7 +174,7 @@ func GetServiceAccountToken(c *gin.Context) {
 		RequestTokenHasEntityID(c, sa.CreatedBy),
 		RequestUserIsAdmin(c),
 	))
-	if sa.SignedToken == "" {
+	if sa.ActiveToken == nil || sa.SignedToken == "" {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no active token; rotate to mint a new one"})
 		return
 	}
