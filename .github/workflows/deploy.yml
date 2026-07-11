@@ -5,9 +5,12 @@ run-name: Open infrastructure PR for ${{ github.event.release.tag_name }}
 # bumps the sentinel service image tags to the new version. Fires on the
 # release event (not tag push) so it only ever runs for real releases.
 #
-# Requires repo secret INFRA_PR_TOKEN: a PAT (or GitHub App token) with
-# contents:write + pull-requests:write on Gaucho-Racing/infrastructure. The
-# default GITHUB_TOKEN can't write to another repo.
+# The infra PR token is stored in Vault (app-secret `infrastructure`,
+# field `pr_token`) and fetched at runtime by vault-pull-secrets using
+# the workflow's GitHub OIDC identity — no long-lived repo secret. The
+# token is a PAT with contents:write + pull-requests:write on
+# Gaucho-Racing/infrastructure. The default GITHUB_TOKEN can't write to
+# another repo.
 on:
   release:
     types: [published]
@@ -22,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write        # for Vault OIDC auth via vault-pull-secrets
     steps:
       - name: Checkout sentinel (full history + tags)
         uses: actions/checkout@v4
@@ -29,11 +33,17 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Pull secrets
+        id: vault
+        uses: Gaucho-Racing/vault-pull-secrets@v1
+        with:
+          secrets: infrastructure.pr_token
+
       - name: Checkout infrastructure
         uses: actions/checkout@v4
         with:
           repository: ${{ env.INFRA_REPO }}
-          token: ${{ secrets.INFRA_PR_TOKEN }}
+          token: ${{ fromJSON(steps.vault.outputs.secrets_json).PR_TOKEN }}
           path: infra
 
       - name: Resolve versions
@@ -122,7 +132,7 @@ jobs:
         if: steps.versions.outputs.skip == 'false'
         working-directory: infra
         env:
-          GH_TOKEN: ${{ secrets.INFRA_PR_TOKEN }}
+          GH_TOKEN: ${{ fromJSON(steps.vault.outputs.secrets_json).PR_TOKEN }}
           NEW: ${{ steps.versions.outputs.new }}
           NEW_TAG: ${{ steps.versions.outputs.new_tag }}
           SHORT_SHA: ${{ steps.versions.outputs.short_sha }}
