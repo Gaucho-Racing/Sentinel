@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Crown, Search, UserPlus } from "lucide-react"
 import { useMemo, useState } from "react"
 import { toast } from "sonner"
@@ -33,45 +33,11 @@ import {
   type DurationUnit,
 } from "@/lib/duration"
 import { fuzzyFilter } from "@/lib/fuzzy"
+import { useUsers, userInitials, userName, userSearchKeys } from "@/lib/users"
 
 type AddGroupPersonMode = "member" | "owner"
 
 const ENTITY_ID_PATTERN = /^ent_[0-9a-hjkmnp-tv-z]{26}$/i
-
-type UserOption = {
-  id: string
-  entity_id: string
-  username: string
-  first_name: string
-  last_name: string
-  email: string
-  avatar_url: string
-}
-
-function userName(user: UserOption) {
-  const fullName = `${user.first_name} ${user.last_name}`.trim()
-  return fullName || user.username || user.entity_id
-}
-
-function userInitials(user: UserOption) {
-  return userName(user)
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase()
-}
-
-function selectableText(user: UserOption) {
-  return [
-    user.first_name,
-    user.last_name,
-    user.username,
-    user.email,
-    user.entity_id,
-  ].filter(Boolean)
-}
 
 function durationEnd(
   mode: DurationPreset | "custom",
@@ -109,15 +75,7 @@ export function AddGroupPersonDialog({
   const [customAmount, setCustomAmount] = useState(7)
   const [customUnit, setCustomUnit] = useState<DurationUnit>("days")
 
-  const usersQuery = useQuery({
-    queryKey: ["users"],
-    queryFn: async () => {
-      const res = await api.get<UserOption[]>("/users")
-      return res.data
-    },
-    staleTime: 5 * 60 * 1000,
-    enabled: open,
-  })
+  const usersQuery = useUsers({ enabled: open })
 
   const existing = useMemo(
     () => new Set(mode === "member" ? existingMemberEntityIDs : existingOwnerEntityIDs),
@@ -135,7 +93,7 @@ export function AddGroupPersonDialog({
   const filteredUsers = useMemo(() => {
     const needle = search.trim()
     if (!needle) return eligibleUsers.slice(0, 8)
-    return fuzzyFilter(eligibleUsers, needle, selectableText).slice(0, 8)
+    return fuzzyFilter(eligibleUsers, needle, userSearchKeys).slice(0, 8)
   }, [eligibleUsers, search])
 
   const typedEntityID = search.trim()

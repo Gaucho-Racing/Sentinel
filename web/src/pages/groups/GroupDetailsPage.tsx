@@ -20,6 +20,7 @@ import { toast } from "sonner"
 
 import { EntityChip } from "@/components/EntityChip"
 import { PageContainer } from "@/components/PageContainer"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -76,11 +77,16 @@ import {
   type GroupOwner,
   type GroupSource,
 } from "@/lib/groups"
+import {
+  useUsers,
+  userInitials,
+  userName,
+  userSearchKeys,
+  type UserOption,
+} from "@/lib/users"
 
 import { AddGroupPersonDialog } from "./AddGroupPersonDialog"
 import { ReviewRequestDialog } from "./ReviewRequestDialog"
-
-const MEMBER_PREVIEW_COUNT = 6
 
 function formatDate(iso: string) {
   if (!iso) return "—"
@@ -149,10 +155,37 @@ function OutlinePill({
   )
 }
 
-function MemberRow({ member }: { member: GroupMember }) {
+function MemberRow({
+  member,
+  user,
+}: {
+  member: GroupMember
+  user?: UserOption
+}) {
+  const name = user ? userName(user) : ""
+
   return (
     <div className="flex items-center justify-between gap-3 py-2.5">
-      <EntityChip entityId={member.entity_id} />
+      {user ? (
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Avatar className="size-8">
+            {user.avatar_url && <AvatarImage src={user.avatar_url} alt={name} />}
+            <AvatarFallback className="text-xs">
+              {userInitials(user) || name.slice(0, 1).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex min-w-0 flex-col leading-tight">
+            <span className="truncate text-sm">{name}</span>
+            {user.username && (
+              <span className="truncate text-xs text-muted-foreground">
+                @{user.username}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <EntityChip entityId={member.entity_id} />
+      )}
       <div className="flex shrink-0 items-center gap-2">
         {member.source && <SourcePill source={member.source as GroupSource} />}
         {member.has_expiration ? (
@@ -364,6 +397,7 @@ export default function GroupDetailsPage() {
     },
     enabled: !!id,
   })
+  const usersQuery = useUsers({ enabled: !!id })
 
   const ownersQuery = useQuery({
     queryKey: ["group", id, "owners"],
@@ -411,6 +445,23 @@ export default function GroupDetailsPage() {
     return m
   }, [allGroupsQuery.data])
 
+  const members = useMemo(() => membersQuery.data ?? [], [membersQuery.data])
+  const usersByEntityID = useMemo(() => {
+    const map = new Map<string, UserOption>()
+    for (const user of usersQuery.data ?? []) {
+      if (user.entity_id) map.set(user.entity_id, user)
+    }
+    return map
+  }, [usersQuery.data])
+  const needle = memberSearch.trim()
+  const searching = needle.length > 0
+  const visibleMembers = useMemo(() => {
+    if (!needle) return members
+    return fuzzyFilter(members, needle, (member) => {
+      const user = usersByEntityID.get(member.entity_id)
+      return user ? userSearchKeys(user) : [member.entity_id]
+    })
+  }, [members, needle, usersByEntityID])
 
   async function submitJoinRequest() {
     if (!id || !myEntityID || submittingJoin) return
@@ -509,7 +560,6 @@ export default function GroupDetailsPage() {
   }
 
   const group = groupQuery.data
-  const members = membersQuery.data ?? []
   const owners = ownersQuery.data ?? []
   const requests = requestsQuery.data ?? []
   const apps = appsQuery.data ?? []
@@ -553,18 +603,6 @@ export default function GroupDetailsPage() {
     }
     return rows
   })()
-
-  const needle = memberSearch.trim()
-  const searching = needle.length > 0
-  const matchedMembers = searching
-    ? fuzzyFilter(members, needle, (m) => [m.entity_id])
-    : members
-  const visibleMembers = searching
-    ? matchedMembers
-    : matchedMembers.slice(0, MEMBER_PREVIEW_COUNT)
-  const remainingMembers = searching
-    ? 0
-    : Math.max(0, members.length - visibleMembers.length)
 
   const directCount = members.filter((m) => m.source === "DIRECT").length
   const syncedCount = members.filter((m) => m.source === "DISCORD" || m.source === "CONDITIONAL").length
@@ -949,6 +987,7 @@ export default function GroupDetailsPage() {
           <CardHeader>
             <CardTitle>Members</CardTitle>
             <CardDescription>
+              {searching && `${visibleMembers.length} matching · `}
               {members.length} total · {directCount} direct · {syncedCount} synced
             </CardDescription>
             {isOwner && (
@@ -993,15 +1032,13 @@ export default function GroupDetailsPage() {
               <ul className="divide-y divide-border/60">
                 {visibleMembers.map((m) => (
                   <li key={m.entity_id}>
-                    <MemberRow member={m} />
+                    <MemberRow
+                      member={m}
+                      user={usersByEntityID.get(m.entity_id)}
+                    />
                   </li>
                 ))}
               </ul>
-            )}
-            {remainingMembers > 0 && (
-              <p className="mt-3 text-xs text-muted-foreground">
-                + {remainingMembers} more not shown.
-              </p>
             )}
           </CardContent>
         </Card>
