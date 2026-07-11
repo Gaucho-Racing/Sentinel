@@ -14,7 +14,7 @@ on:
 
 env:
   INFRA_REPO: Gaucho-Racing/infrastructure
-  KUSTOMIZATION: infra/kubernetes/manifests/sentinel/kustomization.yaml
+  KUSTOMIZATION: infra/kubernetes/gr-foundry/manifests/sentinel/kustomization.yaml
   SERVICES: "core oauth discord saml google web"
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
             { print }
           ' "$KUSTOMIZATION" > "$KUSTOMIZATION.tmp" && mv "$KUSTOMIZATION.tmp" "$KUSTOMIZATION"
           echo "--- diff ---"
-          git -C infra diff -- kubernetes/manifests/sentinel/kustomization.yaml
+          git -C infra diff -- kubernetes/gr-foundry/manifests/sentinel/kustomization.yaml
 
       - name: Build changelog
         if: steps.versions.outputs.skip == 'false'
@@ -111,6 +111,8 @@ jobs:
               emit_commits -20 "$NEW_TAG"
             fi
             echo
+            echo "**[Click here to view all changes →](https://github.com/${SENTINEL_REPO}/compare/${OLD_TAG}...${NEW_TAG})**"
+            echo
             echo "---"
             echo "_Opened automatically by the \`deploy\` workflow on release ${NEW_TAG}._"
           } > "$RUNNER_TEMP/pr-body.md"
@@ -127,8 +129,13 @@ jobs:
           RELEASE_AUTHOR: ${{ github.event.release.author.login }}
         run: |
           BRANCH="bot/bump-sentinel-${NEW}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Attribute the commit to the gauchoracing service account (matches
+          # the PAT this job uses) so both the commit and the PR opener show
+          # as @gauchoracing in the infra repo, not github-actions[bot].
+          # team@gauchoracing.com is verified on the account, so GitHub
+          # links the commit to @gauchoracing automatically.
+          git config user.name "GR Admin"
+          git config user.email "team@gauchoracing.com"
           git switch -C "$BRANCH"
           git commit -am "Deploy: sentinel to ${NEW_TAG} (${SHORT_SHA})"
           git push -f -u origin "$BRANCH"
