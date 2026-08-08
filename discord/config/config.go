@@ -70,6 +70,10 @@ func IsProduction() bool {
 	return Env == "PROD"
 }
 
+// DiscordArchiveCategoryName is the channel category (matched by name,
+// case-insensitive) that channels get moved into to archive them.
+const DiscordArchiveCategoryName = "ARCHIVE"
+
 var MembersDiscordRoleID = "820467859477889034"
 var AlumniDiscordRoleID = "817577502968512552"
 var GuestDiscordRoleID = "1511273081824477245"

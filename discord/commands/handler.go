@@ -29,6 +29,7 @@ func InitializeBot() {
 	service.Discord.AddHandler(OnGuildMemberRemove)
 	service.Discord.AddHandler(OnUserUpdate)
 	service.Discord.AddHandler(OnThreadUpdate)
+	service.Discord.AddHandler(OnChannelUpdate)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
@@ -72,6 +73,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Ping(args, s, m)
 	case "verify":
 		Verify(args, s, m)
+	case "unarchive":
+		Unarchive(args, s, m)
 	default:
 		logger.SugarLogger.Infof("Unknown command: %s", command)
 	}
@@ -183,6 +186,31 @@ func OnThreadUpdate(s *discordgo.Session, t *discordgo.ThreadUpdate) {
 	}
 	logger.SugarLogger.Infof("ThreadUpdate: thread %s (%s) was archived, keeping alive", t.ID, t.Name)
 	service.KeepThreadAlive(t.Channel)
+}
+
+// OnChannelUpdate archives channels that get moved into the archive category:
+// permissions are synced to the category's and the prior state is snapshotted
+// for the unarchive command. Only genuine moves are handled — the permission
+// sync itself emits another ChannelUpdate with an unchanged parent, which the
+// BeforeUpdate guard filters out (no loop). BeforeUpdate can be nil if the
+// channel wasn't in the state cache; ArchiveChannel is idempotent so the
+// worst case there is a re-sync and a duplicate notice.
+func OnChannelUpdate(s *discordgo.Session, c *discordgo.ChannelUpdate) {
+	if c.GuildID != config.DiscordGuild || c.Type == discordgo.ChannelTypeGuildCategory {
+		return
+	}
+	if c.ParentID == "" || !service.IsArchiveCategory(c.ParentID) {
+		return
+	}
+	if c.BeforeUpdate != nil && c.BeforeUpdate.ParentID == c.ParentID {
+		return
+	}
+	previousParentID := ""
+	if c.BeforeUpdate != nil {
+		previousParentID = c.BeforeUpdate.ParentID
+	}
+	logger.SugarLogger.Infof("ChannelUpdate: channel %s (%s) was moved into the archive category", c.ID, c.Name)
+	service.ArchiveChannel(c.Channel, previousParentID)
 }
 
 func diffRoles(before, after []string) (added, removed []string) {

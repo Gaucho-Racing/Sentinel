@@ -34,6 +34,7 @@ func Init() {
 			&model.DiscordReaction{},
 			&model.OnboardingToken{},
 			&model.GroupDiscordRoleBinding{},
+			&model.ArchivedChannel{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
