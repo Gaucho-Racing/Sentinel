@@ -41,6 +41,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/discord/onboarding-tokens/:id/consume", ConsumeOnboardingToken)
 	router.GET("/discord/roles", GetRoles)
 	router.GET("/discord/channels", GetChannels)
+	router.GET("/discord/archived-channels", GetArchivedChannels)
 	router.GET("/discord/role-bindings", ListRoleBindings)
 	router.POST("/discord/role-bindings", CreateRoleBinding)
 	router.DELETE("/discord/role-bindings/:bindingID", DeleteRoleBinding)

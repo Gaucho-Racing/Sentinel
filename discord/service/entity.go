@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
 )
@@ -38,6 +40,31 @@ func GetEntityEmailForDiscordUser(discordUserID string) string {
 		return ""
 	}
 	return entity.EmailAuth.Email
+}
+
+type groupResponse struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// GetGroupNamesForDiscordUser returns the names of the Sentinel groups the
+// Discord user's linked entity belongs to. Returns an error when the user
+// has no linked entity or the core lookup fails, so authorization callers
+// can fail closed.
+func GetGroupNamesForDiscordUser(discordUserID string) ([]string, error) {
+	entityID := GetEntityIDForDiscordUser(discordUserID)
+	if entityID == "" {
+		return nil, fmt.Errorf("no sentinel entity linked to discord user %s", discordUserID)
+	}
+	var groups []groupResponse
+	if err := sentinel.Get("/api/core/entity/"+entityID+"/groups", &groups); err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(groups))
+	for _, group := range groups {
+		names = append(names, group.Name)
+	}
+	return names, nil
 }
 
 // SyncDiscordUserAvatar mirrors a Discord user's avatar onto the linked
