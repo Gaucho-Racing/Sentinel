@@ -38,17 +38,69 @@ func getChannel(channelID string) (*discordgo.Channel, error) {
 	return Discord.Channel(channelID)
 }
 
-func FindArchiveCategory() (*discordgo.Channel, error) {
+// discordCategoryChannelCap is Discord's hard limit on channels per category.
+const discordCategoryChannelCap = 50
+
+// findOrCreateArchiveCategory returns an archive category with room for one
+// more channel. Discord allows duplicate category names, so when every
+// existing ARCHIVE category is at the cap (or none exists) a new one is
+// provisioned at the bottom of the channel list, cloning permission
+// overwrites from the last existing archive category when there is one.
+func findOrCreateArchiveCategory() (*discordgo.Channel, error) {
 	channels, err := GetGuildChannels()
 	if err != nil {
 		return nil, err
 	}
+	var archiveCategories []*discordgo.Channel
+	childCounts := make(map[string]int)
 	for _, ch := range channels {
-		if ch.Type == discordgo.ChannelTypeGuildCategory && strings.EqualFold(ch.Name, config.DiscordArchiveCategoryName) {
-			return ch, nil
+		if ch.Type == discordgo.ChannelTypeGuildCategory {
+			if strings.EqualFold(ch.Name, config.DiscordArchiveCategoryName) {
+				archiveCategories = append(archiveCategories, ch)
+			}
+		} else if ch.ParentID != "" {
+			childCounts[ch.ParentID]++
 		}
 	}
-	return nil, fmt.Errorf("no category named %q in guild", config.DiscordArchiveCategoryName)
+	for _, category := range archiveCategories {
+		if childCounts[category.ID] < discordCategoryChannelCap {
+			return category, nil
+		}
+	}
+
+	data := discordgo.GuildChannelCreateData{
+		Name: config.DiscordArchiveCategoryName,
+		Type: discordgo.ChannelTypeGuildCategory,
+	}
+	if len(archiveCategories) > 0 {
+		data.PermissionOverwrites = archiveCategories[len(archiveCategories)-1].PermissionOverwrites
+	} else {
+		data.PermissionOverwrites = defaultArchiveCategoryOverwrites()
+	}
+	category, err := Discord.GuildChannelCreateComplex(config.DiscordGuild, data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to provision new archive category: %w", err)
+	}
+	logger.SugarLogger.Infof("channel archive: provisioned new archive category %s (existing ones full: %d)", category.ID, len(archiveCategories))
+	return category, nil
+}
+
+// defaultArchiveCategoryOverwrites is only used when provisioning the very
+// first archive category: hidden from @everyone, visible to the exempt roles.
+func defaultArchiveCategoryOverwrites() []*discordgo.PermissionOverwrite {
+	overwrites := []*discordgo.PermissionOverwrite{{
+		ID:   config.DiscordGuild,
+		Type: discordgo.PermissionOverwriteTypeRole,
+		Deny: discordgo.PermissionViewChannel,
+	}}
+	for _, roleID := range archiveExemptRoleIDs {
+		overwrites = append(overwrites, &discordgo.PermissionOverwrite{
+			ID:    roleID,
+			Type:  discordgo.PermissionOverwriteTypeRole,
+			Allow: discordgo.PermissionViewChannel,
+		})
+	}
+	return overwrites
 }
 
 func GetArchivedChannel(channelID string) (model.ArchivedChannel, error) {
@@ -59,12 +111,20 @@ func GetArchivedChannel(channelID string) (model.ArchivedChannel, error) {
 	return record, nil
 }
 
+func GetAllArchivedChannels() ([]model.ArchivedChannel, error) {
+	var records []model.ArchivedChannel
+	if err := database.DB.Order("archived_at desc").Find(&records).Error; err != nil {
+		return []model.ArchivedChannel{}, err
+	}
+	return records, nil
+}
+
 // ArchiveChannel snapshots the channel's permission overwrites and parent
 // category, moves it into the archive category, and rewrites its permissions
 // to the standardized archived form (read-only for its existing audience,
 // full access for the exempt roles). Posts a notice in the channel on
 // success.
-func ArchiveChannel(channelID, archivedBy string) error {
+func ArchiveChannel(channelID, archivedByDiscordID string) error {
 	if _, err := GetArchivedChannel(channelID); err == nil {
 		return fmt.Errorf("channel %s is already archived", channelID)
 	}
@@ -72,7 +132,7 @@ func ArchiveChannel(channelID, archivedBy string) error {
 	if err != nil {
 		return fmt.Errorf("failed to get channel: %w", err)
 	}
-	category, err := FindArchiveCategory()
+	category, err := findOrCreateArchiveCategory()
 	if err != nil {
 		return err
 	}
@@ -82,11 +142,12 @@ func ArchiveChannel(channelID, archivedBy string) error {
 		return fmt.Errorf("failed to marshal overwrite snapshot: %w", err)
 	}
 	record := model.ArchivedChannel{
-		ChannelID:          channel.ID,
-		ChannelName:        channel.Name,
-		PreviousParentID:   channel.ParentID,
-		PreviousOverwrites: string(snapshot),
-		ArchivedBy:         archivedBy,
+		ChannelID:           channel.ID,
+		ChannelName:         channel.Name,
+		PreviousParentID:    channel.ParentID,
+		PreviousOverwrites:  string(snapshot),
+		ArchivedByEntityID:  GetEntityIDForDiscordUser(archivedByDiscordID),
+		ArchivedByDiscordID: archivedByDiscordID,
 	}
 	if err := database.DB.Create(&record).Error; err != nil {
 		return fmt.Errorf("failed to persist snapshot: %w", err)
@@ -102,8 +163,8 @@ func ArchiveChannel(channelID, archivedBy string) error {
 		return fmt.Errorf("failed to move and lock channel: %w", err)
 	}
 
-	logger.SugarLogger.Infof("channel archive: archived channel %s (%s) by %s", channel.ID, channel.Name, archivedBy)
-	sendMessageWithoutPings(channel.ID, fmt.Sprintf("This channel has been archived by <@%s> and is now read-only. Run `%sunarchive` to restore it.", archivedBy, config.DiscordPrefix))
+	logger.SugarLogger.Infof("channel archive: archived channel %s (%s) by %s", channel.ID, channel.Name, archivedByDiscordID)
+	sendMessageWithoutPings(channel.ID, fmt.Sprintf("This channel has been archived by <@%s> and is now read-only. Run `%sunarchive` to restore it.", archivedByDiscordID, config.DiscordPrefix))
 	return nil
 }
 
