@@ -10,6 +10,7 @@ type ArchivedChannel struct {
 	ChannelName        string    `json:"channel_name"`
 	PreviousParentID   string    `json:"previous_parent_id"`
 	PreviousOverwrites string    `json:"previous_overwrites"`
+	ArchivedBy         string    `json:"archived_by"`
 	ArchivedAt         time.Time `json:"archived_at" gorm:"autoCreateTime"`
 }
 

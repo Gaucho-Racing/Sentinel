@@ -12,6 +12,25 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 )
 
+// archiveWriteMask covers the permissions stripped when a channel is
+// archived: posting, threads, reactions, and voice connect. View and
+// read-history bits are never touched, so an archived channel stays visible
+// to exactly the audience that could see it before — just read-only.
+const archiveWriteMask = discordgo.PermissionSendMessages |
+	discordgo.PermissionSendMessagesInThreads |
+	discordgo.PermissionCreatePublicThreads |
+	discordgo.PermissionCreatePrivateThreads |
+	discordgo.PermissionAddReactions |
+	discordgo.PermissionVoiceConnect
+
+// archiveExemptRoleIDs keep full access on archived channels. Roles with
+// Administrator (Admin, Officer, etc.) bypass channel overwrites entirely
+// and need no exemption here.
+var archiveExemptRoleIDs = []string{
+	config.RobotDiscordRoleID,
+	config.DevOpsDiscordRoleID,
+}
+
 func getChannel(channelID string) (*discordgo.Channel, error) {
 	if ch, err := Discord.State.Channel(channelID); err == nil && ch != nil {
 		return ch, nil
@@ -19,13 +38,17 @@ func getChannel(channelID string) (*discordgo.Channel, error) {
 	return Discord.Channel(channelID)
 }
 
-func IsArchiveCategory(channelID string) bool {
-	ch, err := getChannel(channelID)
+func FindArchiveCategory() (*discordgo.Channel, error) {
+	channels, err := GetGuildChannels()
 	if err != nil {
-		logger.SugarLogger.Errorf("channel archive: failed to get channel %s: %v", channelID, err)
-		return false
+		return nil, err
 	}
-	return ch.Type == discordgo.ChannelTypeGuildCategory && strings.EqualFold(ch.Name, config.DiscordArchiveCategoryName)
+	for _, ch := range channels {
+		if ch.Type == discordgo.ChannelTypeGuildCategory && strings.EqualFold(ch.Name, config.DiscordArchiveCategoryName) {
+			return ch, nil
+		}
+	}
+	return nil, fmt.Errorf("no category named %q in guild", config.DiscordArchiveCategoryName)
 }
 
 func GetArchivedChannel(channelID string) (model.ArchivedChannel, error) {
@@ -36,58 +59,57 @@ func GetArchivedChannel(channelID string) (model.ArchivedChannel, error) {
 	return record, nil
 }
 
-// ArchiveChannel handles a channel that was just moved into the archive
-// category: it snapshots the channel's own permission overwrites and previous
-// parent, syncs the archive category's overwrites onto the channel, and posts
-// a notice listing the roles that can still see it. If a snapshot already
-// exists (channel was archived before and dragged back in), the original
-// snapshot is kept so a later unarchive restores the true pre-archive state.
-func ArchiveChannel(channel *discordgo.Channel, previousParentID string) {
-	category, err := getChannel(channel.ParentID)
+// ArchiveChannel snapshots the channel's permission overwrites and parent
+// category, moves it into the archive category, and rewrites its permissions
+// to the standardized archived form (read-only for its existing audience,
+// full access for the exempt roles). Posts a notice in the channel on
+// success.
+func ArchiveChannel(channelID, archivedBy string) error {
+	if _, err := GetArchivedChannel(channelID); err == nil {
+		return fmt.Errorf("channel %s is already archived", channelID)
+	}
+	channel, err := getChannel(channelID)
 	if err != nil {
-		logger.SugarLogger.Errorf("channel archive: failed to get archive category %s: %v", channel.ParentID, err)
-		return
+		return fmt.Errorf("failed to get channel: %w", err)
+	}
+	category, err := FindArchiveCategory()
+	if err != nil {
+		return err
 	}
 
-	if _, err := GetArchivedChannel(channel.ID); err != nil {
-		overwrites, err := json.Marshal(channel.PermissionOverwrites)
-		if err != nil {
-			logger.SugarLogger.Errorf("channel archive: failed to marshal overwrites for %s (%s): %v", channel.ID, channel.Name, err)
-			return
-		}
-		record := model.ArchivedChannel{
-			ChannelID:          channel.ID,
-			ChannelName:        channel.Name,
-			PreviousParentID:   previousParentID,
-			PreviousOverwrites: string(overwrites),
-		}
-		if err := database.DB.Create(&record).Error; err != nil {
-			logger.SugarLogger.Errorf("channel archive: failed to persist snapshot for %s (%s): %v", channel.ID, channel.Name, err)
-			return
-		}
-	} else {
-		logger.SugarLogger.Infof("channel archive: snapshot already exists for %s (%s), keeping original", channel.ID, channel.Name)
+	snapshot, err := json.Marshal(channel.PermissionOverwrites)
+	if err != nil {
+		return fmt.Errorf("failed to marshal overwrite snapshot: %w", err)
+	}
+	record := model.ArchivedChannel{
+		ChannelID:          channel.ID,
+		ChannelName:        channel.Name,
+		PreviousParentID:   channel.ParentID,
+		PreviousOverwrites: string(snapshot),
+		ArchivedBy:         archivedBy,
+	}
+	if err := database.DB.Create(&record).Error; err != nil {
+		return fmt.Errorf("failed to persist snapshot: %w", err)
 	}
 
-	if len(category.PermissionOverwrites) > 0 {
-		_, err = Discord.ChannelEdit(channel.ID, &discordgo.ChannelEdit{
-			PermissionOverwrites: category.PermissionOverwrites,
-		})
-		if err != nil {
-			logger.SugarLogger.Errorf("channel archive: failed to sync category permissions onto %s (%s): %v", channel.ID, channel.Name, err)
-			return
-		}
+	_, err = Discord.ChannelEdit(channel.ID, &discordgo.ChannelEdit{
+		ParentID:             category.ID,
+		PermissionOverwrites: archivedOverwrites(channel.PermissionOverwrites),
+	})
+	if err != nil {
+		// Roll back the snapshot so a retry doesn't hit "already archived".
+		database.DB.Delete(&record)
+		return fmt.Errorf("failed to move and lock channel: %w", err)
 	}
-	logger.SugarLogger.Infof("channel archive: archived channel %s (%s)", channel.ID, channel.Name)
 
-	content := fmt.Sprintf("This channel has been archived and is now only visible to %s. Run `%sunarchive` to restore it.",
-		strings.Join(viewerMentions(category.PermissionOverwrites), " "), config.DiscordPrefix)
-	sendMessageWithoutPings(channel.ID, content)
+	logger.SugarLogger.Infof("channel archive: archived channel %s (%s) by %s", channel.ID, channel.Name, archivedBy)
+	sendMessageWithoutPings(channel.ID, fmt.Sprintf("This channel has been archived by <@%s> and is now read-only. Run `%sunarchive` to restore it.", archivedBy, config.DiscordPrefix))
+	return nil
 }
 
 // UnarchiveChannel moves an archived channel back to its previous category
-// and restores its own permission overwrites from the snapshot. Returns the
-// consumed snapshot so callers can report what was restored.
+// and restores its snapshotted permission overwrites. Returns the consumed
+// snapshot so callers can report what was restored.
 func UnarchiveChannel(channelID string) (model.ArchivedChannel, error) {
 	record, err := GetArchivedChannel(channelID)
 	if err != nil {
@@ -104,7 +126,7 @@ func UnarchiveChannel(channelID string) (model.ArchivedChannel, error) {
 	// ChannelEdit's ParentID and PermissionOverwrites are omitempty, so a
 	// snapshot with no parent or no overwrites can't be expressed in a single
 	// edit: the parent is left as-is (caller surfaces this), and an empty
-	// overwrite set is restored by deleting the category-synced overwrites
+	// overwrite set is restored by deleting the archive overwrites
 	// individually below.
 	edit := &discordgo.ChannelEdit{ParentID: record.PreviousParentID}
 	if len(overwrites) > 0 {
@@ -132,22 +154,49 @@ func UnarchiveChannel(channelID string) (model.ArchivedChannel, error) {
 	return record, nil
 }
 
-// viewerMentions returns mention strings for the roles and members granted
-// VIEW_CHANNEL by the given overwrites.
-func viewerMentions(overwrites []*discordgo.PermissionOverwrite) []string {
-	var mentions []string
-	for _, overwrite := range overwrites {
-		if overwrite.Allow&discordgo.PermissionViewChannel == 0 {
-			continue
+// archivedOverwrites transforms a channel's overwrites into their archived
+// form: every existing overwrite loses its write-bit allows, @everyone gets
+// an explicit write deny (covering members whose write access comes from
+// base permissions rather than an overwrite), and the exempt roles get view
+// plus full write access back.
+func archivedOverwrites(existing []*discordgo.PermissionOverwrite) []*discordgo.PermissionOverwrite {
+	overwrites := make([]*discordgo.PermissionOverwrite, 0, len(existing)+len(archiveExemptRoleIDs)+1)
+	index := make(map[string]*discordgo.PermissionOverwrite, len(existing))
+	for _, overwrite := range existing {
+		copied := *overwrite
+		copied.Allow &^= archiveWriteMask
+		overwrites = append(overwrites, &copied)
+		index[copied.ID] = &copied
+	}
+
+	if everyone, ok := index[config.DiscordGuild]; ok {
+		everyone.Deny |= archiveWriteMask
+	} else {
+		everyone = &discordgo.PermissionOverwrite{
+			ID:   config.DiscordGuild,
+			Type: discordgo.PermissionOverwriteTypeRole,
+			Deny: archiveWriteMask,
 		}
-		switch overwrite.Type {
-		case discordgo.PermissionOverwriteTypeRole:
-			mentions = append(mentions, "<@&"+overwrite.ID+">")
-		case discordgo.PermissionOverwriteTypeMember:
-			mentions = append(mentions, "<@"+overwrite.ID+">")
+		overwrites = append(overwrites, everyone)
+		index[everyone.ID] = everyone
+	}
+
+	exemptMask := int64(archiveWriteMask | discordgo.PermissionViewChannel)
+	for _, roleID := range archiveExemptRoleIDs {
+		if exempt, ok := index[roleID]; ok {
+			exempt.Allow |= exemptMask
+			exempt.Deny &^= exemptMask
+		} else {
+			exempt = &discordgo.PermissionOverwrite{
+				ID:    roleID,
+				Type:  discordgo.PermissionOverwriteTypeRole,
+				Allow: exemptMask,
+			}
+			overwrites = append(overwrites, exempt)
+			index[exempt.ID] = exempt
 		}
 	}
-	return mentions
+	return overwrites
 }
 
 // sendMessageWithoutPings posts a message whose role/user mentions render but
