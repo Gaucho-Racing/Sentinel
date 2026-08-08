@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 )
@@ -11,8 +13,9 @@ const threadReopenNotice = "This thread was archived due to inactivity, so I've 
 // KeepThreadAlive unarchives a thread that Discord just auto-archived and
 // bumps its auto-archive window to the maximum (7 days) so the gateway only
 // re-archives it weekly instead of on the channel's default window. A notice
-// is posted in the thread explaining the reopen and the lock-to-close opt-out.
-// Requires the bot to have MANAGE_THREADS in the guild.
+// explaining the reopen and the lock-to-close opt-out is posted in the thread
+// and auto-deleted after an hour. Requires the bot to have MANAGE_THREADS in
+// the guild.
 func KeepThreadAlive(thread *discordgo.Channel) {
 	archived := false
 	_, err := Discord.ChannelEdit(thread.ID, &discordgo.ChannelEdit{
@@ -24,7 +27,5 @@ func KeepThreadAlive(thread *discordgo.Channel) {
 		return
 	}
 	logger.SugarLogger.Infof("thread keepalive: unarchived thread %s (%s)", thread.ID, thread.Name)
-	if _, err := Discord.ChannelMessageSend(thread.ID, threadReopenNotice); err != nil {
-		logger.SugarLogger.Errorf("thread keepalive: failed to send reopen notice in thread %s (%s): %v", thread.ID, thread.Name, err)
-	}
+	SendDisappearingMessage(thread.ID, threadReopenNotice, time.Hour)
 }
