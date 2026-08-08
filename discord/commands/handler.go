@@ -28,6 +28,7 @@ func InitializeBot() {
 	service.Discord.AddHandler(OnGuildMemberUpdate)
 	service.Discord.AddHandler(OnGuildMemberRemove)
 	service.Discord.AddHandler(OnUserUpdate)
+	service.Discord.AddHandler(OnThreadUpdate)
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
@@ -164,6 +165,24 @@ func OnUserUpdate(s *discordgo.Session, u *discordgo.UserUpdate) {
 		return
 	}
 	service.SyncDiscordUserAvatar(u.ID, member.AvatarURL("256"))
+}
+
+// OnThreadUpdate keeps guild threads alive indefinitely. Discord doesn't
+// allow disabling thread auto-archival (7-day window at most), so when a
+// thread flips to archived we immediately flip it back. Unarchiving emits
+// another ThreadUpdate with Archived=false, which falls through the guard
+// below — no loop. Locked threads are left alone: locking is an explicit
+// moderator "this thread is closed" signal, and force-unarchiving those
+// would fight moderation.
+func OnThreadUpdate(s *discordgo.Session, t *discordgo.ThreadUpdate) {
+	if t.GuildID != config.DiscordGuild {
+		return
+	}
+	if t.ThreadMetadata == nil || !t.ThreadMetadata.Archived || t.ThreadMetadata.Locked {
+		return
+	}
+	logger.SugarLogger.Infof("ThreadUpdate: thread %s (%s) was archived, keeping alive", t.ID, t.Name)
+	service.KeepThreadAlive(t.Channel)
 }
 
 func diffRoles(before, after []string) (added, removed []string) {
