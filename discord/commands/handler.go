@@ -1,8 +1,10 @@
 package commands
 
 import (
+	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
@@ -10,6 +12,29 @@ import (
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
+
+const commandReplyTTL = 10 * time.Second
+
+// requireGroupMembership gates a command to members of the given Sentinel
+// groups (matched by name, case-insensitive), replying with a disappearing
+// message when the check fails. Fails closed: a missing entity link or a
+// core lookup failure both deny access.
+func requireGroupMembership(m *discordgo.MessageCreate, command string, allowedGroups []string) bool {
+	groupNames, err := service.GetGroupNamesForDiscordUser(m.Author.ID)
+	if err != nil {
+		logger.SugarLogger.Errorf("%s: failed to fetch sentinel groups for %s: %v", command, m.Author.ID, err)
+	} else {
+		for _, name := range groupNames {
+			for _, allowed := range allowedGroups {
+				if strings.EqualFold(name, allowed) {
+					return true
+				}
+			}
+		}
+	}
+	service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> you don't have permission to use the `%s%s` command.", m.Author.ID, config.DiscordPrefix, command), commandReplyTTL)
+	return false
+}
 
 // readyOnce guards the startup sweep so a gateway reconnect (which also
 // fires Ready) doesn't repeatedly kick the sweep. Subsequent reconnects

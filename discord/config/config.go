@@ -74,10 +74,6 @@ func IsProduction() bool {
 // case-insensitive) that channels get moved into to archive them.
 const DiscordArchiveCategoryName = "ARCHIVE"
 
-// ArchiveCommandAllowedGroups are the Sentinel groups (matched by name,
-// case-insensitive) whose members may run the archive/unarchive commands.
-var ArchiveCommandAllowedGroups = []string{"Admins", "Leads", "Officers"}
-
 var MembersDiscordRoleID = "820467859477889034"
 var AlumniDiscordRoleID = "817577502968512552"
 var GuestDiscordRoleID = "1511273081824477245"
