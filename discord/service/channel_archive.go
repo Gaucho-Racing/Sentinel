@@ -201,9 +201,12 @@ func UnarchiveChannel(channelID string) (model.ArchivedChannel, error) {
 		if err != nil {
 			return record, fmt.Errorf("failed to get channel for overwrite cleanup: %w", err)
 		}
+		// Keep the snapshot if any deletion fails so the command can be
+		// retried — the restore is idempotent, a retry just re-applies the
+		// parent edit and deletes the remaining archive overwrites.
 		for _, overwrite := range channel.PermissionOverwrites {
 			if err := Discord.ChannelPermissionDelete(channelID, overwrite.ID); err != nil {
-				logger.SugarLogger.Errorf("channel archive: failed to delete overwrite %s on %s: %v", overwrite.ID, channelID, err)
+				return record, fmt.Errorf("failed to delete overwrite %s: %w", overwrite.ID, err)
 			}
 		}
 	}
