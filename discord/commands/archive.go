@@ -9,7 +9,7 @@ import (
 )
 
 func Archive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
-	if !requireManageChannels(s, m, "archive") {
+	if !requireArchiveAccess(s, m, "archive") {
 		return
 	}
 	if _, err := service.GetArchivedChannel(m.ChannelID); err == nil {

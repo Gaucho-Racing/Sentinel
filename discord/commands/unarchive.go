@@ -2,34 +2,41 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/service"
 )
 
 const archiveReplyTTL = 10 * time.Second
 
-// requireManageChannels gates the archive commands behind the Manage
-// Channels permission in the invoking channel, replying with a disappearing
-// message when the check fails.
-func requireManageChannels(s *discordgo.Session, m *discordgo.MessageCreate, command string) bool {
-	permissions, err := s.UserChannelPermissions(m.Author.ID, m.ChannelID)
+// requireArchiveAccess gates the archive commands to members of the allowed
+// Sentinel groups, replying with a disappearing message when the check
+// fails. Fails closed: a missing entity link or a core lookup failure both
+// deny access.
+func requireArchiveAccess(s *discordgo.Session, m *discordgo.MessageCreate, command string) bool {
+	groupNames, err := service.GetGroupNamesForDiscordUser(m.Author.ID)
 	if err != nil {
-		logger.SugarLogger.Errorf("%s: failed to compute permissions for %s in %s: %v", command, m.Author.ID, m.ChannelID, err)
-		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> something went wrong, try again in a minute.", m.Author.ID), archiveReplyTTL)
+		logger.SugarLogger.Errorf("%s: failed to fetch sentinel groups for %s: %v", command, m.Author.ID, err)
+		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> you don't have permission to %s channels.", m.Author.ID, command), archiveReplyTTL)
 		return false
 	}
-	if permissions&discordgo.PermissionManageChannels == 0 {
-		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> you need the Manage Channels permission to %s this channel.", m.Author.ID, command), archiveReplyTTL)
-		return false
+	for _, name := range groupNames {
+		for _, allowed := range config.ArchiveCommandAllowedGroups {
+			if strings.EqualFold(name, allowed) {
+				return true
+			}
+		}
 	}
-	return true
+	service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> you don't have permission to %s channels.", m.Author.ID, command), archiveReplyTTL)
+	return false
 }
 
 func Unarchive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
-	if !requireManageChannels(s, m, "unarchive") {
+	if !requireArchiveAccess(s, m, "unarchive") {
 		return
 	}
 
