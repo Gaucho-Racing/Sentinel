@@ -14,8 +14,8 @@ import (
 
 const verifyReplyTTL = 5 * time.Second
 
-// enforceVerificationChannel deletes non-verifification messages in
-// DISCORD_VERIFICATION_CHANNEL and posts a disappearing reminder. 
+// enforceVerificationChannel deletes non-verification messages in
+// DISCORD_VERIFICATION_CHANNEL and posts a disappearing reminder.
 func enforceVerificationChannel(s *discordgo.Session, m *discordgo.MessageCreate) bool {
 	if config.DiscordVerificationChannel == "" || m.ChannelID != config.DiscordVerificationChannel {
 		return false
