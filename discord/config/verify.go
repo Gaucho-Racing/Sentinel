@@ -43,6 +43,11 @@ func Verify() {
 		DiscordPrefix = "d!"
 		logger.SugarLogger.Infof("DISCORD_PREFIX is not set, defaulting to %s", DiscordPrefix)
 	}
+	if DiscordVerificationChannel == "" {
+		logger.SugarLogger.Infoln("DISCORD_VERIFICATION_CHANNEL is not set — verification channel gate disabled")
+	} else {
+		logger.SugarLogger.Infof("DISCORD_VERIFICATION_CHANNEL set to %s", DiscordVerificationChannel)
+	}
 	if WebBaseURL == "" {
 		WebBaseURL = "http://localhost:10310"
 		logger.SugarLogger.Infof("WEB_BASE_URL is not set, defaulting to %s", WebBaseURL)
