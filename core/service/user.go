@@ -96,19 +96,26 @@ func PopulateUser(user *model.User) {
 	}
 }
 
+// GetGroupsForEntity loads an entity's groups in two queries — the memberships,
+// then every referenced group at once. Fetching one group per membership made
+// this cost a round trip per group, and since it runs on the token-issuing path
+// (several times per login) it made auth latency scale with a user's group
+// count, to the point of exceeding the timeouts relying parties allow.
 func GetGroupsForEntity(entityID string) ([]model.Group, error) {
 	var members []model.GroupMember
 	if err := database.DB.Where("entity_id = ?", entityID).Find(&members).Error; err != nil {
 		return []model.Group{}, err
 	}
-	groups := []model.Group{}
+	if len(members) == 0 {
+		return []model.Group{}, nil
+	}
+	ids := make([]string, 0, len(members))
 	for _, member := range members {
-		var group model.Group
-		if err := database.DB.Where("id = ?", member.GroupID).First(&group).Error; err != nil {
-			logger.SugarLogger.Errorf("Failed to get group %s for entity %s: %v", member.GroupID, entityID, err)
-			continue
-		}
-		groups = append(groups, group)
+		ids = append(ids, member.GroupID)
+	}
+	groups := []model.Group{}
+	if err := database.DB.Where("id IN ?", ids).Find(&groups).Error; err != nil {
+		return []model.Group{}, err
 	}
 	return groups, nil
 }
