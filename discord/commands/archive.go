@@ -13,6 +13,9 @@ func Archive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	if !requireGroupMembership(m, "archive", allowedGroups) {
 		return
 	}
+	if !requireNotThread(s, m, "archive") {
+		return
+	}
 	if _, err := service.GetArchivedChannel(m.ChannelID); err == nil {
 		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> this channel is already archived.", m.Author.ID), commandReplyTTL)
 		return
