@@ -3,6 +3,31 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "@/lib/api"
 
 const SESSION_KEY = "sentinel_session"
+const LOGIN_RETURN_TO_KEY = "sentinel_login_return_to"
+
+function isSafeReturnTo(path: string): boolean {
+  return path.startsWith("/") && !path.startsWith("//")
+}
+
+// Persist the pre-login path across the Discord OAuth round-trip. Discord's
+// `state` is a query param, so stuffing `/oauth/authorize?…&redirect_uri=…`
+// into it loses the nested redirect_uri when Discord echoes state unencoded.
+export function saveLoginReturnTo(path: string) {
+  if (!isSafeReturnTo(path) || path === "/") return
+  sessionStorage.setItem(LOGIN_RETURN_TO_KEY, path)
+}
+
+export function peekLoginReturnTo(): string | null {
+  const raw = sessionStorage.getItem(LOGIN_RETURN_TO_KEY)
+  if (!raw || !isSafeReturnTo(raw)) return null
+  return raw
+}
+
+export function consumeLoginReturnTo(): string {
+  const value = peekLoginReturnTo() ?? "/"
+  sessionStorage.removeItem(LOGIN_RETURN_TO_KEY)
+  return value
+}
 
 export type Session = {
   accessToken: string

@@ -7,7 +7,7 @@ import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
 import { DiscordIcon } from "@/components/icons/socials"
 import { api } from "@/lib/api"
-import { saveSession } from "@/lib/auth"
+import { consumeLoginReturnTo, saveSession } from "@/lib/auth"
 import { DISCORD_INVITE_URL } from "@/lib/links"
 import { cn } from "@/lib/utils"
 
@@ -52,8 +52,6 @@ export default function LoginDiscordPage() {
       navigate("/auth/login", { replace: true })
       return
     }
-    const returnTo = params.get("state") || "/"
-
     void (async () => {
       try {
         const res = await api.post<LoginResponse>(
@@ -65,6 +63,7 @@ export default function LoginDiscordPage() {
           expiresIn: res.data.expires_in,
           entityId: res.data.entity_id,
         })
+        const returnTo = consumeLoginReturnTo()
         setTransitioning(true)
         await new Promise((r) =>
           setTimeout(r, CONVERGE_MS + CHECKMARK_DRAW_MS + HOLD_MS),
