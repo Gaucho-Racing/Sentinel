@@ -9,12 +9,34 @@ function isSafeReturnTo(path: string): boolean {
   return path.startsWith("/") && !path.startsWith("//")
 }
 
-// Persist the pre-login path across the Discord OAuth round-trip. Discord's
-// `state` is a query param, so stuffing `/oauth/authorize?…&redirect_uri=…`
-// into it loses the nested redirect_uri when Discord echoes state unencoded.
+// The pre-login path (e.g. /oauth/authorize?…&redirect_uri=…) has to outlive
+// the bounce to /auth/login. React Router location.state is dropped on the
+// initial history.replace, a refresh, and the Discord round-trip — so both
+// email and Discord login were landing back on a stripped authorize URL.
 export function saveLoginReturnTo(path: string) {
   if (!isSafeReturnTo(path) || path === "/") return
+  const existing = sessionStorage.getItem(LOGIN_RETURN_TO_KEY)
+  // Don't clobber a full authorize URL with a pathname-only bounce.
+  if (existing && existing.includes("?") && !path.includes("?")) return
   sessionStorage.setItem(LOGIN_RETURN_TO_KEY, path)
+}
+
+export function saveLoginReturnFrom(location: {
+  pathname: string
+  search?: string
+  hash?: string
+}) {
+  let path = `${location.pathname}${location.search ?? ""}${location.hash ?? ""}`
+  // On first load RR can report an empty search while the address bar still
+  // has ?client_id=…&redirect_uri=…. Prefer the bar when pathnames match.
+  if (
+    !path.includes("?") &&
+    window.location.search &&
+    window.location.pathname === location.pathname
+  ) {
+    path = `${window.location.pathname}${window.location.search}${window.location.hash}`
+  }
+  saveLoginReturnTo(path)
 }
 
 export function peekLoginReturnTo(): string | null {
@@ -27,6 +49,17 @@ export function consumeLoginReturnTo(): string {
   const value = peekLoginReturnTo() ?? "/"
   sessionStorage.removeItem(LOGIN_RETURN_TO_KEY)
   return value
+}
+
+export type ReturnLocation = { pathname: string; search: string; hash: string }
+
+export function locationFromReturnPath(path: string): ReturnLocation {
+  const url = new URL(isSafeReturnTo(path) ? path : "/", window.location.origin)
+  return { pathname: url.pathname, search: url.search, hash: url.hash }
+}
+
+export function consumeLoginReturnLocation(): ReturnLocation {
+  return locationFromReturnPath(consumeLoginReturnTo())
 }
 
 export type Session = {

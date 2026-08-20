@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { api } from "@/lib/api"
-import { consumeLoginReturnTo, peekLoginReturnTo, saveLoginReturnTo, saveSession } from "@/lib/auth"
+import { consumeLoginReturnTo, locationFromReturnPath, peekLoginReturnTo, saveLoginReturnTo, saveSession } from "@/lib/auth"
 import { DISCORD_INVITE_URL } from "@/lib/links"
 import { cn } from "@/lib/utils"
 
@@ -61,9 +61,9 @@ export default function LoginPage() {
   const [params] = useSearchParams()
   const arrivedFromOnboarding = params.has("email")
   // Reconstruct the full pre-login URL — pathname alone drops OAuth query
-  // params (?client_id=…&redirect_uri=…&scope=…) and the hash, so a 3rd-party
-  // app that bounces an unauthenticated user through /auth/login was landing
-  // back at /oauth/authorize stripped down to "Invalid request."
+  // params (?client_id=…&redirect_uri=…&scope=…) and the hash.
+  // sessionStorage is the source of truth: location.state does not survive
+  // the unauthenticated bounce, a refresh, or Discord.
   const fromLocation = (
     location.state as {
       from?: { pathname: string; search?: string; hash?: string }
@@ -72,9 +72,6 @@ export default function LoginPage() {
   const fromRouter = fromLocation
     ? `${fromLocation.pathname}${fromLocation.search ?? ""}${fromLocation.hash ?? ""}`
     : null
-  // Discord wipes location.state; sessionStorage is the fallback so a bounce
-  // back to this page (or email login after a failed Discord attempt) still
-  // returns to /oauth/authorize?…&redirect_uri=….
   const from = fromRouter && fromRouter !== "/" ? fromRouter : (peekLoginReturnTo() ?? "/")
   const [email, setEmail] = useState(params.get("email") ?? "")
   const [password, setPassword] = useState("")
@@ -93,11 +90,12 @@ export default function LoginPage() {
     await new Promise((resolve) =>
       setTimeout(resolve, CONVERGE_MS + CHECKMARK_DRAW_MS + HOLD_MS),
     )
-    consumeLoginReturnTo()
+    const stored = consumeLoginReturnTo()
+    const dest = locationFromReturnPath(stored !== "/" ? stored : from)
     if (document.startViewTransition) {
-      document.startViewTransition(() => navigate(from, { replace: true }))
+      document.startViewTransition(() => navigate(dest, { replace: true }))
     } else {
-      navigate(from, { replace: true })
+      navigate(dest, { replace: true })
     }
   }
 
