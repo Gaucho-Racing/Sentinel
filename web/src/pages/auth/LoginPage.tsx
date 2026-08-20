@@ -1,6 +1,6 @@
 import { Loader2 } from "lucide-react"
 import type { ComponentType, SVGProps } from "react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { api } from "@/lib/api"
-import { saveSession } from "@/lib/auth"
+import { consumeLoginReturnTo, locationFromReturnPath, peekLoginReturnTo, saveLoginReturnTo, saveSession } from "@/lib/auth"
 import { DISCORD_INVITE_URL } from "@/lib/links"
 import { cn } from "@/lib/utils"
 
@@ -61,22 +61,27 @@ export default function LoginPage() {
   const [params] = useSearchParams()
   const arrivedFromOnboarding = params.has("email")
   // Reconstruct the full pre-login URL — pathname alone drops OAuth query
-  // params (?client_id=…&redirect_uri=…&scope=…) and the hash, so a 3rd-party
-  // app that bounces an unauthenticated user through /auth/login was landing
-  // back at /oauth/authorize stripped down to "Invalid request."
+  // params (?client_id=…&redirect_uri=…&scope=…) and the hash.
+  // sessionStorage is the source of truth: location.state does not survive
+  // the unauthenticated bounce, a refresh, or Discord.
   const fromLocation = (
     location.state as {
       from?: { pathname: string; search?: string; hash?: string }
     } | null
   )?.from
-  const from = fromLocation
+  const fromRouter = fromLocation
     ? `${fromLocation.pathname}${fromLocation.search ?? ""}${fromLocation.hash ?? ""}`
-    : "/"
+    : null
+  const from = fromRouter && fromRouter !== "/" ? fromRouter : (peekLoginReturnTo() ?? "/")
   const [email, setEmail] = useState(params.get("email") ?? "")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState<LoadingTarget>(null)
   const [transitioning, setTransitioning] = useState(false)
   const isBusy = loading !== null || transitioning
+
+  useEffect(() => {
+    if (fromRouter) saveLoginReturnTo(fromRouter)
+  }, [fromRouter])
 
   async function handleSuccess() {
     setLoading(null)
@@ -85,10 +90,12 @@ export default function LoginPage() {
     await new Promise((resolve) =>
       setTimeout(resolve, CONVERGE_MS + CHECKMARK_DRAW_MS + HOLD_MS),
     )
+    const stored = consumeLoginReturnTo()
+    const dest = locationFromReturnPath(stored !== "/" ? stored : from)
     if (document.startViewTransition) {
-      document.startViewTransition(() => navigate(from, { replace: true }))
+      document.startViewTransition(() => navigate(dest, { replace: true }))
     } else {
-      navigate(from, { replace: true })
+      navigate(dest, { replace: true })
     }
   }
 
@@ -125,6 +132,7 @@ export default function LoginPage() {
       // The redirect_uri must byte-match what the oauth service uses at
       // token-exchange time. Building it from window.location.origin keeps
       // dev/prod aligned without another env var on the web side.
+      saveLoginReturnTo(from)
       const params = new URLSearchParams({
         client_id: DISCORD_CLIENT_ID,
         response_type: "code",
@@ -134,9 +142,6 @@ export default function LoginPage() {
         // still see it (Discord ignores prompt=none until consent is on file
         // for the requested scopes); subsequent sign-ins go straight back.
         prompt: "none",
-        // Round-trip the return path so the callback can land the user
-        // back where they were trying to go before being bounced to login.
-        state: from,
       })
       window.location.href = `${DISCORD_AUTHORIZE_URL}?${params.toString()}`
       return

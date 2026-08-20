@@ -8,7 +8,7 @@ import { SuccessCheck } from "@/components/SuccessCheck"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { api } from "@/lib/api"
-import { loadSession, useAuth } from "@/lib/auth"
+import { loadSession, saveLoginReturnFrom, useAuth } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 
 const CONVERGE_MS = 250
@@ -154,6 +154,7 @@ export default function SamlAuthorizePage() {
   }
 
   if (!session) {
+    saveLoginReturnFrom(location)
     return <Navigate to="/auth/login" state={{ from: location }} replace />
   }
 
