@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeft, Copy, ExternalLink, Eye, EyeOff, Pencil } from "lucide-react"
 import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
@@ -84,15 +84,29 @@ export default function ApplicationDetailsPage() {
     enabled: !!id,
   })
 
-  const secretQuery = useQuery({
+  const queryClient = useQueryClient()
+  const secretQueryOptions = {
     queryKey: ["application", "id", id, "secret"],
     queryFn: async () => {
       const res = await api.get<{ client_secret: string }>(`/applications/${id}/secret`)
       return res.data.client_secret
     },
-    enabled: !!id && secretVisible,
     staleTime: 5 * 60 * 1000,
+  }
+  const secretQuery = useQuery({
+    ...secretQueryOptions,
+    enabled: !!id && secretVisible,
   })
+
+  async function copySecret() {
+    try {
+      const secret = await queryClient.fetchQuery(secretQueryOptions)
+      await navigator.clipboard.writeText(secret)
+      toast.success("Client secret copied")
+    } catch {
+      toast.error("Failed to copy client secret")
+    }
+  }
 
   const linkedGroupsQuery = useQuery({
     queryKey: ["application", "id", id, "groups"],
@@ -112,6 +126,8 @@ export default function ApplicationDetailsPage() {
   // rather than render a broken UI.
   const canManageServiceAccounts =
     !!ownerId && (ownerId === myEntityID || isAdmin)
+  // Same gate as the backend's secret endpoint: owner or admin.
+  const canRevealSecret = canManageServiceAccounts
   const ownerQuery = useQuery({
     queryKey: ["entity", ownerId],
     queryFn: async () => {
@@ -270,25 +286,20 @@ export default function ApplicationDetailsPage() {
                 <code className="flex-1 truncate font-mono text-xs">
                   {secretVisible ? (secretQuery.data ?? "Loading…") : maskedSecret}
                 </code>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setSecretVisible((v) => !v)}
-                >
-                  {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  disabled={!secretQuery.data}
-                  onClick={() => {
-                    if (!secretQuery.data) return
-                    navigator.clipboard.writeText(secretQuery.data)
-                    toast.success("Client secret copied")
-                  }}
-                >
-                  <Copy className="size-3.5" />
-                </Button>
+                {canRevealSecret && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => setSecretVisible((v) => !v)}
+                    >
+                      {secretVisible ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" onClick={copySecret}>
+                      <Copy className="size-3.5" />
+                    </Button>
+                  </>
+                )}
               </div>
             </Field>
           </CardContent>
