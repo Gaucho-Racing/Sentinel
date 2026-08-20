@@ -168,8 +168,6 @@ func UpdateApplication(c *gin.Context) {
 
 // GetApplicationSecret returns just the client_secret. Separated from the
 // main GET handler so the secret doesn't leak through list/by-id reads.
-// Gating tightens later when ownership lands; for now any first-party
-// bearer can see it.
 func GetApplicationSecret(c *gin.Context) {
 	id := c.Param("id")
 	app, err := service.GetApplicationByID(id)
@@ -184,6 +182,7 @@ func GetApplicationSecret(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasScope(c, "sentinel:all"),
 		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
+		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
 	))
 	c.JSON(http.StatusOK, gin.H{"client_secret": app.ClientSecret})
 }
