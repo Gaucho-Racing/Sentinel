@@ -13,6 +13,9 @@ func Unarchive(args []string, s *discordgo.Session, m *discordgo.MessageCreate) 
 	if !requireGroupMembership(m, "unarchive", allowedGroups) {
 		return
 	}
+	if !requireNotThread(s, m, "unarchive") {
+		return
+	}
 
 	record, err := service.UnarchiveChannel(m.ChannelID)
 	if err != nil {
