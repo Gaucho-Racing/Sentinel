@@ -83,6 +83,10 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		logger.SugarLogger.Errorf("Failed to persist discord message: %v", err)
 	}
 
+	if enforceVerificationChannel(s, m) {
+		return
+	}
+
 	if !strings.HasPrefix(m.Content, config.DiscordPrefix) {
 		return
 	}

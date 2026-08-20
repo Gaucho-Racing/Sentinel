@@ -31,6 +31,7 @@ var DatabaseName = os.Getenv("DATABASE_NAME")
 var DiscordToken = os.Getenv("DISCORD_TOKEN")
 var DiscordGuild = os.Getenv("DISCORD_GUILD")
 var DiscordPrefix = os.Getenv("DISCORD_PREFIX")
+var DiscordVerificationChannel = os.Getenv("DISCORD_VERIFICATION_CHANNEL")
 
 var WebBaseURL = os.Getenv("WEB_BASE_URL")
 
