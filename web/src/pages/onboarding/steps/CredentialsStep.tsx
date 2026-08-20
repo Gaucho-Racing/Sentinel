@@ -19,7 +19,7 @@ export function CredentialsStep({ data, update }: StepProps) {
             id="email"
             type="email"
             autoComplete="email"
-            placeholder="you@ucsb.edu"
+            placeholder="you@ucsb.edu or you@pipeline.sbcc.edu"
             value={data.email}
             onChange={(e) => update({ email: e.target.value })}
             required

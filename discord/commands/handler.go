@@ -36,6 +36,25 @@ func requireGroupMembership(m *discordgo.MessageCreate, command string, allowedG
 	return false
 }
 
+// requireNotThread rejects commands run in a thread, forum post, or forum/media channel.
+func requireNotThread(s *discordgo.Session, m *discordgo.MessageCreate, command string) bool {
+	channel, err := s.State.Channel(m.ChannelID)
+	if err != nil {
+		channel, err = s.Channel(m.ChannelID)
+	}
+	if err != nil {
+		logger.SugarLogger.Errorf("%s: failed to fetch channel %s: %v", command, m.ChannelID, err)
+		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> something went wrong, try again in a minute.", m.Author.ID), commandReplyTTL)
+		return false
+	}
+	switch channel.Type {
+	case discordgo.ChannelTypeGuildNewsThread, discordgo.ChannelTypeGuildPublicThread, discordgo.ChannelTypeGuildPrivateThread, discordgo.ChannelTypeGuildForum, discordgo.ChannelTypeGuildMedia:
+		service.SendDisappearingMessage(m.ChannelID, fmt.Sprintf("<@%s> `%s%s` can't be used in a thread.", m.Author.ID, config.DiscordPrefix, command), commandReplyTTL)
+		return false
+	}
+	return true
+}
+
 // readyOnce guards the startup sweep so a gateway reconnect (which also
 // fires Ready) doesn't repeatedly kick the sweep. Subsequent reconnects
 // are covered by the periodic cron + per-user event reconciles anyway.
@@ -81,6 +100,10 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	})
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to persist discord message: %v", err)
+	}
+
+	if enforceVerificationChannel(s, m) {
+		return
 	}
 
 	if !strings.HasPrefix(m.Content, config.DiscordPrefix) {

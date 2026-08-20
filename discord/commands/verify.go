@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/bwmarrin/discordgo"
@@ -12,6 +13,25 @@ import (
 )
 
 const verifyReplyTTL = 5 * time.Second
+
+// enforceVerificationChannel deletes non-verification messages in
+// DISCORD_VERIFICATION_CHANNEL and posts a disappearing reminder.
+func enforceVerificationChannel(s *discordgo.Session, m *discordgo.MessageCreate) bool {
+	if config.DiscordVerificationChannel == "" || m.ChannelID != config.DiscordVerificationChannel {
+		return false
+	}
+	if strings.Contains(m.Content, "!verify") {
+		return false
+	}
+
+	_ = s.ChannelMessageDelete(m.ChannelID, m.ID)
+	service.SendDisappearingMessage(
+		m.ChannelID,
+		fmt.Sprintf("<@%s> please run `%sverify` to verify.", m.Author.ID, config.DiscordPrefix),
+		verifyReplyTTL,
+	)
+	return true
+}
 
 func Verify(args []string, s *discordgo.Session, m *discordgo.MessageCreate) {
 	defer s.ChannelMessageDelete(m.ChannelID, m.ID)

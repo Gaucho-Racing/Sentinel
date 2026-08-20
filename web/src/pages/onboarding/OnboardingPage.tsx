@@ -38,7 +38,7 @@ const HOLD_MS = 250
 
 const STEP_SLIDE_PX = 24
 
-const STUDENT_DOMAIN = "ucsb.edu"
+const STUDENT_DOMAINS = new Set(["ucsb.edu", "pipeline.sbcc.edu"])
 
 const stepVariants: Variants = {
   enter: (dir: "forward" | "back") => ({
@@ -172,12 +172,13 @@ export default function OnboardingPage() {
 
   const emailDomain = data.email.split("@")[1]?.toLowerCase() ?? ""
   const hasFullDomain = emailDomain.includes(".")
-  const memberNeedsUcsbEmail =
-    data.role === "member" && hasFullDomain && emailDomain !== STUDENT_DOMAIN
-  const alumniRejectsUcsbEmail =
-    data.role === "alumni" && emailDomain === STUDENT_DOMAIN
+  const isStudentEmail = STUDENT_DOMAINS.has(emailDomain)
+  const memberNeedsStudentEmail =
+    data.role === "member" && hasFullDomain && !isStudentEmail
+  const alumniRejectsStudentEmail =
+    data.role === "alumni" && isStudentEmail
   const emailRoleMismatch =
-    currentStep === "credentials" && (memberNeedsUcsbEmail || alumniRejectsUcsbEmail)
+    currentStep === "credentials" && (memberNeedsStudentEmail || alumniRejectsStudentEmail)
 
   function update(patch: Partial<OnboardingData>) {
     setData((prev) => ({ ...prev, ...patch }))
@@ -399,19 +400,21 @@ export default function OnboardingPage() {
               <>
                 <DialogTitle>Use a personal email</DialogTitle>
                 <DialogDescription>
-                  UCSB emails expire after graduation. Sign up with a personal email
+                  School emails expire after graduation. Sign up with a personal email
                   so you keep access after your{" "}
-                  <span className="font-mono text-foreground">@ucsb.edu</span>{" "}
+                  <span className="font-mono text-foreground">@ucsb.edu</span> or{" "}
+                  <span className="font-mono text-foreground">@pipeline.sbcc.edu</span>{" "}
                   account is deactivated.
                 </DialogDescription>
               </>
             ) : (
               <>
-                <DialogTitle>UCSB email required</DialogTitle>
+                <DialogTitle>Student email required</DialogTitle>
                 <DialogDescription>
                   Current members must sign up with their{" "}
-                  <span className="font-mono text-foreground">@ucsb.edu</span> email
-                  so we can verify enrollment. You're using{" "}
+                  <span className="font-mono text-foreground">@ucsb.edu</span> or{" "}
+                  <span className="font-mono text-foreground">@pipeline.sbcc.edu</span>{" "}
+                  email so we can verify enrollment. You're using{" "}
                   <span className="font-mono text-foreground">@{emailDomain}</span>.
                 </DialogDescription>
               </>
@@ -423,7 +426,7 @@ export default function OnboardingPage() {
             innerClassName="bg-popover"
             onClick={() => setEmailRoleDialogOpen(false)}
           >
-            {data.role === "alumni" ? "Use a different email" : "Use my UCSB email"}
+            {data.role === "alumni" ? "Use a different email" : "Use my student email"}
           </OutlineButton>
         </DialogContent>
       </Dialog>
