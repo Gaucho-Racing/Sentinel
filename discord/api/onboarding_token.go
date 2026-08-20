@@ -69,10 +69,19 @@ var validInitialRoles = map[string]bool{
 	"guest":  true,
 }
 
-// isUCSBEmail reports whether the email's domain is ucsb.edu (case-insensitive).
-func isUCSBEmail(email string) bool {
+var studentEmailDomains = map[string]bool{
+	"ucsb.edu":          true,
+	"pipeline.sbcc.edu": true,
+}
+
+// isStudentEmail reports whether the email's domain is a recognized student
+// domain (ucsb.edu or pipeline.sbcc.edu), case-insensitive.
+func isStudentEmail(email string) bool {
 	parts := strings.SplitN(email, "@", 2)
-	return len(parts) == 2 && strings.EqualFold(parts[1], "ucsb.edu")
+	if len(parts) != 2 {
+		return false
+	}
+	return studentEmailDomains[strings.ToLower(parts[1])]
 }
 
 func ConsumeOnboardingToken(c *gin.Context) {
@@ -92,9 +101,9 @@ func ConsumeOnboardingToken(c *gin.Context) {
 
 	switch req.InitialRole {
 	case "member":
-		if !isUCSBEmail(req.Email) {
+		if !isStudentEmail(req.Email) {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "current members must sign up with their @ucsb.edu email",
+				"error": "current members must sign up with their @ucsb.edu or @pipeline.sbcc.edu email",
 			})
 			return
 		}
@@ -105,9 +114,9 @@ func ConsumeOnboardingToken(c *gin.Context) {
 			return
 		}
 	case "alumni":
-		if isUCSBEmail(req.Email) {
+		if isStudentEmail(req.Email) {
 			c.JSON(http.StatusBadRequest, gin.H{
-				"error": "alumni must sign up with a personal email since @ucsb.edu addresses expire after graduation",
+				"error": "alumni must sign up with a personal email since @ucsb.edu and @pipeline.sbcc.edu addresses expire after graduation",
 			})
 			return
 		}
