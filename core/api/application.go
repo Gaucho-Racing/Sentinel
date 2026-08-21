@@ -124,6 +124,7 @@ func CreateApplication(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	recordAudit(c, model.AuditActionApplicationCreated, "application", app.ID, model.JSONMap{"name": app.Name})
 	c.JSON(http.StatusOK, createdApplicationResponse{
 		Application: app,
 		Secret:      app.ClientSecret,
@@ -184,6 +185,7 @@ func GetApplicationSecret(c *gin.Context) {
 		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
 		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
 	))
+	recordAudit(c, model.AuditActionApplicationSecretRevealed, "application", app.ID, model.JSONMap{"name": app.Name})
 	c.JSON(http.StatusOK, gin.H{"client_secret": app.ClientSecret})
 }
 
@@ -203,6 +205,7 @@ func DeleteApplication(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	recordAudit(c, model.AuditActionApplicationDeleted, "application", id, model.JSONMap{"name": existing.Name})
 	c.JSON(http.StatusOK, gin.H{"message": "application deleted"})
 }
 
