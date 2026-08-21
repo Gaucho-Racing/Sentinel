@@ -334,6 +334,10 @@ func AddGroupMember(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	recordAudit(c, model.AuditActionGroupMemberAdded, "group", id, model.JSONMap{
+		"entity_id": req.EntityID,
+		"source":    source,
+	})
 	// The entity's group set just changed — re-evaluate any conditional
 	// bindings that depend on it. Conditional sync runs in the background
 	// via syncJob; failures here are logged, not surfaced to the caller.
@@ -352,6 +356,10 @@ func RemoveGroupMember(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	recordAudit(c, model.AuditActionGroupMemberRemoved, "group", id, model.JSONMap{
+		"entity_id": entityID,
+		"source":    source,
+	})
 	// Their group set just changed — re-evaluate conditional bindings.
 	service.ReconcileConditionalForEntity(entityID)
 	c.JSON(http.StatusOK, gin.H{"message": "member removed from group"})
@@ -585,6 +593,10 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	recordAudit(c, model.AuditActionJoinRequestApproved, "join_request", requestID, model.JSONMap{
+		"group_id":  request.GroupID,
+		"entity_id": request.EntityID,
+	})
 	c.JSON(http.StatusOK, request)
 }
 
@@ -616,6 +628,10 @@ func RejectGroupJoinRequest(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+	recordAudit(c, model.AuditActionJoinRequestRejected, "join_request", requestID, model.JSONMap{
+		"group_id":  request.GroupID,
+		"entity_id": request.EntityID,
+	})
 	c.JSON(http.StatusOK, request)
 }
 

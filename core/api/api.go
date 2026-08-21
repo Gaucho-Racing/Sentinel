@@ -128,6 +128,18 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/groups/:id/requests/:requestID/comments", CreateJoinRequestComment)
 	router.DELETE("/groups/:id/requests/:requestID/comments/:commentID", DeleteJoinRequestComment)
+
+	router.GET("/analytics/overview", AnalyticsOverview)
+	router.GET("/analytics/logins/timeseries", AnalyticsLoginTimeSeries)
+	router.GET("/analytics/logins/heatmap", AnalyticsLoginHeatmap)
+	router.GET("/analytics/applications/top", AnalyticsTopApplications)
+	router.GET("/analytics/users/growth", AnalyticsUserGrowth)
+	router.GET("/analytics/members/demographics", AnalyticsMemberDemographics)
+	router.GET("/analytics/auth-methods", AnalyticsAuthMethods)
+	router.GET("/analytics/groups/membership", AnalyticsGroupMembership)
+	router.GET("/analytics/groups/join-requests", AnalyticsJoinRequests)
+	router.GET("/analytics/audit", AnalyticsAuditEvents)
+	router.GET("/analytics/audit/summary", AnalyticsAuditSummary)
 }
 
 func AuthChecker() gin.HandlerFunc {
