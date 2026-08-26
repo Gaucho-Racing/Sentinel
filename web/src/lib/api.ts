@@ -76,3 +76,28 @@ api.interceptors.response.use(
     return api(original)
   },
 )
+
+// Guard against 2xx responses that aren't JSON. Every endpoint this client
+// talks to returns JSON, so an HTML body means the request never reached the
+// API: the gateway has no route for that path, so it fell through to the SPA
+// and nginx answered index.html with a 200. Without this, axios resolves those
+// as success and callers read fields off an HTML string — a missing gateway
+// route surfaces as a silently blank value instead of an error.
+api.interceptors.response.use((response) => {
+  const contentType = response.headers["content-type"]
+  const hasBody =
+    response.status !== 204 && response.data !== "" && response.data != null
+  if (hasBody && typeof contentType === "string" && !contentType.includes("json")) {
+    return Promise.reject(
+      new AxiosError(
+        `Expected JSON from ${response.config.url ?? "the API"} but got "${contentType}" ` +
+          `(HTTP ${response.status}). The API gateway is probably missing a route for this path.`,
+        AxiosError.ERR_BAD_RESPONSE,
+        response.config,
+        response.request,
+        response,
+      ),
+    )
+  }
+  return response
+})
