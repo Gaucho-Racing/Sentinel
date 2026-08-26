@@ -112,6 +112,14 @@ routes:
       strip_prefix: /api
     envelope: passthrough
 
+  - name: core-analytics
+    match:
+      path: /api/analytics/*
+    upstream: core
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
   - name: oauth
     match:
       path: /api/oauth/*

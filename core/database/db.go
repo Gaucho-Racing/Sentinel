@@ -51,6 +51,7 @@ func Init() {
 			&model.GroupOwner{},
 			&model.GroupConditionalBinding{},
 			&model.SigningKey{},
+			&model.AuditEvent{},
 		)
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
