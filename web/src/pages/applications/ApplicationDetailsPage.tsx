@@ -15,6 +15,7 @@ import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application, GroupWithLink } from "@/lib/applications"
 import { loadSession, type Entity } from "@/lib/auth"
+import { cn } from "@/lib/utils"
 
 import { ServiceAccountsCard } from "./ServiceAccountsCard"
 
@@ -236,9 +237,15 @@ export default function ApplicationDetailsPage() {
 
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="flex size-16 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-2xl font-semibold text-white">
+          <div
+            className={cn(
+              "flex size-16 items-center justify-center overflow-hidden rounded-xl",
+              !app.icon_url &&
+                "bg-gradient-to-br from-gr-pink to-gr-purple text-2xl font-semibold text-white",
+            )}
+          >
             {app.icon_url ? (
-              <img src={app.icon_url} alt={app.name} className="size-full object-cover" />
+              <img src={app.icon_url} alt={app.name} className="size-full object-contain" />
             ) : (
               initial(app.name)
             )}
