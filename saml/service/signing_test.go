@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"os"
+	"sync"
 	"testing"
 
 	"github.com/gaucho-racing/sentinel/saml/config"
@@ -123,15 +124,43 @@ func TestRotateSigningKey(t *testing.T) {
 		t.Fatalf("legacy generation: got %d, want 1", legacy.Generation)
 	}
 
-	rotated, err := rotateSigningKey()
-	if err != nil {
-		t.Fatalf("rotate signing key: %v", err)
+	const replicaCount = 4
+	start := make(chan struct{})
+	results := make(chan model.SigningKey, replicaCount)
+	errors := make(chan error, replicaCount)
+	var replicas sync.WaitGroup
+	for range replicaCount {
+		replicas.Add(1)
+		go func() {
+			defer replicas.Done()
+			<-start
+			rotated, err := rotateSigningKey()
+			if err != nil {
+				errors <- err
+				return
+			}
+			results <- rotated
+		}()
 	}
+	close(start)
+	replicas.Wait()
+	close(results)
+	close(errors)
+
+	for err := range errors {
+		t.Fatalf("rotate signing key concurrently: %v", err)
+	}
+	rotated := <-results
 	if rotated.ID == legacy.ID {
 		t.Fatal("rotation reused the legacy key")
 	}
 	if rotated.Generation != signingKeyGeneration {
 		t.Fatalf("generation: got %d, want %d", rotated.Generation, signingKeyGeneration)
+	}
+	for result := range results {
+		if result.ID != rotated.ID {
+			t.Fatalf("concurrent rotation created %s and %s", rotated.ID, result.ID)
+		}
 	}
 
 	var activeKeys []model.SigningKey

@@ -22,10 +22,12 @@ import (
 	"github.com/gaucho-racing/ulid-go"
 	dsig "github.com/russellhaering/goxmldsig"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
-const signingKeyGeneration uint = 2
+const (
+	signingKeyGeneration     uint  = 2
+	signingKeyRotationLockID int64 = 0x53414d4c5349474e
+)
 
 // idp is the configured SAML Identity Provider, built once at startup. It holds
 // the signing key + certificate and the providers that resolve service
@@ -82,8 +84,11 @@ func loadOrCreateSigningKey() (*rsa.PrivateKey, *x509.Certificate) {
 func rotateSigningKey() (model.SigningKey, error) {
 	var selected model.SigningKey
 	err := database.DB.Transaction(func(tx *gorm.DB) error {
-		err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("active = ?", true).
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", signingKeyRotationLockID).Error; err != nil {
+			return fmt.Errorf("lock signing key rotation: %w", err)
+		}
+
+		err := tx.Where("active = ?", true).
 			Order("generation DESC, created_at DESC").
 			First(&selected).Error
 		if err == nil && !signingKeyNeedsRotation(selected) {
