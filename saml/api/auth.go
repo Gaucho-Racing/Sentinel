@@ -72,6 +72,12 @@ func GetRequestTokenEntityID(c *gin.Context) string {
 	return id.(string)
 }
 
+func GetRequestToken(c *gin.Context) string {
+	token, _ := c.Get("Auth-Token")
+	value, _ := token.(string)
+	return value
+}
+
 func RequestTokenHasEntityID(c *gin.Context, entityID string) bool {
 	return GetRequestTokenEntityID(c) == entityID
 }

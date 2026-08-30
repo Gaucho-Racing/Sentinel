@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Plus, ShieldAlert, Trash2, X } from "lucide-react"
+import { ArrowLeft, Plus, ShieldAlert, SlidersHorizontal, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -32,7 +32,6 @@ import {
   redirectURIWildcardExamples,
   type Application,
   type GroupWithLink,
-  type SAMLConfig,
 } from "@/lib/applications"
 import type { Group } from "@/lib/groups"
 
@@ -363,76 +362,23 @@ function LinkedGroupsCard({
   )
 }
 
-function SamlConfigCard({
-  entityID,
-  acsURL,
-  metadataXML,
-  onChangeEntityID,
-  onChangeACSURL,
-  onChangeMetadataXML,
-}: {
-  entityID: string
-  acsURL: string
-  metadataXML: string
-  onChangeEntityID: (v: string) => void
-  onChangeACSURL: (v: string) => void
-  onChangeMetadataXML: (v: string) => void
-}) {
-  // The IdP metadata lives at the issuer root (no /api prefix) — admins hand
-  // this URL to the SP to establish trust.
-  const idpMetadataURL = `${import.meta.env.VITE_API_URL}/saml/metadata`
-
+function SamlSettingsCard({ applicationID }: { applicationID: string }) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>SAML single sign-on</CardTitle>
         <CardDescription>
-          Register this app as a SAML service provider. Leave the entity ID blank to disable
-          SAML. Give the SP your IdP metadata URL below, then enter the SP's entity ID and ACS
-          URL — or paste its metadata XML to have those derived automatically.
+          Configure the service provider, NameID, and assertion attributes on the dedicated
+          SAML settings page.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="space-y-2">
-          <Label>IdP metadata URL</Label>
-          <code className="block break-all rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 font-mono text-xs">
-            {idpMetadataURL}
-          </code>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="saml_entity_id">SP entity ID</Label>
-          <Input
-            id="saml_entity_id"
-            value={entityID}
-            onChange={(e) => onChangeEntityID(e.target.value)}
-            placeholder="https://app.gauchoracing.com/saml/metadata"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="saml_acs_url">Assertion Consumer Service (ACS) URL</Label>
-          <Input
-            id="saml_acs_url"
-            type="url"
-            value={acsURL}
-            onChange={(e) => onChangeACSURL(e.target.value)}
-            placeholder="https://app.gauchoracing.com/saml/acs"
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="saml_metadata_xml">SP metadata XML (optional)</Label>
-          <Textarea
-            id="saml_metadata_xml"
-            value={metadataXML}
-            onChange={(e) => onChangeMetadataXML(e.target.value)}
-            rows={4}
-            placeholder="<EntityDescriptor …>…</EntityDescriptor>"
-            className="font-mono text-xs"
-          />
-          <p className="text-xs text-muted-foreground">
-            When provided, the ACS URL and signing certificate are read from the metadata and
-            take precedence over the fields above.
-          </p>
-        </div>
+      <CardContent>
+        <Button asChild variant="outline">
+          <Link to={`/applications/${applicationID}/saml`}>
+            <SlidersHorizontal className="mr-1 size-3.5" />
+            Configure SAML
+          </Link>
+        </Button>
       </CardContent>
     </Card>
   )
@@ -470,25 +416,6 @@ export default function ApplicationEditPage() {
     staleTime: 5 * 60 * 1000,
   })
 
-  // SAML SP registration. 404 = no SAML config yet, which is the common case,
-  // so a not-found is a successful empty result rather than an error.
-  const samlQuery = useQuery({
-    queryKey: ["application", "id", id, "saml"],
-    queryFn: async () => {
-      try {
-        const res = await api.get<SAMLConfig>(`/applications/${id}/saml`)
-        return res.data
-      } catch (err) {
-        if ((err as { response?: { status?: number } })?.response?.status === 404) {
-          return null
-        }
-        throw err
-      }
-    },
-    enabled: !!id,
-    retry: false,
-  })
-
   // Basics form state.
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -504,14 +431,6 @@ export default function ApplicationEditPage() {
   // server response on first load; mutations only touch this map until Save.
   const [linkState, setLinkState] = useState<Map<string, boolean>>(new Map())
   const [linksInitialized, setLinksInitialized] = useState(false)
-
-  // Staged SAML config — applied on Save. samlExisted tracks whether the server
-  // already had a config so Save can DELETE it when the entity ID is cleared.
-  const [samlEntityID, setSamlEntityID] = useState("")
-  const [samlACSURL, setSamlACSURL] = useState("")
-  const [samlMetadataXML, setSamlMetadataXML] = useState("")
-  const [samlExisted, setSamlExisted] = useState(false)
-  const [samlInitialized, setSamlInitialized] = useState(false)
 
   // Dialog / in-flight state.
   const [submitting, setSubmitting] = useState(false)
@@ -536,17 +455,6 @@ export default function ApplicationEditPage() {
       setLinksInitialized(true)
     }
   }, [linksQuery.data, linksInitialized])
-
-  useEffect(() => {
-    if (!samlInitialized && (samlQuery.data !== undefined || samlQuery.isError)) {
-      const cfg = samlQuery.data ?? null
-      setSamlEntityID(cfg?.entity_id ?? "")
-      setSamlACSURL(cfg?.acs_url ?? "")
-      setSamlMetadataXML(cfg?.metadata_xml ?? "")
-      setSamlExisted(cfg !== null)
-      setSamlInitialized(true)
-    }
-  }, [samlQuery.data, samlQuery.isError, samlInitialized])
 
   // Render rows for the card: each link gets its current desired-required
   // state from linkState, name from groupsQuery (canonical source). Falls
@@ -639,19 +547,6 @@ export default function ApplicationEditPage() {
         }
       }
 
-      // SAML config: upsert when an entity ID is set, delete when it's been
-      // cleared on an app that previously had one.
-      const samlEntity = samlEntityID.trim()
-      if (samlEntity) {
-        await api.post(`/applications/${id}/saml`, {
-          entity_id: samlEntity,
-          acs_url: samlACSURL.trim(),
-          metadata_xml: samlMetadataXML.trim(),
-        })
-      } else if (samlExisted) {
-        await api.delete(`/applications/${id}/saml`)
-      }
-
       await api.put(`/applications/${id}`, {
         name,
         description,
@@ -660,7 +555,6 @@ export default function ApplicationEditPage() {
       })
       qc.invalidateQueries({ queryKey: ["application", "id", id] })
       qc.invalidateQueries({ queryKey: ["application", "id", id, "groups"] })
-      qc.invalidateQueries({ queryKey: ["application", "id", id, "saml"] })
       qc.invalidateQueries({ queryKey: ["applications"] })
       toast.success("Application updated")
       navigate(`/applications/${id}`)
@@ -692,7 +586,7 @@ export default function ApplicationEditPage() {
     }
   }
 
-  if (query.isLoading || !initialized || !linksInitialized || !samlInitialized) {
+  if (query.isLoading || !initialized || !linksInitialized) {
     return (
       <PageContainer>
         <Skeleton className="mb-4 h-4 w-24" />
@@ -771,14 +665,7 @@ export default function ApplicationEditPage() {
           onRemove={handleRemoveGroupLink}
           onToggleRequired={handleToggleGroupRequired}
         />
-        <SamlConfigCard
-          entityID={samlEntityID}
-          acsURL={samlACSURL}
-          metadataXML={samlMetadataXML}
-          onChangeEntityID={setSamlEntityID}
-          onChangeACSURL={setSamlACSURL}
-          onChangeMetadataXML={setSamlMetadataXML}
-        />
+        <SamlSettingsCard applicationID={id!} />
         <Card>
           <CardHeader>
             <CardTitle>Danger zone</CardTitle>

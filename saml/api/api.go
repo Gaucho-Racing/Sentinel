@@ -48,6 +48,10 @@ func InitializeRoutes(router *gin.Engine) {
 	// /saml/authorize). The SPA holds the first-party session and drives these.
 	router.GET("/saml/authorize", ValidateAuthorize)
 	router.POST("/saml/authorize", Authorize)
+	router.GET("/saml/applications/:id/config", GetApplicationConfiguration)
+	router.PUT("/saml/applications/:id/config", PutApplicationConfiguration)
+	router.DELETE("/saml/applications/:id/config", DeleteApplicationConfiguration)
+	router.POST("/saml/applications/:id/preview", PreviewApplicationAssertion)
 }
 
 // GetClientIP returns the originating client IP, preferring Cloudflare's

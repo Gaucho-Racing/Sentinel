@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"net/url"
 
@@ -28,8 +29,12 @@ func SSO(c *gin.Context) {
 		return
 	}
 
-	stash, err := service.GenerateSSORequest(req.Request.Issuer.Value, req.RequestBuffer, req.RelayState)
+	stash, err := service.GenerateSSORequest(req.Request.ID, req.Request.Issuer.Value, req.RequestBuffer, req.RelayState)
 	if err != nil {
+		if errors.Is(err, service.ErrAuthnRequestReplay) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid SAML request"})
+			return
+		}
 		logger.SugarLogger.Errorf("saml sso: failed to stash request: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "server_error"})
 		return

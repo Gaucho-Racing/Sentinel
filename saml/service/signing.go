@@ -20,6 +20,7 @@ import (
 	"github.com/gaucho-racing/sentinel/saml/model"
 	applogger "github.com/gaucho-racing/sentinel/saml/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
+	dsig "github.com/russellhaering/goxmldsig"
 	"gorm.io/gorm"
 )
 
@@ -50,6 +51,8 @@ func InitializeIDP() {
 		MetadataURL:             metadataURL,
 		SSOURL:                  ssoURL,
 		ServiceProviderProvider: &spProvider{},
+		AssertionMaker:          configuredAssertionMaker{},
+		SignatureMethod:         dsig.RSASHA256SignatureMethod,
 	}
 }
 

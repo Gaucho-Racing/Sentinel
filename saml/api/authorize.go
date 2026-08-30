@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/saml/model"
 	"github.com/gaucho-racing/sentinel/saml/pkg/logger"
 	"github.com/gaucho-racing/sentinel/saml/pkg/sentinel"
 	"github.com/gaucho-racing/sentinel/saml/service"
@@ -97,16 +98,14 @@ func Authorize(c *gin.Context) {
 	// response for an arbitrary user.
 	Require(c, RequestTokenHasEntityID(c, req.EntityID))
 
-	// Peek at the stash without consuming it: we only delete it once the
-	// assertion is successfully issued, so a transient failure leaves the
-	// handle valid for a retry instead of stranding the user.
-	stash, err := service.GetSSORequest(req.SSORequest)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	form, err := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID, GetClientIP(c), stash.CreatedAt)
+	var form service.ResponseForm
+	err := service.ConsumeSSORequest(req.SSORequest, func(stash model.SSORequest) error {
+		generated, generateErr := service.GenerateResponse([]byte(stash.RequestBuffer), stash.RelayState, req.EntityID, GetClientIP(c), stash.CreatedAt)
+		if generateErr == nil {
+			form = generated
+		}
+		return generateErr
+	})
 	if err != nil {
 		if errors.Is(err, service.ErrAccessDenied) {
 			writeGateError(c, err)
@@ -116,8 +115,6 @@ func Authorize(c *gin.Context) {
 		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
 		return
 	}
-
-	service.DeleteSSORequest(req.SSORequest)
 
 	sentinel.Post("/api/core/entity/logins", map[string]string{
 		"entity_id":  req.EntityID,

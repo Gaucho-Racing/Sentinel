@@ -17,7 +17,7 @@ var dbRetries = 0
 
 func Init() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", config.DatabaseHost, config.DatabaseUser, config.DatabasePassword, config.DatabaseName, config.DatabasePort)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
 	if err != nil {
 		if dbRetries < 5 {
 			dbRetries++
@@ -29,10 +29,13 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		db.AutoMigrate(
+		if err := db.AutoMigrate(
 			&model.SigningKey{},
 			&model.SSORequest{},
-		)
+			&model.ServiceProvider{},
+		); err != nil {
+			logger.SugarLogger.Fatalf("failed to migrate database: %v", err)
+		}
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}
