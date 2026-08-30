@@ -335,7 +335,10 @@ export default function SAMLSettingsPage() {
   const application = appQuery.data
   const awsProfile = configuration.profile === "AWS_IDENTITY_CENTER"
   const metadataProvided = configuration.metadata_xml.trim() !== ""
-  const idpMetadataURL = `${import.meta.env.VITE_API_URL}/saml/metadata`
+  const idpMetadataURL = new URL(
+    "/saml/metadata",
+    import.meta.env.VITE_API_URL || window.location.origin,
+  ).toString()
 
   return (
     <PageContainer>
