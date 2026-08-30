@@ -1,6 +1,7 @@
 import { ExternalLink } from "lucide-react"
 
 import type { Application } from "@/lib/applications"
+import { cn } from "@/lib/utils"
 
 function initial(name: string) {
   return name.slice(0, 1).toUpperCase()
@@ -39,9 +40,15 @@ export function LaunchAppCard({
       className="group flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-4 transition-colors hover:bg-muted/40"
     >
       <div className="flex items-start justify-between">
-        <div className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-gr-pink to-gr-purple text-base font-semibold text-white">
+        <div
+          className={cn(
+            "flex size-10 items-center justify-center overflow-hidden rounded-md",
+            !app.icon_url &&
+              "bg-gradient-to-br from-gr-pink to-gr-purple text-base font-semibold text-white",
+          )}
+        >
           {app.icon_url ? (
-            <img src={app.icon_url} alt={app.name} className="size-full object-cover" />
+            <img src={app.icon_url} alt={app.name} className="size-full object-contain" />
           ) : (
             initial(app.name)
           )}
