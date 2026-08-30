@@ -44,7 +44,7 @@ export function AppCard({
           )}
         >
           {app.icon_url ? (
-            <img src={app.icon_url} alt={app.name} className="size-full object-cover" />
+            <img src={app.icon_url} alt={app.name} className="size-full object-contain" />
           ) : (
             initial(app.name)
           )}
