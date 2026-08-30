@@ -10,6 +10,7 @@ import "time"
 // every SP — survives restarts.
 type SigningKey struct {
 	ID             string    `json:"id" gorm:"primaryKey"`
+	Generation     uint      `json:"generation" gorm:"not null;default:1;index"`
 	Algorithm      string    `json:"algorithm"`
 	PrivateKeyPEM  string    `json:"-"`
 	CertificatePEM string    `json:"certificate_pem"`
