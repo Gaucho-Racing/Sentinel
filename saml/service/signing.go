@@ -24,6 +24,11 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	signingKeyGeneration     uint  = 2
+	signingKeyRotationLockID int64 = 0x53414d4c5349474e
+)
+
 // idp is the configured SAML Identity Provider, built once at startup. It holds
 // the signing key + certificate and the providers that resolve service
 // providers and user sessions against core.
@@ -58,35 +63,93 @@ func InitializeIDP() {
 
 func loadOrCreateSigningKey() (*rsa.PrivateKey, *x509.Certificate) {
 	var stored model.SigningKey
-	err := database.DB.Where("active = ?", true).First(&stored).Error
-	if err == nil {
-		priv, perr := parsePrivateKeyPEM(stored.PrivateKeyPEM)
-		cert, cerr := parseCertificatePEM(stored.CertificatePEM)
-		if perr != nil || cerr != nil {
-			applogger.SugarLogger.Fatalf("Failed to parse stored saml signing key %s: priv=%v cert=%v", stored.ID, perr, cerr)
-		}
-		applogger.SugarLogger.Infof("Loaded saml signing key %s from db", stored.ID)
-		return priv, cert
+	err := database.DB.Where("active = ?", true).
+		Order("generation DESC, created_at DESC").
+		First(&stored).Error
+	if err == nil && !signingKeyNeedsRotation(stored) {
+		return parseStoredSigningKey(stored)
 	}
-	if !errors.Is(err, gorm.ErrRecordNotFound) {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		applogger.SugarLogger.Fatalf("Failed to load saml signing key: %v", err)
 	}
 
+	stored, err = rotateSigningKey()
+	if err != nil {
+		applogger.SugarLogger.Fatalf("Failed to rotate saml signing key: %v", err)
+	}
+	applogger.SugarLogger.Infof("Activated saml signing key %s generation %d", stored.ID, stored.Generation)
+	return parseStoredSigningKey(stored)
+}
+
+func rotateSigningKey() (model.SigningKey, error) {
+	var selected model.SigningKey
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(?)", signingKeyRotationLockID).Error; err != nil {
+			return fmt.Errorf("lock signing key rotation: %w", err)
+		}
+
+		err := tx.Where("active = ?", true).
+			Order("generation DESC, created_at DESC").
+			First(&selected).Error
+		if err == nil && !signingKeyNeedsRotation(selected) {
+			return nil
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return fmt.Errorf("lock active signing key: %w", err)
+		}
+
+		fresh, err := newSigningKey()
+		if err != nil {
+			return fmt.Errorf("generate signing key: %w", err)
+		}
+		if err := tx.Create(&fresh).Error; err != nil {
+			return fmt.Errorf("store signing key: %w", err)
+		}
+		if err := tx.Model(&model.SigningKey{}).
+			Where("active = ? AND id <> ?", true, fresh.ID).
+			Update("active", false).Error; err != nil {
+			return fmt.Errorf("deactivate previous signing key: %w", err)
+		}
+		selected = fresh
+		return nil
+	})
+	if err != nil {
+		return model.SigningKey{}, err
+	}
+	return selected, nil
+}
+
+func signingKeyNeedsRotation(key model.SigningKey) bool {
+	return key.Generation < signingKeyGeneration
+}
+
+func newSigningKey() (model.SigningKey, error) {
 	priv, cert, err := generateSelfSignedKeyPair()
 	if err != nil {
-		applogger.SugarLogger.Fatalf("Failed to generate saml signing key: %v", err)
+		return model.SigningKey{}, err
 	}
-	fresh := model.SigningKey{
+	return model.SigningKey{
 		ID:             ulid.Make().Prefixed("samlsig"),
+		Generation:     signingKeyGeneration,
 		Algorithm:      "RS256",
 		PrivateKeyPEM:  encodePrivateKeyPEM(priv),
 		CertificatePEM: encodeCertificatePEM(cert),
 		Active:         true,
+	}, nil
+}
+
+func parseStoredSigningKey(stored model.SigningKey) (*rsa.PrivateKey, *x509.Certificate) {
+	priv, privateKeyErr := parsePrivateKeyPEM(stored.PrivateKeyPEM)
+	cert, certificateErr := parseCertificatePEM(stored.CertificatePEM)
+	if privateKeyErr != nil || certificateErr != nil {
+		applogger.SugarLogger.Fatalf(
+			"Failed to parse stored saml signing key %s: priv=%v cert=%v",
+			stored.ID,
+			privateKeyErr,
+			certificateErr,
+		)
 	}
-	if err := database.DB.Create(&fresh).Error; err != nil {
-		applogger.SugarLogger.Fatalf("Failed to persist saml signing key: %v", err)
-	}
-	applogger.SugarLogger.Infof("Generated and persisted new saml signing key %s", fresh.ID)
+	applogger.SugarLogger.Infof("Loaded saml signing key %s generation %d from db", stored.ID, stored.Generation)
 	return priv, cert
 }
 

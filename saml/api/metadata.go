@@ -13,7 +13,10 @@ import (
 // Metadata serves the IdP's SAML metadata XML (entityID, SSO endpoint, signing
 // certificate) for SPs to consume when establishing trust.
 func Metadata(c *gin.Context) {
-	descriptor := service.IDP().Metadata()
+	writeMetadata(c, service.IDP().Metadata())
+}
+
+func writeMetadata(c *gin.Context, descriptor *saml.EntityDescriptor) {
 	role := &descriptor.IDPSSODescriptors[0]
 	role.NameIDFormats = []saml.NameIDFormat{
 		saml.EmailAddressNameIDFormat,
@@ -33,5 +36,7 @@ func Metadata(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not generate SAML metadata"})
 		return
 	}
+	payload = append([]byte(xml.Header), payload...)
+	c.Header("Content-Disposition", `attachment; filename="sentinel-idp-metadata.xml"`)
 	c.Data(http.StatusOK, "application/samlmetadata+xml", payload)
 }
