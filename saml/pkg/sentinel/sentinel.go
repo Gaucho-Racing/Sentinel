@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -144,11 +145,9 @@ func do(method, route string, body, result interface{}, headers []map[string]str
 		return &APIError{Method: method, Route: route, Err: err}
 	}
 	req := client.R()
-	// Attach the service's bearer when one is set — Bootstrap installs
-	// it at startup. The explicit `headers` param (used by Bootstrap
-	// itself for the X-Bootstrap-Secret header) is additive, applied
-	// after SetAuthToken.
-	if b := getBearer(); b != "" {
+	// Resty applies SetAuthToken after ordinary headers, so an explicit
+	// Authorization header must suppress the service bearer to reach core intact.
+	if b := getBearer(); b != "" && !hasAuthorizationHeader(headers) {
 		req = req.SetAuthToken(b)
 	}
 	if body != nil {
@@ -181,6 +180,18 @@ func do(method, route string, body, result interface{}, headers []map[string]str
 		return ae
 	}
 	return nil
+}
+
+func hasAuthorizationHeader(headers []map[string]string) bool {
+	if len(headers) == 0 {
+		return false
+	}
+	for key := range headers[0] {
+		if strings.EqualFold(key, "Authorization") {
+			return true
+		}
+	}
+	return false
 }
 
 func Get(route string, result interface{}, headers ...map[string]string) error {

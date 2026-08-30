@@ -10,6 +10,7 @@ import "time"
 // assertion. Short-lived and single-use, like an OAuth authorization code.
 type SSORequest struct {
 	ID            string    `json:"id" gorm:"primaryKey"`
+	RequestID     string    `json:"request_id" gorm:"uniqueIndex"`
 	SPEntityID    string    `json:"sp_entity_id"`
 	RequestBuffer string    `json:"request_buffer"` // raw AuthnRequest XML
 	RelayState    string    `json:"relay_state"`

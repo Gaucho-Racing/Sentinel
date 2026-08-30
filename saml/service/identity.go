@@ -3,17 +3,23 @@ package service
 import (
 	"errors"
 	"fmt"
+	"net/mail"
 	"strings"
 	"time"
 
 	"github.com/crewjam/saml"
 	"github.com/gaucho-racing/sentinel/saml/config"
+	"github.com/gaucho-racing/sentinel/saml/model"
 	"github.com/gaucho-racing/sentinel/saml/pkg/sentinel"
 )
 
 // ErrAccessDenied is returned by CheckAccessGate when an entity is not in any
 // of an application's required-flagged groups.
-var ErrAccessDenied = errors.New("access denied: user does not meet the required group membership for this application")
+var (
+	ErrAccessDenied = errors.New("access denied: user does not meet the required group membership for this application")
+	ErrNameIDEmpty  = errors.New("SAML NameID resolved to an empty value")
+	ErrNameIDEmail  = errors.New("SAML NameID is not a valid email address")
+)
 
 type entity struct {
 	ID        string `json:"id"`
@@ -46,78 +52,209 @@ type applicationGroupLink struct {
 	Required bool   `json:"required"`
 }
 
-// BuildSession assembles the SAML session for an entity, scoped to the SP's
-// owning application. The NameID is the entity's email (the stable identifier
-// SPs key on); identity attributes and the per-client filtered group set are
-// attached for the assertion. Groups are exposed both as session.Groups (which
-// the default assertion maker emits as eduPersonAffiliation) and as a plain
-// `groups` attribute, since most relying parties key on the latter.
-func BuildSession(entityID string, clientID string) (*saml.Session, error) {
-	e, err := fetchEntity(entityID)
-	if err != nil {
-		return nil, err
-	}
-	groups, err := FilteredGroups(entityID, clientID)
-	if err != nil {
-		return nil, err
-	}
-
-	email := e.EmailAuth.Email
-	if email == "" && e.User != nil {
-		email = e.User.Email
-	}
-
-	session := &saml.Session{
-		ID: entityID,
-		// UTC so the assertion's AuthnInstant/SessionNotOnOrAfter serialize in
-		// the Zulu form SAML requires (see GenerateResponse).
-		CreateTime:   time.Now().UTC(),
-		ExpireTime:   time.Now().Add(time.Hour).UTC(),
-		Index:        entityID,
-		NameID:       email,
-		NameIDFormat: string(saml.EmailAddressNameIDFormat),
-		SubjectID:    entityID,
-		UserEmail:    email,
-	}
-	if e.User != nil {
-		session.UserName = e.User.Username
-		session.UserGivenName = e.User.FirstName
-		session.UserSurname = e.User.LastName
-		session.UserCommonName = strings.TrimSpace(e.User.FirstName + " " + e.User.LastName)
-	}
-	if email == "" {
-		// Fall back to the entity ID as NameID so the assertion always carries a
-		// subject, even for service accounts without an email auth record.
-		session.NameID = entityID
-		session.NameIDFormat = string(saml.UnspecifiedNameIDFormat)
-	}
-
-	names := make([]string, 0, len(groups))
-	ids := make([]string, 0, len(groups))
-	for _, g := range groups {
-		session.Groups = append(session.Groups, g.Name)
-		names = append(names, g.Name)
-		ids = append(ids, g.ID)
-	}
-	session.CustomAttributes = []saml.Attribute{
-		stringAttribute("groups", names),
-		stringAttribute("group_ids", ids),
-		stringAttribute("entity_id", []string{entityID}),
-	}
-	return session, nil
+type AssertionPreview struct {
+	NameID       string              `json:"name_id"`
+	NameIDFormat string              `json:"name_id_format"`
+	Attributes   []ResolvedAttribute `json:"attributes"`
 }
 
-func stringAttribute(name string, values []string) saml.Attribute {
-	vals := make([]saml.AttributeValue, 0, len(values))
-	for _, v := range values {
+type ResolvedAttribute struct {
+	Name         string   `json:"name"`
+	FriendlyName string   `json:"friendly_name"`
+	NameFormat   string   `json:"name_format"`
+	Values       []string `json:"values"`
+}
+
+type assertionIdentity struct {
+	EntityID    string
+	Email       string
+	Username    string
+	FirstName   string
+	LastName    string
+	DisplayName string
+	GroupNames  []string
+	GroupIDs    []string
+}
+
+func DefaultAttributeMappings() model.AttributeMappings {
+	return model.AttributeMappings{
+		{Name: "urn:oid:0.9.2342.19200300.100.1.1", FriendlyName: "uid", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceUsername, OmitIfEmpty: true},
+		{Name: "urn:oid:0.9.2342.19200300.100.1.3", FriendlyName: "mail", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceEmail, OmitIfEmpty: true},
+		{Name: "urn:oid:1.3.6.1.4.1.5923.1.1.1.6", FriendlyName: "eduPersonPrincipalName", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceEmail, OmitIfEmpty: true},
+		{Name: "urn:oid:2.5.4.4", FriendlyName: "sn", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceLastName, OmitIfEmpty: true},
+		{Name: "urn:oid:2.5.4.42", FriendlyName: "givenName", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceFirstName, OmitIfEmpty: true},
+		{Name: "urn:oid:2.5.4.3", FriendlyName: "cn", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceDisplayName, OmitIfEmpty: true},
+		{Name: "urn:oid:1.3.6.1.4.1.5923.1.1.1.1", FriendlyName: "eduPersonAffiliation", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceGroupNames},
+		{Name: "groups", FriendlyName: "groups", NameFormat: model.AttributeNameFormatBasic, Source: model.AttributeSourceGroupNames},
+		{Name: "group_ids", FriendlyName: "group_ids", NameFormat: model.AttributeNameFormatBasic, Source: model.AttributeSourceGroupIDs},
+		{Name: "entity_id", FriendlyName: "entity_id", NameFormat: model.AttributeNameFormatBasic, Source: model.AttributeSourceEntityID},
+		{Name: "urn:oasis:names:tc:SAML:attribute:subject-id", NameFormat: model.AttributeNameFormatURI, Source: model.AttributeSourceEntityID},
+	}
+}
+
+func PreviewAssertion(applicationID, entityID string) (AssertionPreview, error) {
+	sp, err := GetServiceProvider(applicationID)
+	if err != nil {
+		return AssertionPreview{}, err
+	}
+	resolved, err := resolveSP(sp)
+	if err != nil {
+		return AssertionPreview{}, err
+	}
+	return resolveAssertion(entityID, resolved)
+}
+
+func PreviewAssertionConfiguration(sp model.ServiceProvider, entityID string) (AssertionPreview, error) {
+	sp, err := NormalizeServiceProvider(sp)
+	if err != nil {
+		return AssertionPreview{}, err
+	}
+	resolved, err := resolveSP(sp)
+	if err != nil {
+		return AssertionPreview{}, err
+	}
+	return resolveAssertion(entityID, resolved)
+}
+
+func BuildSession(entityID string, sp ResolvedSP) (*saml.Session, error) {
+	preview, err := resolveAssertion(entityID, sp)
+	if err != nil {
+		return nil, err
+	}
+	attributes := make([]saml.Attribute, 0, len(preview.Attributes))
+	for _, attribute := range preview.Attributes {
+		attributes = append(attributes, stringAttribute(attribute))
+	}
+	now := time.Now().UTC()
+	return &saml.Session{
+		ID:               entityID,
+		CreateTime:       now,
+		ExpireTime:       now.Add(time.Hour),
+		Index:            entityID,
+		NameID:           preview.NameID,
+		NameIDFormat:     preview.NameIDFormat,
+		CustomAttributes: attributes,
+	}, nil
+}
+
+func resolveAssertion(entityID string, sp ResolvedSP) (AssertionPreview, error) {
+	e, err := fetchEntity(entityID)
+	if err != nil {
+		return AssertionPreview{}, err
+	}
+	groups, err := FilteredGroups(entityID, sp.ClientID)
+	if err != nil {
+		return AssertionPreview{}, err
+	}
+	identity := assertionIdentity{EntityID: e.ID, Email: e.EmailAuth.Email}
+	if e.User != nil {
+		identity.Username = e.User.Username
+		identity.FirstName = e.User.FirstName
+		identity.LastName = e.User.LastName
+		identity.DisplayName = strings.TrimSpace(e.User.FirstName + " " + e.User.LastName)
+		if identity.Email == "" {
+			identity.Email = e.User.Email
+		}
+	}
+	for _, group := range groups {
+		identity.GroupNames = append(identity.GroupNames, group.Name)
+		identity.GroupIDs = append(identity.GroupIDs, group.ID)
+	}
+	return resolveAssertionIdentity(identity, sp)
+}
+
+func resolveAssertionIdentity(identity assertionIdentity, sp ResolvedSP) (AssertionPreview, error) {
+	nameID := nameIDValue(sp.NameIDSource, identity)
+	if nameID == "" {
+		return AssertionPreview{}, ErrNameIDEmpty
+	}
+	if sp.Profile == model.ProfileAWSIdentityCenter {
+		address, err := mail.ParseAddress(nameID)
+		if err != nil || address.Address != nameID {
+			return AssertionPreview{}, ErrNameIDEmail
+		}
+	}
+	preview := AssertionPreview{
+		NameID:       nameID,
+		NameIDFormat: sp.NameIDFormat,
+		Attributes:   make([]ResolvedAttribute, 0, len(sp.AttributeMappings)),
+	}
+	for _, mapping := range sp.AttributeMappings {
+		values := attributeValues(mapping, identity)
+		if mapping.OmitIfEmpty && allValuesEmpty(values) {
+			continue
+		}
+		preview.Attributes = append(preview.Attributes, ResolvedAttribute{
+			Name:         mapping.Name,
+			FriendlyName: mapping.FriendlyName,
+			NameFormat:   mapping.NameFormat,
+			Values:       values,
+		})
+	}
+	return preview, nil
+}
+
+func stringAttribute(attribute ResolvedAttribute) saml.Attribute {
+	vals := make([]saml.AttributeValue, 0, len(attribute.Values))
+	for _, v := range attribute.Values {
 		vals = append(vals, saml.AttributeValue{Type: "xs:string", Value: v})
 	}
 	return saml.Attribute{
-		FriendlyName: name,
-		Name:         name,
-		NameFormat:   "urn:oasis:names:tc:SAML:2.0:attrname-format:basic",
+		FriendlyName: attribute.FriendlyName,
+		Name:         attribute.Name,
+		NameFormat:   attribute.NameFormat,
 		Values:       vals,
 	}
+}
+
+func nameIDValue(source model.NameIDSource, identity assertionIdentity) string {
+	switch source {
+	case model.NameIDSourceEmail:
+		return identity.Email
+	case model.NameIDSourceUsername:
+		return identity.Username
+	case model.NameIDSourceEntityID:
+		return identity.EntityID
+	default:
+		return ""
+	}
+}
+
+func attributeValues(mapping model.AttributeMapping, identity assertionIdentity) []string {
+	switch mapping.Source {
+	case model.AttributeSourceEmail:
+		return []string{identity.Email}
+	case model.AttributeSourceUsername:
+		return []string{identity.Username}
+	case model.AttributeSourceFirstName:
+		return []string{identity.FirstName}
+	case model.AttributeSourceLastName:
+		return []string{identity.LastName}
+	case model.AttributeSourceDisplayName:
+		return []string{identity.DisplayName}
+	case model.AttributeSourceEntityID:
+		return []string{identity.EntityID}
+	case model.AttributeSourceGroupNames:
+		return append([]string(nil), identity.GroupNames...)
+	case model.AttributeSourceGroupIDs:
+		return append([]string(nil), identity.GroupIDs...)
+	case model.AttributeSourceConstant:
+		return []string{mapping.Constant}
+	default:
+		return nil
+	}
+}
+
+func allValuesEmpty(values []string) bool {
+	if len(values) == 0 {
+		return true
+	}
+	for _, value := range values {
+		if value != "" {
+			return false
+		}
+	}
+	return true
 }
 
 // CheckAccessGate returns ErrAccessDenied when the entity is in none of the

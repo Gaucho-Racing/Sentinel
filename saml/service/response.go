@@ -59,7 +59,7 @@ func GenerateResponse(requestBuffer []byte, relayState string, entityID string, 
 		return ResponseForm{}, err
 	}
 
-	session, err := BuildSession(entityID, sp.ClientID)
+	session, err := BuildSession(entityID, sp)
 	if err != nil {
 		return ResponseForm{}, err
 	}

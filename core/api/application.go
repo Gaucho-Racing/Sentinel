@@ -42,6 +42,21 @@ func GetApplicationByID(c *gin.Context) {
 	c.JSON(http.StatusOK, app)
 }
 
+func CheckApplicationWriteAccess(c *gin.Context) {
+	id := c.Param("id")
+	app, err := service.GetApplicationByID(id)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "application not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, ApplicationWriteAuthorized(c, app))
+	c.Status(http.StatusNoContent)
+}
+
 func GetApplicationByClientID(c *gin.Context) {
 	// Resolving an app from a client_id leaks the owner_id and
 	// internal metadata. The oauth/saml services use it to look up
