@@ -141,7 +141,7 @@ func CreateOrUpdateGroup(c *gin.Context) {
 	// on any group, including the Admins group.
 	if existing.ID == "" {
 		Require(c, Any(
-			RequestTokenHasScope(c, "sentinel:all"),
+			RequestTokenHasInternalAccess(c),
 			RequestTokenHasScope(c, "groups:write"),
 		))
 	} else if !requireGroupOwnerOrAdmin(c, existing.ID) {
@@ -262,7 +262,7 @@ type addGroupMemberRequest struct {
 }
 
 func requestAddedBy(c *gin.Context, claimed string) string {
-	if RequestTokenHasScope(c, "sentinel:all") && claimed != "" {
+	if RequestTokenHasInternalAccess(c) && claimed != "" {
 		return claimed
 	}
 	return GetRequestTokenEntityID(c)
@@ -303,13 +303,13 @@ func AddGroupMember(c *gin.Context) {
 	if source == "" {
 		source = string(model.GroupMemberSourceDirect)
 	}
-	if source != string(model.GroupMemberSourceDirect) && !RequestTokenHasScope(c, "sentinel:all") {
+	if source != string(model.GroupMemberSourceDirect) && !RequestTokenHasInternalAccess(c) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only internal services can add synced group members"})
 		return
 	}
 	if source == string(model.GroupMemberSourceDirect) &&
 		!containsSource(group.AllowedSources, model.GroupMemberSourceDirect) &&
-		!RequestTokenHasScope(c, "sentinel:all") {
+		!RequestTokenHasInternalAccess(c) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "direct memberships are not enabled for this group"})
 		return
 	}
@@ -460,8 +460,9 @@ func GetGroupJoinRequests(c *gin.Context) {
 }
 
 func GetGroupJoinRequest(c *gin.Context) {
+	id := c.Param("id")
 	requestID := c.Param("requestID")
-	request, err := service.GetJoinRequestByID(requestID)
+	request, err := service.GetJoinRequestForGroup(id, requestID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
@@ -473,7 +474,7 @@ func GetGroupJoinRequest(c *gin.Context) {
 	// Applicants can read their own request; otherwise the group's
 	// owner roster, admins, and internal services can see it.
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasInternalAccess(c),
 		RequestTokenHasEntityID(c, request.EntityID),
 		RequestUserIsGroupOwner(c, request.GroupID),
 		RequestUserIsAdmin(c),
@@ -499,7 +500,7 @@ func CreateGroupJoinRequest(c *gin.Context) {
 	// that is admin or internal; group owners can't backdoor people in
 	// via this endpoint (they'd use AddGroupMember directly).
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasInternalAccess(c),
 		RequestTokenHasEntityID(c, req.EntityID),
 		RequestUserIsAdmin(c),
 	))
@@ -527,7 +528,6 @@ func CreateGroupJoinRequest(c *gin.Context) {
 }
 
 type reviewJoinRequestRequest struct {
-	ReviewedBy string `json:"reviewed_by" binding:"required"`
 	// Optional approval-time overrides. When provided, they replace the
 	// expiration that the requester originally chose — used by reviewers
 	// who want to grant a shorter/longer membership than what was asked
@@ -539,25 +539,24 @@ type reviewJoinRequestRequest struct {
 
 func ApproveGroupJoinRequest(c *gin.Context) {
 	id := c.Param("id")
-	if !requireGroupOwnerOrAdmin(c, id) {
-		return
-	}
 	requestID := c.Param("requestID")
-	var req reviewJoinRequestRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	request, err := service.GetJoinRequestByID(requestID)
+	request, err := service.GetJoinRequestForGroup(id, requestID)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
+	var req reviewJoinRequestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 	hasExpiration := request.HasExpiration
 	expiresAt := request.ExpiresAt
 	if req.HasExpiration != nil {
@@ -571,25 +570,23 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 		return
 	}
 
-	request.Status = string(model.GroupJoinRequestStatusApproved)
-	request.ReviewedBy = req.ReviewedBy
-	request.ReviewedAt = time.Now()
-	request.HasExpiration = hasExpiration
-	request.ExpiresAt = expiresAt
-	request, err = service.UpdateJoinRequest(request)
+	request, err = service.ReviewJoinRequest(
+		id,
+		requestID,
+		GetRequestTokenEntityID(c),
+		model.GroupJoinRequestStatusApproved,
+		hasExpiration,
+		expiresAt,
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	_, err = service.CreateGroupMember(model.GroupMember{
-		GroupID:       request.GroupID,
-		EntityID:      request.EntityID,
-		Source:        string(model.GroupMemberSourceDirect),
-		AddedBy:       req.ReviewedBy,
-		HasExpiration: hasExpiration,
-		ExpiresAt:     expiresAt,
-	})
-	if err != nil {
+		if errors.Is(err, service.ErrJoinRequestNotPending) || errors.Is(err, service.ErrGroupMemberExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -597,34 +594,47 @@ func ApproveGroupJoinRequest(c *gin.Context) {
 		"group_id":  request.GroupID,
 		"entity_id": request.EntityID,
 	})
+	service.ReconcileConditionalForEntity(request.EntityID)
 	c.JSON(http.StatusOK, request)
 }
 
 func RejectGroupJoinRequest(c *gin.Context) {
 	id := c.Param("id")
-	if !requireGroupOwnerOrAdmin(c, id) {
-		return
-	}
 	requestID := c.Param("requestID")
-	var req reviewJoinRequestRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-	request, err := service.GetJoinRequestByID(requestID)
+	request, err := service.GetJoinRequestForGroup(id, requestID)
 	if err != nil {
-		if err == gorm.ErrRecordNotFound {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	request.Status = string(model.GroupJoinRequestStatusRejected)
-	request.ReviewedBy = req.ReviewedBy
-	request.ReviewedAt = time.Now()
-	request, err = service.UpdateJoinRequest(request)
+	if !requireGroupOwnerOrAdmin(c, id) {
+		return
+	}
+	var req reviewJoinRequestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	request, err = service.ReviewJoinRequest(
+		id,
+		requestID,
+		GetRequestTokenEntityID(c),
+		model.GroupJoinRequestStatusRejected,
+		request.HasExpiration,
+		request.ExpiresAt,
+	)
 	if err != nil {
+		if errors.Is(err, service.ErrJoinRequestNotPending) {
+			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+			return
+		}
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -637,11 +647,30 @@ func RejectGroupJoinRequest(c *gin.Context) {
 
 func DeleteGroupJoinRequest(c *gin.Context) {
 	id := c.Param("id")
-	if !requireGroupOwnerOrAdmin(c, id) {
+	requestID := c.Param("requestID")
+	request, err := service.GetJoinRequestForGroup(id, requestID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	requestID := c.Param("requestID")
-	if err := service.DeleteJoinRequest(requestID); err != nil {
+	if !Any(
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasEntityID(c, request.EntityID) && request.Status == string(model.GroupJoinRequestStatusPending),
+		RequestUserIsGroupOwner(c, id),
+		RequestUserIsAdmin(c),
+	) {
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "you are not authorized to delete this join request"})
+		return
+	}
+	if err := service.DeleteJoinRequestForGroup(id, requestID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -651,8 +680,7 @@ func DeleteGroupJoinRequest(c *gin.Context) {
 // Join Request Comments
 
 type createJoinRequestCommentRequest struct {
-	EntityID string `json:"entity_id" binding:"required"`
-	Comment  string `json:"comment" binding:"required"`
+	Comment string `json:"comment" binding:"required"`
 }
 
 func CreateJoinRequestComment(c *gin.Context) {
@@ -663,20 +691,25 @@ func CreateJoinRequestComment(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Comments are scoped to the join-request thread: the requester
-	// (commenting on their own request) and the group's owners /
-	// admins (reviewing the request) are the legitimate posters.
-	// Bearer must match the comment's claimed entity_id; the owner/
-	// admin path bypasses the self check.
+	request, err := service.GetJoinRequestForGroup(id, requestID)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	actorID := GetRequestTokenEntityID(c)
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, req.EntityID),
+		RequestTokenHasInternalAccess(c),
+		actorID == request.EntityID,
 		RequestUserIsGroupOwner(c, id),
 		RequestUserIsAdmin(c),
 	))
 	comment, err := service.CreateJoinRequestComment(model.GroupJoinRequestComment{
 		RequestID: requestID,
-		EntityID:  req.EntityID,
+		EntityID:  actorID,
 		Comment:   req.Comment,
 	})
 	if err != nil {
@@ -688,11 +721,17 @@ func CreateJoinRequestComment(c *gin.Context) {
 
 func DeleteJoinRequestComment(c *gin.Context) {
 	id := c.Param("id")
+	requestID := c.Param("requestID")
 	commentID := c.Param("commentID")
-	// Look up the comment first so we can authorize against its
-	// claimed author (the entity who posted it can delete their own
-	// comment; otherwise owner/admin/internal).
-	comment, err := service.GetJoinRequestComment(commentID)
+	if _, err := service.GetJoinRequestForGroup(id, requestID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "join request not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	comment, err := service.GetJoinRequestCommentForRequest(requestID, commentID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
@@ -702,12 +741,16 @@ func DeleteJoinRequestComment(c *gin.Context) {
 		return
 	}
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasInternalAccess(c),
 		RequestTokenHasEntityID(c, comment.EntityID),
 		RequestUserIsGroupOwner(c, id),
 		RequestUserIsAdmin(c),
 	))
-	if err := service.DeleteJoinRequestComment(commentID); err != nil {
+	if err := service.DeleteJoinRequestCommentForRequest(requestID, commentID); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "comment not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

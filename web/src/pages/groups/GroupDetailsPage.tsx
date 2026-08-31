@@ -492,7 +492,6 @@ export default function GroupDetailsPage() {
       const reason = joinReason.trim()
       if (reason) {
         await api.post(`/groups/${id}/requests/${res.data.id}/comments`, {
-          entity_id: myEntityID,
           comment: reason,
         })
       }
@@ -1199,7 +1198,6 @@ export default function GroupDetailsPage() {
         groupID={id ?? ""}
         request={reviewTarget?.request ?? null}
         action={reviewTarget?.action ?? "approve"}
-        reviewerEntityID={myEntityID}
       />
 
       {addPersonOpen && (
