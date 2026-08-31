@@ -47,6 +47,9 @@ type validateAuthorizeResponse struct {
 // ValidateAuthorize validates the OAuth authorize request parameters
 // and returns application info for the frontend consent screen.
 func ValidateAuthorize(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, entityID != "")
+
 	clientID := c.Query("client_id")
 	if clientID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "client_id is required"})
@@ -101,36 +104,27 @@ func ValidateAuthorize(c *gin.Context) {
 		return
 	}
 
-	// Enforce the access gate here (not only at the authorize/token steps) so a
-	// user who doesn't qualify gets a clear error page up front, instead of a
-	// consent screen followed by a redirect back to the client with
-	// access_denied. entity_id is supplied by the SPA from the active session.
-	entityID := c.Query("entity_id")
-	if entityID != "" {
-		if err := service.CheckAccessGate(entityID, clientID); err != nil {
-			if errors.Is(err, service.ErrAccessDenied) {
-				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": app.Name, "app_icon_url": app.IconURL})
-				return
-			}
-			logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)
-			c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+	if err := service.CheckAccessGate(entityID, clientID); err != nil {
+		if errors.Is(err, service.ErrAccessDenied) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": app.Name, "app_icon_url": app.IconURL})
 			return
 		}
+		logger.SugarLogger.Errorf("access gate evaluation failed: %v", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
+		return
 	}
 
 	// Default to a consent prompt. If the user already authorized this exact
 	// client+scope set within the last 24h, skip the screen and auto-approve.
 	prompt := "consent"
-	if entityID != "" {
-		q := url.Values{}
-		q.Set("client_id", clientID)
-		q.Set("scope", scope)
-		q.Set("after", time.Now().Add(-24*time.Hour).Format(time.RFC3339))
-		q.Set("limit", "1")
-		var logins []map[string]interface{}
-		if err := sentinel.Get(fmt.Sprintf("/api/core/entity/%s/logins?%s", entityID, q.Encode()), &logins); err == nil && len(logins) > 0 {
-			prompt = "none"
-		}
+	q := url.Values{}
+	q.Set("client_id", clientID)
+	q.Set("scope", scope)
+	q.Set("after", time.Now().Add(-24*time.Hour).Format(time.RFC3339))
+	q.Set("limit", "1")
+	var logins []map[string]interface{}
+	if err := sentinel.Get(fmt.Sprintf("/api/core/entity/%s/logins?%s", entityID, q.Encode()), &logins); err == nil && len(logins) > 0 {
+		prompt = "none"
 	}
 
 	c.JSON(http.StatusOK, validateAuthorizeResponse{
@@ -143,13 +137,11 @@ func ValidateAuthorize(c *gin.Context) {
 	})
 }
 
-type authorizeRequest struct {
-	EntityID string `json:"entity_id" binding:"required"`
-}
-
 // Authorize generates an authorization code after the user approves consent.
-// The frontend sends the entity_id of the authenticated user.
 func Authorize(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, entityID != "")
+
 	clientID := c.Query("client_id")
 	redirectURI := c.Query("redirect_uri")
 	scope := c.Query("scope")
@@ -159,23 +151,17 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	var req authorizeRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
 	if !service.ValidateScopes(scope) || service.ScopesContain(scope, "sentinel:all") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scope"})
 		return
 	}
 
-	if err := service.CheckAccessGate(req.EntityID, clientID); err != nil {
+	if err := service.CheckAccessGate(entityID, clientID); err != nil {
 		writeGateError(c, err)
 		return
 	}
 
-	authCode, err := service.GenerateAuthorizationCode(req.EntityID, clientID, scope, redirectURI, c.Query("nonce"))
+	authCode, err := service.GenerateAuthorizationCode(entityID, clientID, scope, redirectURI, c.Query("nonce"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
