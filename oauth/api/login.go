@@ -71,18 +71,19 @@ func RefreshSession(c *gin.Context) {
 		return
 	}
 
-	entityID, _ := claims["sub"].(string)
-	scope, _ := claims["scope"].(string)
-	if entityID == "" || !service.ScopesContain(scope, "refresh_token") {
+	refreshClaims, err := parseRefreshTokenClaims(claims, config.SentinelClientID)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "not a refresh token"})
 		return
 	}
 
-	if tokenID, ok := claims["jti"].(string); ok {
-		sentinel.Delete("/api/core/token/"+tokenID, nil)
+	if err := sentinel.Delete("/api/core/token/"+refreshClaims.TokenID, nil); err != nil {
+		logger.SugarLogger.Errorf("Failed to revoke first-party refresh token %s: %v", refreshClaims.TokenID, err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to rotate refresh token"})
+		return
 	}
 
-	resp, err := mintFirstPartySession(c, entityID)
+	resp, err := mintFirstPartySession(c, refreshClaims.EntityID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
