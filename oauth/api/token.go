@@ -191,32 +191,31 @@ func handleRefreshTokenExchange(c *gin.Context) {
 		return
 	}
 
-	entityID, _ := claims["sub"].(string)
-	scope, _ := claims["scope"].(string)
-
-	if !service.ScopesContain(scope, "refresh_token") {
+	refreshClaims, err := parseRefreshTokenClaims(claims, clientID)
+	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "provided token is not a refresh token"})
 		return
 	}
 
-	// Revoke the old refresh token
-	if tokenID, ok := claims["jti"].(string); ok {
-		sentinel.Delete("/api/core/token/"+tokenID, nil)
+	if err := sentinel.Delete("/api/core/token/"+refreshClaims.TokenID, nil); err != nil {
+		logger.SugarLogger.Errorf("Failed to revoke OAuth refresh token %s: %v", refreshClaims.TokenID, err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to rotate refresh token"})
+		return
 	}
 
 	// Re-check the gate on refresh — group membership may have changed
 	// since the original grant. If the user no longer qualifies, the
 	// refresh fails and they have to re-authenticate (which will hit the
 	// gate again at the authorize step).
-	if err := service.CheckAccessGate(entityID, clientID); err != nil {
+	if err := service.CheckAccessGate(refreshClaims.EntityID, clientID); err != nil {
 		writeGateError(c, err)
 		return
 	}
 
 	// Strip refresh_token from scope for the access token
-	accessScope := service.RemoveScope(scope, "refresh_token")
+	accessScope := service.RemoveScope(refreshClaims.Scope, "refresh_token")
 
-	newClaims, err := service.BuildTokenClaims(entityID, clientID, accessScope)
+	newClaims, err := service.BuildTokenClaims(refreshClaims.EntityID, clientID, accessScope)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to build token claims: %v", err)
 		c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
@@ -224,14 +223,14 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	}
 
 	// Generate new access token
-	accessToken, accessTokenID, err := generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, newClaims)
+	accessToken, accessTokenID, err := generateToken(refreshClaims.EntityID, clientID, accessScope, config.AccessTokenTTL, newClaims)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to generate access token"})
 		return
 	}
 
 	// Generate new refresh token (keep refresh_token in scope)
-	newRefreshToken, newRefreshTokenID, err := generateToken(entityID, clientID, scope, config.RefreshTokenTTL, newClaims)
+	newRefreshToken, newRefreshTokenID, err := generateToken(refreshClaims.EntityID, clientID, refreshClaims.Scope, config.RefreshTokenTTL, newClaims)
 	if err != nil {
 		logger.SugarLogger.Errorf("Failed to generate refresh token: %v", err)
 		newRefreshToken = ""
@@ -239,7 +238,7 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	}
 
 	sentinel.Post("/api/core/entity/logins", map[string]string{
-		"entity_id":        entityID,
+		"entity_id":        refreshClaims.EntityID,
 		"client_id":        clientID,
 		"scope":            accessScope,
 		"access_token_id":  accessTokenID,
@@ -253,13 +252,13 @@ func handleRefreshTokenExchange(c *gin.Context) {
 	// carried forward.
 	var idToken string
 	if service.ScopesContain(accessScope, "openid") {
-		idClaims, idErr := service.BuildIDTokenClaims(entityID, clientID, accessScope, "", accessToken, time.Now().Unix())
+		idClaims, idErr := service.BuildIDTokenClaims(refreshClaims.EntityID, clientID, accessScope, "", accessToken, time.Now().Unix())
 		if idErr != nil {
 			logger.SugarLogger.Errorf("Failed to build id token claims: %v", idErr)
 			c.JSON(http.StatusBadGateway, gin.H{"error": "server_error"})
 			return
 		}
-		idToken, _, err = generateToken(entityID, clientID, accessScope, config.AccessTokenTTL, idClaims)
+		idToken, _, err = generateToken(refreshClaims.EntityID, clientID, accessScope, config.AccessTokenTTL, idClaims)
 		if err != nil {
 			logger.SugarLogger.Errorf("Failed to generate id token: %v", err)
 			idToken = ""
