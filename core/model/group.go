@@ -88,12 +88,12 @@ type GroupJoinRequest struct {
 	ID            string                    `json:"id" gorm:"primaryKey"`
 	GroupID       string                    `json:"group_id"`
 	EntityID      string                    `json:"entity_id"`
-	Status        string                    `json:"status"`
+	Status        string                    `json:"status" gorm:"index;index:idx_group_join_request_status_created,priority:1"`
 	ReviewedBy    string                    `json:"reviewed_by"`
 	ReviewedAt    time.Time                 `json:"reviewed_at"`
 	HasExpiration bool                      `json:"has_expiration"`
 	ExpiresAt     time.Time                 `json:"expires_at"`
-	CreatedAt     time.Time                 `json:"created_at" gorm:"autoCreateTime"`
+	CreatedAt     time.Time                 `json:"created_at" gorm:"autoCreateTime;index:idx_group_join_request_status_created,priority:2"`
 	Comments      []GroupJoinRequestComment `json:"comments" gorm:"-"`
 }
 
@@ -112,4 +112,3 @@ type GroupJoinRequestComment struct {
 func (GroupJoinRequestComment) TableName() string {
 	return "group_join_request_comment"
 }
-

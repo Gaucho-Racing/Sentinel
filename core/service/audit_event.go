@@ -65,7 +65,7 @@ func GetAuditEvents(filter AuditEventsFilter) ([]model.AuditEvent, error) {
 	limit := 100
 	if filter.Limit != "" {
 		if n, err := strconv.Atoi(filter.Limit); err == nil && n > 0 {
-			limit = n
+			limit = boundedAnalyticsValue(n, 100, MaxAuditEventLimit)
 		}
 	}
 	query = query.Limit(limit)
@@ -78,9 +78,7 @@ func GetAuditEvents(filter AuditEventsFilter) ([]model.AuditEvent, error) {
 // GetAuditActionSummary returns the count of audit events per action over the
 // trailing window, most frequent first. Powers the audit breakdown chart.
 func GetAuditActionSummary(days int) ([]CategoryCount, error) {
-	if days <= 0 {
-		days = 30
-	}
+	days = boundedAnalyticsValue(days, 30, MaxAnalyticsDays)
 	start := time.Now().AddDate(0, 0, -days)
 	out := []CategoryCount{}
 	sql := `
