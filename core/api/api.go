@@ -33,9 +33,9 @@ func InitializeRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 		AllowCredentials: true,
 	}))
-	r.Use(AuthChecker())
-	r.Use(UnauthorizedPanicHandler())
 	r.Use(AnalyticsMetrics())
+	r.Use(UnauthorizedPanicHandler())
+	r.Use(AuthChecker())
 	return r
 }
 
