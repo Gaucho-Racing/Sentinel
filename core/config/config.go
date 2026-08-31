@@ -7,7 +7,7 @@ import (
 )
 
 const Name = "sentinel-core"
-const Version = "5.10.5"
+const Version = "5.10.6"
 
 func FormattedNameWithVersion() string {
 	return Name + ":v" + Version
