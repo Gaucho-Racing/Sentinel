@@ -31,13 +31,38 @@ func TestValidateSCIMEndpoint(t *testing.T) {
 }
 
 func TestValidateProvisioningSnapshot(t *testing.T) {
-	errorsFound := validateProvisioningSnapshot(ProvisioningSnapshot{Users: []ProvisioningUser{
-		{EntityID: "valid", Email: "valid@example.com", FirstName: "Valid", LastName: "User"},
-		{EntityID: "missing", Email: "invalid", FirstName: "", LastName: ""},
-		{EntityID: "duplicate", Email: "VALID@example.com", FirstName: "Duplicate", LastName: "User"},
-	}})
-	if len(errorsFound) != 4 {
+	snapshot, skippedUsers := prepareProvisioningSnapshot(ProvisioningSnapshot{
+		Users: []ProvisioningUser{
+			{EntityID: "valid", Email: "valid@example.com", FirstName: "Valid", LastName: "User"},
+			{EntityID: "missing", Email: "invalid", Username: "owen", FirstName: "", LastName: ""},
+			{EntityID: "duplicate", Email: "VALID@example.com", FirstName: "Duplicate", LastName: "User"},
+		},
+		Groups: []ProvisioningGroup{{ID: "group", Name: "AWS Admins", Members: []string{"valid", "missing"}}},
+	})
+	if len(skippedUsers) != 1 || skippedUsers[0].EntityID != "missing" || skippedUsers[0].Username != "owen" {
+		t.Fatalf("skipped users = %#v", skippedUsers)
+	}
+	if len(skippedUsers[0].Groups) != 1 || skippedUsers[0].Groups[0] != "AWS Admins" {
+		t.Fatalf("skipped user groups = %#v", skippedUsers[0].Groups)
+	}
+	if len(snapshot.Users) != 2 {
+		t.Fatalf("users = %#v", snapshot.Users)
+	}
+	if len(snapshot.Groups[0].Members) != 1 || snapshot.Groups[0].Members[0] != "valid" {
+		t.Fatalf("members = %#v", snapshot.Groups[0].Members)
+	}
+	errorsFound := validateProvisioningSnapshot(snapshot)
+	if len(errorsFound) != 1 {
 		t.Fatalf("errors = %#v", errorsFound)
+	}
+}
+
+func TestPrepareProvisioningSnapshotRejectsDisplayNameEmail(t *testing.T) {
+	snapshot, skippedUsers := prepareProvisioningSnapshot(ProvisioningSnapshot{Users: []ProvisioningUser{
+		{EntityID: "display-name", Email: "Owen <owen@example.com>", FirstName: "Owen", LastName: "User"},
+	}})
+	if len(snapshot.Users) != 0 || len(skippedUsers) != 1 {
+		t.Fatalf("snapshot = %#v, skipped users = %#v", snapshot, skippedUsers)
 	}
 }
 

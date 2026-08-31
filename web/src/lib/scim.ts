@@ -24,6 +24,12 @@ export type SCIMSyncResult = {
   groups_updated: number
   memberships_added: number
   memberships_removed: number
+  skipped_users: {
+    entity_id: string
+    username: string
+    groups: string[]
+    reason: string
+  }[]
   validation_errors: string[]
   completed_at: string
 }

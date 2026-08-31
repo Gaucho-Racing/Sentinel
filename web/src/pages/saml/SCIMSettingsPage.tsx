@@ -65,6 +65,21 @@ function ResultSummary({ result }: { result: SCIMSyncResult }) {
           Users: {result.users_created} created, {result.users_updated} updated, {result.users_deactivated} deactivated. Groups: {result.groups_created} created, {result.groups_updated} updated.
         </p>
       )}
+      {result.skipped_users.length > 0 && (
+        <div className="space-y-1 text-sm text-amber-400">
+          <p className="font-medium">
+            {result.skipped_users.length} {result.skipped_users.length === 1 ? "user was" : "users were"} skipped and excluded from AWS provisioning.
+          </p>
+          <ul className="list-disc space-y-1 pl-5">
+            {result.skipped_users.map((user) => (
+              <li key={user.entity_id}>
+                {user.username || user.entity_id}: {user.reason}
+                {user.groups.length > 0 ? ` (${user.groups.join(", ")})` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       {result.validation_errors.length > 0 && (
         <ul className="space-y-1 text-sm text-destructive">
           {result.validation_errors.map((error) => <li key={error}>{error}</li>)}
@@ -184,7 +199,10 @@ export default function SCIMSettingsPage() {
     try {
       const preview = (await api.post<SCIMSyncResult>(`/saml/applications/${id}/scim/preview`)).data
       setResult(preview)
-      if (preview.validation_errors.length === 0) toast.success("Provisioning scope is valid")
+      if (preview.validation_errors.length === 0) {
+        if (preview.skipped_users.length > 0) toast.warning("Provisioning scope is valid with skipped users")
+        else toast.success("Provisioning scope is valid")
+      }
     } catch (error) {
       toast.error(apiError(error, "Couldn't validate the provisioning scope."))
     } finally {
@@ -199,7 +217,8 @@ export default function SCIMSettingsPage() {
       const syncResult = (await api.post<SCIMSyncResult>(`/saml/applications/${id}/scim/sync`)).data
       setResult(syncResult)
       await queryClient.invalidateQueries({ queryKey: ["application", "id", id, "scim"] })
-      toast.success("AWS provisioning synchronized")
+      if (syncResult.skipped_users.length > 0) toast.warning("AWS provisioning synchronized with skipped users")
+      else toast.success("AWS provisioning synchronized")
     } catch (error) {
       const response = (error as { response?: { data?: { result?: SCIMSyncResult } } }).response?.data
       if (response?.result) setResult(response.result)

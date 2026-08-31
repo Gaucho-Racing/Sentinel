@@ -12,6 +12,7 @@ import (
 
 	"github.com/gaucho-racing/sentinel/saml/database"
 	"github.com/gaucho-racing/sentinel/saml/model"
+	"github.com/gaucho-racing/sentinel/saml/pkg/logger"
 	"github.com/gaucho-racing/sentinel/saml/pkg/sentinel"
 	"gorm.io/gorm"
 )
@@ -53,19 +54,27 @@ type ProvisioningSnapshot struct {
 	Groups []ProvisioningGroup `json:"groups"`
 }
 
+type SCIMSkippedUser struct {
+	EntityID string   `json:"entity_id"`
+	Username string   `json:"username"`
+	Groups   []string `json:"groups"`
+	Reason   string   `json:"reason"`
+}
+
 type SCIMSyncResult struct {
-	DryRun             bool      `json:"dry_run"`
-	DesiredUsers       int       `json:"desired_users"`
-	DesiredGroups      int       `json:"desired_groups"`
-	UsersCreated       int       `json:"users_created"`
-	UsersUpdated       int       `json:"users_updated"`
-	UsersDeactivated   int       `json:"users_deactivated"`
-	GroupsCreated      int       `json:"groups_created"`
-	GroupsUpdated      int       `json:"groups_updated"`
-	MembershipsAdded   int       `json:"memberships_added"`
-	MembershipsRemoved int       `json:"memberships_removed"`
-	ValidationErrors   []string  `json:"validation_errors"`
-	CompletedAt        time.Time `json:"completed_at"`
+	DryRun             bool              `json:"dry_run"`
+	DesiredUsers       int               `json:"desired_users"`
+	DesiredGroups      int               `json:"desired_groups"`
+	UsersCreated       int               `json:"users_created"`
+	UsersUpdated       int               `json:"users_updated"`
+	UsersDeactivated   int               `json:"users_deactivated"`
+	GroupsCreated      int               `json:"groups_created"`
+	GroupsUpdated      int               `json:"groups_updated"`
+	MembershipsAdded   int               `json:"memberships_added"`
+	MembershipsRemoved int               `json:"memberships_removed"`
+	SkippedUsers       []SCIMSkippedUser `json:"skipped_users"`
+	ValidationErrors   []string          `json:"validation_errors"`
+	CompletedAt        time.Time         `json:"completed_at"`
 }
 
 func GetSCIMConfiguration(applicationID string) (model.SCIMConfiguration, error) {
@@ -162,10 +171,12 @@ func PreviewSCIMSync(applicationID string) (SCIMSyncResult, error) {
 	if err != nil {
 		return SCIMSyncResult{}, err
 	}
+	snapshot, skippedUsers := prepareProvisioningSnapshot(snapshot)
 	return SCIMSyncResult{
 		DryRun:           true,
 		DesiredUsers:     len(snapshot.Users),
 		DesiredGroups:    len(snapshot.Groups),
+		SkippedUsers:     skippedUsers,
 		ValidationErrors: validateProvisioningSnapshot(snapshot),
 		CompletedAt:      time.Now().UTC(),
 	}, nil
@@ -190,9 +201,11 @@ func SynchronizeSCIM(ctx context.Context, applicationID string) (SCIMSyncResult,
 	if err != nil {
 		return SCIMSyncResult{}, err
 	}
+	snapshot, skippedUsers := prepareProvisioningSnapshot(snapshot)
 	result := SCIMSyncResult{
 		DesiredUsers:     len(snapshot.Users),
 		DesiredGroups:    len(snapshot.Groups),
+		SkippedUsers:     skippedUsers,
 		ValidationErrors: validateProvisioningSnapshot(snapshot),
 	}
 	if len(result.ValidationErrors) > 0 {
@@ -205,6 +218,16 @@ func SynchronizeSCIM(ctx context.Context, applicationID string) (SCIMSyncResult,
 			Where("application_id = ?", applicationID).
 			Updates(map[string]any{"last_sync_status": model.SCIMSyncStatusRunning, "last_sync_error": ""}).Error; err != nil {
 			return result, err
+		}
+		for _, skipped := range result.SkippedUsers {
+			logger.SugarLogger.Warnw(
+				"SCIM synchronization skipped user",
+				"application_id", applicationID,
+				"entity_id", skipped.EntityID,
+				"username", skipped.Username,
+				"groups", skipped.Groups,
+				"reason", skipped.Reason,
+			)
 		}
 
 		result, syncErr := reconcileSCIM(ctx, configuration, snapshot, result)
@@ -426,6 +449,56 @@ func validateProvisioningSnapshot(snapshot ProvisioningSnapshot) []string {
 	}
 	sort.Strings(errorsFound)
 	return errorsFound
+}
+
+func prepareProvisioningSnapshot(snapshot ProvisioningSnapshot) (ProvisioningSnapshot, []SCIMSkippedUser) {
+	groupsByMember := make(map[string][]string)
+	for _, group := range snapshot.Groups {
+		for _, memberID := range group.Members {
+			groupsByMember[memberID] = append(groupsByMember[memberID], group.Name)
+		}
+	}
+
+	skippedIDs := make(map[string]bool)
+	skippedUsers := make([]SCIMSkippedUser, 0)
+	validUsers := make([]ProvisioningUser, 0, len(snapshot.Users))
+	for _, user := range snapshot.Users {
+		if isValidProvisioningEmail(user.Email) {
+			validUsers = append(validUsers, user)
+			continue
+		}
+		groups := groupsByMember[user.EntityID]
+		sort.Strings(groups)
+		skippedIDs[user.EntityID] = true
+		skippedUsers = append(skippedUsers, SCIMSkippedUser{
+			EntityID: user.EntityID,
+			Username: user.Username,
+			Groups:   groups,
+			Reason:   "malformed email address",
+		})
+	}
+
+	groups := make([]ProvisioningGroup, 0, len(snapshot.Groups))
+	for _, group := range snapshot.Groups {
+		members := make([]string, 0, len(group.Members))
+		for _, memberID := range group.Members {
+			if !skippedIDs[memberID] {
+				members = append(members, memberID)
+			}
+		}
+		group.Members = members
+		groups = append(groups, group)
+	}
+	sort.Slice(skippedUsers, func(i, j int) bool {
+		return skippedUsers[i].EntityID < skippedUsers[j].EntityID
+	})
+	return ProvisioningSnapshot{Users: validUsers, Groups: groups}, skippedUsers
+}
+
+func isValidProvisioningEmail(value string) bool {
+	email := strings.ToLower(strings.TrimSpace(value))
+	parsed, err := mail.ParseAddress(email)
+	return err == nil && parsed.Address == email
 }
 
 func loadProvisioningSnapshot(applicationID string) (ProvisioningSnapshot, error) {
