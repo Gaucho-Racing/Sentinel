@@ -1,11 +1,37 @@
 package service
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
+	"gorm.io/gorm"
 )
+
+const (
+	MaxAnalyticsDays   = 3660
+	MaxAnalyticsMonths = 120
+	MaxAnalyticsLimit  = 100
+	MaxAuditEventLimit = 500
+)
+
+func boundedAnalyticsValue(value int, fallback int, maximum int) int {
+	if value <= 0 {
+		return fallback
+	}
+	if value > maximum {
+		return maximum
+	}
+	return value
+}
+
+func countMetric(name string, query *gorm.DB, destination *int64) error {
+	if err := query.Count(destination).Error; err != nil {
+		return fmt.Errorf("count %s: %w", name, err)
+	}
+	return nil
+}
 
 // CategoryCount is a generic label/value pair used by the breakdown charts
 // (grad year, major, auth method, audit action, etc.).
@@ -36,20 +62,29 @@ func GetAnalyticsOverview() (AnalyticsOverview, error) {
 	now := time.Now()
 	db := database.DB
 
-	db.Model(&model.User{}).Count(&o.TotalUsers)
-	db.Model(&model.Entity{}).Where("type = ?", model.EntityTypeServiceAccount).Count(&o.TotalServiceAccounts)
-	db.Model(&model.Application{}).Count(&o.TotalApplications)
-	db.Model(&model.Group{}).Count(&o.TotalGroups)
-	db.Model(&model.User{}).Where("created_at > ?", now.AddDate(0, 0, -30)).Count(&o.NewUsers30d)
-
-	db.Model(&model.EntityLogin{}).Where("created_at > ?", now.Add(-24*time.Hour)).Count(&o.Logins24h)
-	db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -7)).Count(&o.Logins7d)
-	db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -30)).Count(&o.Logins30d)
-	db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -7)).Distinct("entity_id").Count(&o.ActiveUsers7d)
-	db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -30)).Distinct("entity_id").Count(&o.ActiveUsers30d)
-
-	db.Model(&model.GroupJoinRequest{}).Where("status = ?", model.GroupJoinRequestStatusPending).Count(&o.PendingJoinRequests)
-	db.Model(&model.AuditEvent{}).Where("created_at > ?", now.AddDate(0, 0, -7)).Count(&o.AuditEvents7d)
+	metrics := []struct {
+		name        string
+		query       *gorm.DB
+		destination *int64
+	}{
+		{name: "users", query: db.Model(&model.User{}), destination: &o.TotalUsers},
+		{name: "service accounts", query: db.Model(&model.Entity{}).Where("type = ?", model.EntityTypeServiceAccount), destination: &o.TotalServiceAccounts},
+		{name: "applications", query: db.Model(&model.Application{}), destination: &o.TotalApplications},
+		{name: "groups", query: db.Model(&model.Group{}), destination: &o.TotalGroups},
+		{name: "new users", query: db.Model(&model.User{}).Where("created_at > ?", now.AddDate(0, 0, -30)), destination: &o.NewUsers30d},
+		{name: "24 hour logins", query: db.Model(&model.EntityLogin{}).Where("created_at > ?", now.Add(-24*time.Hour)), destination: &o.Logins24h},
+		{name: "7 day logins", query: db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -7)), destination: &o.Logins7d},
+		{name: "30 day logins", query: db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -30)), destination: &o.Logins30d},
+		{name: "7 day active users", query: db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -7)).Distinct("entity_id"), destination: &o.ActiveUsers7d},
+		{name: "30 day active users", query: db.Model(&model.EntityLogin{}).Where("created_at > ?", now.AddDate(0, 0, -30)).Distinct("entity_id"), destination: &o.ActiveUsers30d},
+		{name: "pending join requests", query: db.Model(&model.GroupJoinRequest{}).Where("status = ?", model.GroupJoinRequestStatusPending), destination: &o.PendingJoinRequests},
+		{name: "7 day audit events", query: db.Model(&model.AuditEvent{}).Where("created_at > ?", now.AddDate(0, 0, -7)), destination: &o.AuditEvents7d},
+	}
+	for _, metric := range metrics {
+		if err := countMetric(metric.name, metric.query, metric.destination); err != nil {
+			return AnalyticsOverview{}, err
+		}
+	}
 
 	return o, nil
 }
@@ -65,9 +100,7 @@ type LoginPoint struct {
 // the trailing `days` window, gap-filled so every calendar day is present
 // (charts render a continuous axis without client-side interpolation).
 func GetLoginTimeSeries(days int) ([]LoginPoint, error) {
-	if days <= 0 {
-		days = 30
-	}
+	days = boundedAnalyticsValue(days, 30, MaxAnalyticsDays)
 	now := time.Now().UTC()
 	startDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -(days - 1))
 
@@ -115,9 +148,7 @@ type HeatmapCell struct {
 }
 
 func GetLoginHeatmap(days int) ([]HeatmapCell, error) {
-	if days <= 0 {
-		days = 90
-	}
+	days = boundedAnalyticsValue(days, 90, MaxAnalyticsDays)
 	start := time.Now().AddDate(0, 0, -days)
 	cells := []HeatmapCell{}
 	sql := `
@@ -146,12 +177,8 @@ type TopApplication struct {
 }
 
 func GetTopApplications(days int, limit int) ([]TopApplication, error) {
-	if days <= 0 {
-		days = 30
-	}
-	if limit <= 0 {
-		limit = 10
-	}
+	days = boundedAnalyticsValue(days, 30, MaxAnalyticsDays)
+	limit = boundedAnalyticsValue(limit, 10, MaxAnalyticsLimit)
 	start := time.Now().AddDate(0, 0, -days)
 	apps := []TopApplication{}
 	sql := `
@@ -182,16 +209,16 @@ type UserGrowthPoint struct {
 }
 
 func GetUserGrowth(months int) ([]UserGrowthPoint, error) {
-	if months <= 0 {
-		months = 12
-	}
+	months = boundedAnalyticsValue(months, 12, MaxAnalyticsMonths)
 	now := time.Now().UTC()
 	startMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC).AddDate(0, -(months - 1), 0)
 
 	// Members created before the window form the cumulative baseline so the
 	// running total reflects the whole roster, not just the visible range.
 	var baseline int64
-	database.DB.Model(&model.User{}).Where("created_at < ?", startMonth).Count(&baseline)
+	if err := countMetric("users before growth window", database.DB.Model(&model.User{}).Where("created_at < ?", startMonth), &baseline); err != nil {
+		return []UserGrowthPoint{}, err
+	}
 
 	type row struct {
 		Month    string
@@ -233,9 +260,7 @@ type MemberDemographics struct {
 }
 
 func GetMemberDemographics(majorLimit int) (MemberDemographics, error) {
-	if majorLimit <= 0 {
-		majorLimit = 10
-	}
+	majorLimit = boundedAnalyticsValue(majorLimit, 10, MaxAnalyticsLimit)
 	var d MemberDemographics
 
 	d.ByGradYear = []CategoryCount{}
@@ -289,11 +314,22 @@ type AuthMethodBreakdown struct {
 func GetAuthMethodBreakdown() (AuthMethodBreakdown, error) {
 	var b AuthMethodBreakdown
 	db := database.DB
-	db.Model(&model.EntityEmail{}).Distinct("entity_id").Count(&b.Email)
-	db.Model(&model.EntityPhone{}).Distinct("entity_id").Count(&b.Phone)
-	db.Model(&model.EntityExternalAuth{}).Where("provider = ?", model.ExternalAuthProviderDiscord).Distinct("entity_id").Count(&b.Discord)
-	db.Model(&model.EntityExternalAuth{}).Where("provider = ?", model.ExternalAuthProviderGoogle).Distinct("entity_id").Count(&b.Google)
-	db.Model(&model.EntityExternalAuth{}).Where("provider = ?", model.ExternalAuthProviderGitHub).Distinct("entity_id").Count(&b.GitHub)
+	metrics := []struct {
+		name        string
+		query       *gorm.DB
+		destination *int64
+	}{
+		{name: "email authentication methods", query: db.Model(&model.EntityEmail{}).Distinct("entity_id"), destination: &b.Email},
+		{name: "phone authentication methods", query: db.Model(&model.EntityPhone{}).Distinct("entity_id"), destination: &b.Phone},
+		{name: "Discord authentication methods", query: db.Model(&model.EntityExternalAuth{}).Where("provider = ?", model.ExternalAuthProviderDiscord).Distinct("entity_id"), destination: &b.Discord},
+		{name: "Google authentication methods", query: db.Model(&model.EntityExternalAuth{}).Where("provider = ?", model.ExternalAuthProviderGoogle).Distinct("entity_id"), destination: &b.Google},
+		{name: "GitHub authentication methods", query: db.Model(&model.EntityExternalAuth{}).Where("provider = ?", model.ExternalAuthProviderGitHub).Distinct("entity_id"), destination: &b.GitHub},
+	}
+	for _, metric := range metrics {
+		if err := countMetric(metric.name, metric.query, metric.destination); err != nil {
+			return AuthMethodBreakdown{}, err
+		}
+	}
 	return b, nil
 }
 
@@ -339,15 +375,24 @@ type JoinRequestFunnel struct {
 }
 
 func GetJoinRequestFunnel(days int) (JoinRequestFunnel, error) {
-	if days <= 0 {
-		days = 90
-	}
+	days = boundedAnalyticsValue(days, 90, MaxAnalyticsDays)
 	start := time.Now().AddDate(0, 0, -days)
 	var f JoinRequestFunnel
 	db := database.DB
-	db.Model(&model.GroupJoinRequest{}).Where("status = ?", model.GroupJoinRequestStatusPending).Count(&f.Pending)
-	db.Model(&model.GroupJoinRequest{}).Where("status = ? AND created_at >= ?", model.GroupJoinRequestStatusApproved, start).Count(&f.Approved)
-	db.Model(&model.GroupJoinRequest{}).Where("status = ? AND created_at >= ?", model.GroupJoinRequestStatusRejected, start).Count(&f.Rejected)
+	metrics := []struct {
+		name        string
+		query       *gorm.DB
+		destination *int64
+	}{
+		{name: "pending join requests", query: db.Model(&model.GroupJoinRequest{}).Where("status = ?", model.GroupJoinRequestStatusPending), destination: &f.Pending},
+		{name: "approved join requests", query: db.Model(&model.GroupJoinRequest{}).Where("status = ? AND created_at >= ?", model.GroupJoinRequestStatusApproved, start), destination: &f.Approved},
+		{name: "rejected join requests", query: db.Model(&model.GroupJoinRequest{}).Where("status = ? AND created_at >= ?", model.GroupJoinRequestStatusRejected, start), destination: &f.Rejected},
+	}
+	for _, metric := range metrics {
+		if err := countMetric(metric.name, metric.query, metric.destination); err != nil {
+			return JoinRequestFunnel{}, err
+		}
+	}
 
 	var median float64
 	sql := `
