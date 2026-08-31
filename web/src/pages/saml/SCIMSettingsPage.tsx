@@ -18,10 +18,11 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import type { Application, GroupWithLink } from "@/lib/applications"
-import type { SCIMConfiguration, SCIMSyncResult } from "@/lib/scim"
+import type { SCIMConfiguration, SCIMSyncInterval, SCIMSyncResult, SCIMSyncRun } from "@/lib/scim"
 import type { SAMLConfiguration } from "@/lib/saml"
 
 function apiError(error: unknown, fallback: string) {
@@ -34,9 +35,56 @@ function statusBadge(configuration: SCIMConfiguration | null | undefined) {
   if (configuration.token_expires_at && new Date(configuration.token_expires_at) <= new Date()) {
     return <Badge variant="destructive">Token expired</Badge>
   }
+  if (configuration.last_sync_status === "QUEUED") return <Badge variant="outline">Sync queued</Badge>
+  if (configuration.last_sync_status === "RUNNING") return <Badge variant="outline">Syncing</Badge>
   if (configuration.last_sync_status === "FAILED") return <Badge variant="destructive">Sync failed</Badge>
   if (configuration.last_sync_status === "SUCCEEDED") return <Badge>Healthy</Badge>
   return <Badge>Enabled</Badge>
+}
+
+const syncIntervals: { value: SCIMSyncInterval; label: string }[] = [
+  { value: "5m", label: "Every 5 minutes" },
+  { value: "15m", label: "Every 15 minutes" },
+  { value: "30m", label: "Every 30 minutes" },
+  { value: "1h", label: "Every hour" },
+  { value: "6h", label: "Every 6 hours" },
+  { value: "24h", label: "Daily" },
+]
+
+function runStatusBadge(run: SCIMSyncRun) {
+  if (run.status === "FAILED") return <Badge variant="destructive">Failed</Badge>
+  if (run.status === "SUCCEEDED") return <Badge>Succeeded</Badge>
+  if (run.status === "RUNNING") return <Badge variant="outline">Running</Badge>
+  return <Badge variant="outline">Queued</Badge>
+}
+
+function RunHistoryItem({ run }: { run: SCIMSyncRun }) {
+  const changes = run.result.users_created + run.result.users_updated + run.result.users_deactivated
+    + run.result.groups_created + run.result.groups_updated + run.result.memberships_added + run.result.memberships_removed
+  return (
+    <div className="space-y-2 rounded-lg border border-border/60 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {runStatusBadge(run)}
+          <span className="text-sm font-medium">{run.trigger === "MANUAL" ? "Manual" : "Scheduled"} sync</span>
+        </div>
+        <span className="text-xs text-muted-foreground">{new Date(run.requested_at).toLocaleString()}</span>
+      </div>
+      {run.status === "RUNNING" && <p className="text-xs text-muted-foreground">Reconciliation is running in the background.</p>}
+      {run.status === "QUEUED" && <p className="text-xs text-muted-foreground">Waiting for a worker.</p>}
+      {run.status === "SUCCEEDED" && (
+        <p className="text-xs text-muted-foreground">
+          {run.result.desired_users} users and {run.result.desired_groups} groups reconciled · {changes} changes · {run.result.skipped_users.length} skipped
+        </p>
+      )}
+      {run.error && <p className="text-sm text-destructive">{run.error}</p>}
+      {run.result.skipped_users.length > 0 && (
+        <p className="text-xs text-amber-400">
+          Skipped: {run.result.skipped_users.map((user) => user.username || user.entity_id).join(", ")}
+        </p>
+      )}
+    </div>
+  )
 }
 
 function ResultSummary({ result }: { result: SCIMSyncResult }) {
@@ -98,6 +146,7 @@ export default function SCIMSettingsPage() {
     accessToken: string
     tokenExpiresAt: string
     enabled: boolean
+    syncInterval: SCIMSyncInterval
   } | null>(null)
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
@@ -137,11 +186,18 @@ export default function SCIMSettingsPage() {
     },
     enabled: !!id,
     retry: false,
+    refetchInterval: 30000,
   })
   const groupsQuery = useQuery({
     queryKey: ["application", "id", id, "groups"],
     queryFn: async () => (await api.get<GroupWithLink[]>(`/applications/${id}/groups`)).data,
     enabled: !!id,
+  })
+  const runsQuery = useQuery({
+    queryKey: ["application", "id", id, "scim", "syncs"],
+    queryFn: async () => (await api.get<SCIMSyncRun[]>(`/saml/applications/${id}/scim/syncs`, { params: { limit: 20 } })).data,
+    enabled: !!id && !!configQuery.data,
+    refetchInterval: 3000,
   })
 
   const form = draft ?? {
@@ -149,6 +205,7 @@ export default function SCIMSettingsPage() {
     accessToken: "",
     tokenExpiresAt: configQuery.data?.token_expires_at?.slice(0, 10) ?? "",
     enabled: configQuery.data?.enabled ?? true,
+    syncInterval: configQuery.data?.sync_interval ?? "1h",
   }
 
   function updateDraft(changes: Partial<typeof form>) {
@@ -164,6 +221,7 @@ export default function SCIMSettingsPage() {
         access_token: form.accessToken,
         token_expires_at: form.tokenExpiresAt ? new Date(`${form.tokenExpiresAt}T23:59:59`).toISOString() : null,
         enabled: form.enabled,
+        sync_interval: form.syncInterval,
       })).data
       queryClient.setQueryData(["application", "id", id, "scim"], stored)
       setDraft({
@@ -171,6 +229,7 @@ export default function SCIMSettingsPage() {
         accessToken: "",
         tokenExpiresAt: stored.token_expires_at?.slice(0, 10) ?? "",
         enabled: stored.enabled,
+        syncInterval: stored.sync_interval,
       })
       toast.success("SCIM configuration saved")
     } catch (error) {
@@ -214,15 +273,12 @@ export default function SCIMSettingsPage() {
     if (!id || syncing) return
     setSyncing(true)
     try {
-      const syncResult = (await api.post<SCIMSyncResult>(`/saml/applications/${id}/scim/sync`)).data
-      setResult(syncResult)
+      const run = (await api.post<SCIMSyncRun>(`/saml/applications/${id}/scim/sync`)).data
+      queryClient.setQueryData<SCIMSyncRun[]>(["application", "id", id, "scim", "syncs"], (current = []) => [run, ...current.filter((item) => item.id !== run.id)])
       await queryClient.invalidateQueries({ queryKey: ["application", "id", id, "scim"] })
-      if (syncResult.skipped_users.length > 0) toast.warning("AWS provisioning synchronized with skipped users")
-      else toast.success("AWS provisioning synchronized")
+      toast.success(run.status === "RUNNING" ? "AWS provisioning is running" : "AWS provisioning queued")
     } catch (error) {
-      const response = (error as { response?: { data?: { result?: SCIMSyncResult } } }).response?.data
-      if (response?.result) setResult(response.result)
-      toast.error(apiError(error, "Couldn't synchronize AWS provisioning."))
+      toast.error(apiError(error, "Couldn't queue AWS provisioning."))
     } finally {
       setSyncing(false)
     }
@@ -266,6 +322,9 @@ export default function SCIMSettingsPage() {
   const configuration = configQuery.data
   const awsProfile = samlQuery.data?.profile === "AWS_IDENTITY_CENTER"
   const tokenExpired = !!configuration?.token_expires_at && new Date(configuration.token_expires_at) <= new Date()
+  const activeRun = runsQuery.data?.find((run) => run.status === "QUEUED" || run.status === "RUNNING")
+  const latestCompletedRun = runsQuery.data?.find((run) => run.status === "SUCCEEDED" || run.status === "FAILED")
+  const historyRuns = runsQuery.data?.filter((run) => run.id !== activeRun?.id) ?? []
 
   return (
     <PageContainer>
@@ -310,7 +369,15 @@ export default function SCIMSettingsPage() {
               <div className="space-y-2"><Label htmlFor="scim_endpoint">SCIM endpoint</Label><Input id="scim_endpoint" type="url" value={form.endpoint} onChange={(event) => updateDraft({ endpoint: event.target.value })} placeholder="https://scim.us-east-1.amazonaws.com/..." className="font-mono text-xs" /></div>
               <div className="space-y-2"><Label htmlFor="scim_token">Access token</Label><Input id="scim_token" type="password" value={form.accessToken} onChange={(event) => updateDraft({ accessToken: event.target.value })} placeholder={configuration?.token_configured ? "Leave blank to keep the current token" : "Paste the AWS access token"} autoComplete="new-password" /></div>
               <div className="space-y-2"><Label htmlFor="scim_expiry">Token expiration</Label><Input id="scim_expiry" type="date" value={form.tokenExpiresAt} onChange={(event) => updateDraft({ tokenExpiresAt: event.target.value })} /><p className="text-xs text-muted-foreground">AWS IAM Identity Center SCIM tokens expire after one year.</p></div>
-              <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={(event) => updateDraft({ enabled: event.target.checked })} className="size-4 accent-gr-pink" />Enable manual synchronization</label>
+              <div className="space-y-2">
+                <Label>Sync interval</Label>
+                <Select value={form.syncInterval} onValueChange={(value) => updateDraft({ syncInterval: value as SCIMSyncInterval })}>
+                  <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+                  <SelectContent>{syncIntervals.map((interval) => <SelectItem key={interval.value} value={interval.value}>{interval.label}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={form.enabled} onChange={(event) => updateDraft({ enabled: event.target.checked })} className="size-4 accent-gr-pink" />Enable scheduled and manual synchronization</label>
+              {configuration?.enabled && configuration.next_sync_at && <p className="text-xs text-muted-foreground">Next scheduled sync {new Date(configuration.next_sync_at).toLocaleString()}</p>}
               {configuration && <Button type="button" variant="outline" disabled={testing} onClick={testConnection}><CheckCircle2 className="mr-1 size-3.5" />{testing ? "Testing…" : "Test connection"}</Button>}
             </CardContent>
           </Card>
@@ -325,12 +392,17 @@ export default function SCIMSettingsPage() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Synchronization</CardTitle><CardDescription>Runs an idempotent reconciliation now. Users leaving all linked groups are deactivated; Sentinel never deletes AWS users or groups.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Synchronization</CardTitle><CardDescription>Reconciliation runs in the background and continues if this page closes. Users leaving all linked groups are deactivated; Sentinel never deletes AWS users or groups.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
               {configuration?.last_sync_at && <p className="text-sm text-muted-foreground">Last attempt {new Date(configuration.last_sync_at).toLocaleString()} · {configuration.last_sync_status.toLowerCase()}</p>}
               {configuration?.last_sync_error && <p className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{configuration.last_sync_error}</p>}
-              <Button type="button" disabled={!configuration?.enabled || tokenExpired || syncing} onClick={synchronize}><RefreshCw className={`mr-1 size-3.5 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Synchronizing…" : "Sync now"}</Button>
-              {result && !result.dry_run && <ResultSummary result={result} />}
+              <Button type="button" disabled={!configuration?.enabled || tokenExpired || syncing || !!activeRun} onClick={synchronize}><RefreshCw className={`mr-1 size-3.5 ${syncing || activeRun?.status === "RUNNING" ? "animate-spin" : ""}`} />{syncing ? "Queuing…" : activeRun?.status === "RUNNING" ? "Synchronizing…" : activeRun ? "Sync queued" : "Sync now"}</Button>
+              {activeRun && <RunHistoryItem run={activeRun} />}
+              {!activeRun && latestCompletedRun?.status === "SUCCEEDED" && <ResultSummary result={latestCompletedRun.result} />}
+              <div className="space-y-2 border-t border-border/60 pt-4">
+                <h3 className="text-sm font-medium">Sync history</h3>
+                {runsQuery.isLoading ? <Skeleton className="h-20" /> : runsQuery.isError ? <p className="text-sm text-destructive">Could not load synchronization history.</p> : historyRuns.length === 0 ? <p className="text-sm text-muted-foreground">No completed synchronization runs yet.</p> : historyRuns.map((run) => <RunHistoryItem key={run.id} run={run} />)}
+              </div>
             </CardContent>
           </Card>
 

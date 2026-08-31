@@ -3,6 +3,9 @@ package service
 import (
 	"errors"
 	"testing"
+	"time"
+
+	"github.com/gaucho-racing/sentinel/saml/model"
 )
 
 func TestValidateSCIMEndpoint(t *testing.T) {
@@ -82,5 +85,35 @@ func TestSCIMUserMatches(t *testing.T) {
 	remote.Active = false
 	if scimUserMatches(remote, desired) {
 		t.Fatal("inactive user matched")
+	}
+}
+
+func TestSCIMSyncIntervalDuration(t *testing.T) {
+	tests := map[model.SCIMSyncInterval]time.Duration{
+		model.SCIMSyncInterval5Minutes:  5 * time.Minute,
+		model.SCIMSyncInterval15Minutes: 15 * time.Minute,
+		model.SCIMSyncInterval30Minutes: 30 * time.Minute,
+		model.SCIMSyncInterval1Hour:     time.Hour,
+		model.SCIMSyncInterval6Hours:    6 * time.Hour,
+		model.SCIMSyncIntervalDaily:     24 * time.Hour,
+	}
+	for interval, expected := range tests {
+		duration, err := scimSyncIntervalDuration(interval)
+		if err != nil || duration != expected {
+			t.Fatalf("interval %s = %v, %v", interval, duration, err)
+		}
+	}
+	if _, err := scimSyncIntervalDuration("2h"); !errors.Is(err, ErrInvalidSCIMConfiguration) {
+		t.Fatalf("invalid interval error = %v", err)
+	}
+}
+
+func TestAdvanceSCIMScheduleSkipsMissedIntervals(t *testing.T) {
+	scheduledAt := time.Date(2026, 8, 30, 12, 0, 0, 0, time.UTC)
+	now := scheduledAt.Add(17 * time.Minute)
+	next := advanceSCIMSchedule(scheduledAt, 5*time.Minute, now)
+	expected := scheduledAt.Add(20 * time.Minute)
+	if !next.Equal(expected) {
+		t.Fatalf("next = %v, expected %v", next, expected)
 	}
 }

@@ -1,4 +1,6 @@
-export type SCIMSyncStatus = "NEVER" | "RUNNING" | "SUCCEEDED" | "FAILED"
+export type SCIMSyncStatus = "NEVER" | "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED"
+export type SCIMSyncInterval = "5m" | "15m" | "30m" | "1h" | "6h" | "24h"
+export type SCIMSyncRunStatus = "QUEUED" | "RUNNING" | "SUCCEEDED" | "FAILED"
 
 export type SCIMConfiguration = {
   application_id: string
@@ -6,6 +8,8 @@ export type SCIMConfiguration = {
   token_configured: boolean
   token_expires_at: string | null
   enabled: boolean
+  sync_interval: SCIMSyncInterval
+  next_sync_at: string | null
   last_sync_at: string | null
   last_sync_status: SCIMSyncStatus
   last_sync_error: string
@@ -32,4 +36,16 @@ export type SCIMSyncResult = {
   }[]
   validation_errors: string[]
   completed_at: string
+}
+
+export type SCIMSyncRun = {
+  id: string
+  application_id: string
+  trigger: "MANUAL" | "SCHEDULED"
+  status: SCIMSyncRunStatus
+  error: string
+  requested_at: string
+  started_at: string | null
+  completed_at: string | null
+  result: SCIMSyncResult
 }

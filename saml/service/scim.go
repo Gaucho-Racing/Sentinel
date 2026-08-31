@@ -23,16 +23,18 @@ var (
 )
 
 type SCIMConfigurationView struct {
-	ApplicationID   string               `json:"application_id"`
-	Endpoint        string               `json:"endpoint"`
-	TokenConfigured bool                 `json:"token_configured"`
-	TokenExpiresAt  *time.Time           `json:"token_expires_at"`
-	Enabled         bool                 `json:"enabled"`
-	LastSyncAt      *time.Time           `json:"last_sync_at"`
-	LastSyncStatus  model.SCIMSyncStatus `json:"last_sync_status"`
-	LastSyncError   string               `json:"last_sync_error"`
-	UpdatedAt       time.Time            `json:"updated_at"`
-	CreatedAt       time.Time            `json:"created_at"`
+	ApplicationID   string                 `json:"application_id"`
+	Endpoint        string                 `json:"endpoint"`
+	TokenConfigured bool                   `json:"token_configured"`
+	TokenExpiresAt  *time.Time             `json:"token_expires_at"`
+	Enabled         bool                   `json:"enabled"`
+	SyncInterval    model.SCIMSyncInterval `json:"sync_interval"`
+	NextSyncAt      *time.Time             `json:"next_sync_at"`
+	LastSyncAt      *time.Time             `json:"last_sync_at"`
+	LastSyncStatus  model.SCIMSyncStatus   `json:"last_sync_status"`
+	LastSyncError   string                 `json:"last_sync_error"`
+	UpdatedAt       time.Time              `json:"updated_at"`
+	CreatedAt       time.Time              `json:"created_at"`
 }
 
 type ProvisioningUser struct {
@@ -54,12 +56,7 @@ type ProvisioningSnapshot struct {
 	Groups []ProvisioningGroup `json:"groups"`
 }
 
-type SCIMSkippedUser struct {
-	EntityID string   `json:"entity_id"`
-	Username string   `json:"username"`
-	Groups   []string `json:"groups"`
-	Reason   string   `json:"reason"`
-}
+type SCIMSkippedUser = model.SCIMSkippedUser
 
 type SCIMSyncResult struct {
 	DryRun             bool              `json:"dry_run"`
@@ -84,12 +81,17 @@ func GetSCIMConfiguration(applicationID string) (model.SCIMConfiguration, error)
 }
 
 func SCIMConfigurationResponse(configuration model.SCIMConfiguration) SCIMConfigurationView {
+	if _, err := scimSyncIntervalDuration(configuration.SyncInterval); err != nil {
+		configuration.SyncInterval = scimDefaultSyncInterval
+	}
 	return SCIMConfigurationView{
 		ApplicationID:   configuration.ApplicationID,
 		Endpoint:        configuration.Endpoint,
 		TokenConfigured: configuration.AccessToken != "",
 		TokenExpiresAt:  configuration.TokenExpiresAt,
 		Enabled:         configuration.Enabled,
+		SyncInterval:    configuration.SyncInterval,
+		NextSyncAt:      configuration.NextSyncAt,
 		LastSyncAt:      configuration.LastSyncAt,
 		LastSyncStatus:  configuration.LastSyncStatus,
 		LastSyncError:   configuration.LastSyncError,
@@ -98,9 +100,16 @@ func SCIMConfigurationResponse(configuration model.SCIMConfiguration) SCIMConfig
 	}
 }
 
-func UpsertSCIMConfiguration(applicationID, endpoint, accessToken string, tokenExpiresAt *time.Time, enabled bool) (model.SCIMConfiguration, error) {
+func UpsertSCIMConfiguration(applicationID, endpoint, accessToken string, tokenExpiresAt *time.Time, enabled bool, syncInterval model.SCIMSyncInterval) (model.SCIMConfiguration, error) {
 	endpoint = strings.TrimRight(strings.TrimSpace(endpoint), "/")
 	if err := validateSCIMEndpoint(endpoint); err != nil {
+		return model.SCIMConfiguration{}, err
+	}
+	if syncInterval == "" {
+		syncInterval = scimDefaultSyncInterval
+	}
+	intervalDuration, err := scimSyncIntervalDuration(syncInterval)
+	if err != nil {
 		return model.SCIMConfiguration{}, err
 	}
 	sp, err := GetServiceProvider(applicationID)
@@ -130,9 +139,19 @@ func UpsertSCIMConfiguration(applicationID, endpoint, accessToken string, tokenE
 	if tokenExpiresAt != nil && !tokenExpiresAt.After(time.Now()) {
 		return model.SCIMConfiguration{}, fmt.Errorf("%w: token expiration must be in the future", ErrInvalidSCIMConfiguration)
 	}
+	now := time.Now().UTC()
+	intervalChanged := configuration.SyncInterval != syncInterval
+	wasEnabled := configuration.Enabled
 	configuration.Endpoint = endpoint
 	configuration.TokenExpiresAt = tokenExpiresAt
 	configuration.Enabled = enabled
+	configuration.SyncInterval = syncInterval
+	if !enabled {
+		configuration.NextSyncAt = nil
+	} else if !wasEnabled || intervalChanged || configuration.NextSyncAt == nil {
+		nextSyncAt := now.Add(intervalDuration)
+		configuration.NextSyncAt = &nextSyncAt
+	}
 	if err := database.DB.Save(&configuration).Error; err != nil {
 		return model.SCIMConfiguration{}, err
 	}
@@ -141,6 +160,19 @@ func UpsertSCIMConfiguration(applicationID, endpoint, accessToken string, tokenE
 
 func DeleteSCIMConfiguration(applicationID string) error {
 	return database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Exec("SELECT pg_advisory_xact_lock(hashtextextended(?, 0))", "sentinel-scim-queue:"+applicationID).Error; err != nil {
+			return err
+		}
+		var activeRuns int64
+		if err := tx.Model(&model.SCIMSyncRun{}).Where("application_id = ? AND status IN ?", applicationID, []model.SCIMSyncRunStatus{
+			model.SCIMSyncRunStatusQueued,
+			model.SCIMSyncRunStatusRunning,
+		}).Count(&activeRuns).Error; err != nil {
+			return err
+		}
+		if activeRuns > 0 {
+			return ErrSCIMSyncInProgress
+		}
 		result := tx.Where("application_id = ?", applicationID).Delete(&model.SCIMConfiguration{})
 		if result.Error != nil {
 			return result.Error
@@ -182,7 +214,7 @@ func PreviewSCIMSync(applicationID string) (SCIMSyncResult, error) {
 	}, nil
 }
 
-func SynchronizeSCIM(ctx context.Context, applicationID string) (SCIMSyncResult, error) {
+func executeSCIMSync(ctx context.Context, applicationID string) (SCIMSyncResult, error) {
 	if err := requireAWSProfile(applicationID); err != nil {
 		return SCIMSyncResult{}, err
 	}
@@ -213,12 +245,6 @@ func SynchronizeSCIM(ctx context.Context, applicationID string) (SCIMSyncResult,
 	}
 
 	return withSCIMApplicationLock(ctx, applicationID, func() (SCIMSyncResult, error) {
-		now := time.Now().UTC()
-		if err := database.DB.Model(&model.SCIMConfiguration{}).
-			Where("application_id = ?", applicationID).
-			Updates(map[string]any{"last_sync_status": model.SCIMSyncStatusRunning, "last_sync_error": ""}).Error; err != nil {
-			return result, err
-		}
 		for _, skipped := range result.SkippedUsers {
 			logger.SugarLogger.Warnw(
 				"SCIM synchronization skipped user",
@@ -232,23 +258,6 @@ func SynchronizeSCIM(ctx context.Context, applicationID string) (SCIMSyncResult,
 
 		result, syncErr := reconcileSCIM(ctx, configuration, snapshot, result)
 		result.CompletedAt = time.Now().UTC()
-		status := model.SCIMSyncStatusSucceeded
-		errorText := ""
-		if syncErr != nil {
-			status = model.SCIMSyncStatusFailed
-			errorText = syncErr.Error()
-			if len(errorText) > 1000 {
-				errorText = errorText[:1000]
-			}
-		}
-		updates := map[string]any{
-			"last_sync_at":     now,
-			"last_sync_status": status,
-			"last_sync_error":  errorText,
-		}
-		if err := database.DB.Model(&model.SCIMConfiguration{}).Where("application_id = ?", applicationID).Updates(updates).Error; err != nil && syncErr == nil {
-			syncErr = err
-		}
 		return result, syncErr
 	})
 }
