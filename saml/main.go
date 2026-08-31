@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/gaucho-racing/sentinel/saml/api"
 	"github.com/gaucho-racing/sentinel/saml/config"
 	"github.com/gaucho-racing/sentinel/saml/database"
@@ -27,6 +29,7 @@ func main() {
 
 	database.Init()
 	service.InitializeIDP()
+	service.StartSCIMSyncWorker(context.Background())
 
 	api.Run()
 }

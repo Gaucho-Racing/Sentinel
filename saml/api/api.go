@@ -58,6 +58,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/saml/applications/:id/scim/test", TestSCIMConfiguration)
 	router.POST("/saml/applications/:id/scim/preview", PreviewSCIMSync)
 	router.POST("/saml/applications/:id/scim/sync", SynchronizeSCIM)
+	router.GET("/saml/applications/:id/scim/syncs", ListSCIMSyncRuns)
+	router.GET("/saml/applications/:id/scim/syncs/:run_id", GetSCIMSyncRun)
 }
 
 // GetClientIP returns the originating client IP, preferring Cloudflare's

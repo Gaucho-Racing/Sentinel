@@ -35,8 +35,14 @@ func Init() {
 			&model.ServiceProvider{},
 			&model.SCIMConfiguration{},
 			&model.SCIMResource{},
+			&model.SCIMSyncRun{},
 		); err != nil {
 			logger.SugarLogger.Fatalf("failed to migrate database: %v", err)
+		}
+		if err := db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_scim_sync_run_one_active
+			ON saml_scim_sync_run (application_id)
+			WHERE status IN ('QUEUED', 'RUNNING')`).Error; err != nil {
+			logger.SugarLogger.Fatalf("failed to create SCIM sync run indexes: %v", err)
 		}
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
