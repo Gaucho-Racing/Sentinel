@@ -15,6 +15,8 @@ import { useAdmins } from "@/lib/admin"
 import { api } from "@/lib/api"
 import type { Application, GroupWithLink } from "@/lib/applications"
 import { loadSession, type Entity } from "@/lib/auth"
+import type { SCIMConfiguration } from "@/lib/scim"
+import type { SAMLConfiguration } from "@/lib/saml"
 import { cn } from "@/lib/utils"
 
 import { ServiceAccountsCard } from "./ServiceAccountsCard"
@@ -129,6 +131,32 @@ export default function ApplicationDetailsPage() {
     !!ownerId && (ownerId === myEntityID || isAdmin)
   // Same gate as the backend's secret endpoint: owner or admin.
   const canRevealSecret = canManageServiceAccounts
+  const samlQuery = useQuery({
+    queryKey: ["application", "id", id, "saml"],
+    queryFn: async () => {
+      try {
+        return (await api.get<SAMLConfiguration>(`/saml/applications/${id}/config`)).data
+      } catch (error) {
+        if ((error as { response?: { status?: number } })?.response?.status === 404) return null
+        throw error
+      }
+    },
+    enabled: !!id && canManageServiceAccounts,
+    retry: false,
+  })
+  const scimQuery = useQuery({
+    queryKey: ["application", "id", id, "scim"],
+    queryFn: async () => {
+      try {
+        return (await api.get<SCIMConfiguration>(`/saml/applications/${id}/scim/config`)).data
+      } catch (error) {
+        if ((error as { response?: { status?: number } })?.response?.status === 404) return null
+        throw error
+      }
+    },
+    enabled: !!id && canManageServiceAccounts,
+    retry: false,
+  })
   const ownerQuery = useQuery({
     queryKey: ["entity", ownerId],
     queryFn: async () => {
@@ -280,6 +308,73 @@ export default function ApplicationDetailsPage() {
       </header>
 
       <div className="space-y-4">
+        {canManageServiceAccounts && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Sign-in & provisioning</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">SAML single sign-on</p>
+                    <Badge variant={samlQuery.data ? "default" : "outline"}>
+                      {samlQuery.data ? "Configured" : "Not configured"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {samlQuery.data?.profile === "AWS_IDENTITY_CENTER"
+                      ? "AWS IAM Identity Center"
+                      : samlQuery.data
+                        ? "Generic SAML 2.0"
+                        : "No service provider registered"}
+                  </p>
+                </div>
+                <Button asChild variant="outline" size="sm">
+                  <Link to={`/applications/${app.id}/saml`}>Configure</Link>
+                </Button>
+              </div>
+              <div className="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/20 p-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">SCIM provisioning</p>
+                    <Badge
+                      variant={
+                        (scimQuery.data?.token_expires_at &&
+                          new Date(scimQuery.data.token_expires_at) <= new Date()) ||
+                        scimQuery.data?.last_sync_status === "FAILED"
+                          ? "destructive"
+                          : scimQuery.data?.enabled
+                            ? "default"
+                            : "outline"
+                      }
+                    >
+                      {scimQuery.data?.token_expires_at &&
+                      new Date(scimQuery.data.token_expires_at) <= new Date()
+                        ? "Token expired"
+                        : scimQuery.data?.last_sync_status === "FAILED"
+                        ? "Sync failed"
+                        : scimQuery.data?.enabled
+                          ? "Enabled"
+                          : scimQuery.data
+                            ? "Disabled"
+                            : "Not configured"}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {scimQuery.data?.last_sync_at
+                      ? `Last attempted ${formatTime(scimQuery.data.last_sync_at)}`
+                      : "No provisioning sync has run"}
+                  </p>
+                </div>
+                <Button asChild variant="outline" size="sm" disabled={!samlQuery.data}>
+                  <Link to={`/applications/${app.id}/saml/scim`}>Configure</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>OAuth credentials</CardTitle>

@@ -33,6 +33,8 @@ func Init() {
 			&model.SigningKey{},
 			&model.SSORequest{},
 			&model.ServiceProvider{},
+			&model.SCIMConfiguration{},
+			&model.SCIMResource{},
 		); err != nil {
 			logger.SugarLogger.Fatalf("failed to migrate database: %v", err)
 		}

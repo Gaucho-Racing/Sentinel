@@ -61,6 +61,7 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/core/applications/verify", VerifyClientCredentials)
 	router.GET("/core/applications/client/:clientID/groups", GetApplicationGroupsByClientID)
+	router.GET("/core/internal/applications/:id/provisioning-snapshot", GetApplicationProvisioningSnapshot)
 	router.POST("/core/login/email-password", LoginEmailPassword)
 	router.POST("/core/internal/bootstrap-token", BootstrapToken)
 

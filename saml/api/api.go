@@ -52,6 +52,12 @@ func InitializeRoutes(router *gin.Engine) {
 	router.PUT("/saml/applications/:id/config", PutApplicationConfiguration)
 	router.DELETE("/saml/applications/:id/config", DeleteApplicationConfiguration)
 	router.POST("/saml/applications/:id/preview", PreviewApplicationAssertion)
+	router.GET("/saml/applications/:id/scim/config", GetSCIMConfiguration)
+	router.PUT("/saml/applications/:id/scim/config", PutSCIMConfiguration)
+	router.DELETE("/saml/applications/:id/scim/config", DeleteSCIMConfiguration)
+	router.POST("/saml/applications/:id/scim/test", TestSCIMConfiguration)
+	router.POST("/saml/applications/:id/scim/preview", PreviewSCIMSync)
+	router.POST("/saml/applications/:id/scim/sync", SynchronizeSCIM)
 }
 
 // GetClientIP returns the originating client IP, preferring Cloudflare's
