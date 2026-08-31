@@ -215,5 +215,8 @@ func RevokeToken(id string) error {
 		logger.SugarLogger.Errorf("Failed to revoke token: %v", result.Error)
 		return result.Error
 	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
 	return nil
 }
