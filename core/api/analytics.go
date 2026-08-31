@@ -15,7 +15,7 @@ import (
 // (sentinel:all). Mirrors the GetApplicationSecret gate.
 func requireAnalyticsAccess(c *gin.Context) {
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
+		RequestTokenHasInternalAccess(c),
 		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
 	))
 }
@@ -33,15 +33,17 @@ func recordAudit(c *gin.Context, action model.AuditAction, targetType string, ta
 	})
 }
 
-// queryInt reads an integer query param, falling back to def when absent or
-// unparseable.
-func queryInt(c *gin.Context, key string, def int) int {
-	if v := c.Query(key); v != "" {
-		if n, err := strconv.Atoi(v); err == nil {
-			return n
-		}
+func boundedQueryInt(c *gin.Context, key string, fallback int, maximum int) (int, bool) {
+	raw := c.Query(key)
+	if raw == "" {
+		return fallback, true
 	}
-	return def
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 1 || value > maximum {
+		c.JSON(http.StatusBadRequest, gin.H{"error": key + " must be between 1 and " + strconv.Itoa(maximum)})
+		return 0, false
+	}
+	return value, true
 }
 
 func AnalyticsOverview(c *gin.Context) {
@@ -56,7 +58,11 @@ func AnalyticsOverview(c *gin.Context) {
 
 func AnalyticsLoginTimeSeries(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	series, err := service.GetLoginTimeSeries(queryInt(c, "days", 30))
+	days, ok := boundedQueryInt(c, "days", 30, service.MaxAnalyticsDays)
+	if !ok {
+		return
+	}
+	series, err := service.GetLoginTimeSeries(days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -66,7 +72,11 @@ func AnalyticsLoginTimeSeries(c *gin.Context) {
 
 func AnalyticsLoginHeatmap(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	cells, err := service.GetLoginHeatmap(queryInt(c, "days", 90))
+	days, ok := boundedQueryInt(c, "days", 90, service.MaxAnalyticsDays)
+	if !ok {
+		return
+	}
+	cells, err := service.GetLoginHeatmap(days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -76,7 +86,15 @@ func AnalyticsLoginHeatmap(c *gin.Context) {
 
 func AnalyticsTopApplications(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	apps, err := service.GetTopApplications(queryInt(c, "days", 30), queryInt(c, "limit", 10))
+	days, ok := boundedQueryInt(c, "days", 30, service.MaxAnalyticsDays)
+	if !ok {
+		return
+	}
+	limit, ok := boundedQueryInt(c, "limit", 10, service.MaxAnalyticsLimit)
+	if !ok {
+		return
+	}
+	apps, err := service.GetTopApplications(days, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -86,7 +104,11 @@ func AnalyticsTopApplications(c *gin.Context) {
 
 func AnalyticsUserGrowth(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	growth, err := service.GetUserGrowth(queryInt(c, "months", 12))
+	months, ok := boundedQueryInt(c, "months", 12, service.MaxAnalyticsMonths)
+	if !ok {
+		return
+	}
+	growth, err := service.GetUserGrowth(months)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -96,7 +118,11 @@ func AnalyticsUserGrowth(c *gin.Context) {
 
 func AnalyticsMemberDemographics(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	demographics, err := service.GetMemberDemographics(queryInt(c, "major_limit", 10))
+	limit, ok := boundedQueryInt(c, "major_limit", 10, service.MaxAnalyticsLimit)
+	if !ok {
+		return
+	}
+	demographics, err := service.GetMemberDemographics(limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -126,7 +152,11 @@ func AnalyticsGroupMembership(c *gin.Context) {
 
 func AnalyticsJoinRequests(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	funnel, err := service.GetJoinRequestFunnel(queryInt(c, "days", 90))
+	days, ok := boundedQueryInt(c, "days", 90, service.MaxAnalyticsDays)
+	if !ok {
+		return
+	}
+	funnel, err := service.GetJoinRequestFunnel(days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -136,6 +166,10 @@ func AnalyticsJoinRequests(c *gin.Context) {
 
 func AnalyticsAuditEvents(c *gin.Context) {
 	requireAnalyticsAccess(c)
+	limit, ok := boundedQueryInt(c, "limit", 100, service.MaxAuditEventLimit)
+	if !ok {
+		return
+	}
 	events, err := service.GetAuditEvents(service.AuditEventsFilter{
 		ActorID:    c.Query("actor_id"),
 		Action:     c.Query("action"),
@@ -143,7 +177,7 @@ func AnalyticsAuditEvents(c *gin.Context) {
 		TargetID:   c.Query("target_id"),
 		Before:     c.Query("before"),
 		After:      c.Query("after"),
-		Limit:      c.Query("limit"),
+		Limit:      strconv.Itoa(limit),
 	})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -154,7 +188,11 @@ func AnalyticsAuditEvents(c *gin.Context) {
 
 func AnalyticsAuditSummary(c *gin.Context) {
 	requireAnalyticsAccess(c)
-	summary, err := service.GetAuditActionSummary(queryInt(c, "days", 30))
+	days, ok := boundedQueryInt(c, "days", 30, service.MaxAnalyticsDays)
+	if !ok {
+		return
+	}
+	summary, err := service.GetAuditActionSummary(days)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

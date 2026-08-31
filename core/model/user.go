@@ -29,7 +29,7 @@ type User struct {
 	InitialRole           string    `json:"initial_role"`
 	Groups                []string  `json:"groups" gorm:"-"`
 	UpdatedAt             time.Time `json:"updated_at"`
-	CreatedAt             time.Time `json:"created_at"`
+	CreatedAt             time.Time `json:"created_at" gorm:"index"`
 }
 
 func (User) TableName() string {
