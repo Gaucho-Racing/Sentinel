@@ -66,6 +66,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/internal/bootstrap-token", BootstrapToken)
 
 	router.GET("/entities/@me", GetMe)
+	router.POST("/entities/resolve", ResolveIdentitySummaries)
 	router.GET("/entities/:id", GetEntity)
 
 	router.GET("/users", GetAllUsers)
