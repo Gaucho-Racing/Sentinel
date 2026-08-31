@@ -97,7 +97,6 @@ export default function AuthorizePage() {
         client_id: clientId ?? "",
         redirect_uri: redirectUri,
         scope,
-        entity_id: session?.entityId ?? "",
       })
       const res = await api.get<ValidateResponse>(`/oauth/authorize?${search.toString()}`)
       return res.data
@@ -129,7 +128,6 @@ export default function AuthorizePage() {
       if (nonce) search.set("nonce", nonce)
       const res = await api.post<{ code: string; redirect_uri: string }>(
         `/oauth/authorize?${search.toString()}`,
-        { entity_id: session?.entityId },
       )
       setSuccess(true)
       await new Promise((resolve) =>

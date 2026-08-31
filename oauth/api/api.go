@@ -30,13 +30,14 @@ func InitializeRouter() *gin.Engine {
 		MaxAge:           12 * time.Hour,
 		AllowCredentials: true,
 	}))
+	r.Use(UnauthorizedPanicHandler())
 	return r
 }
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/oauth/ping", Ping)
-	router.GET("/oauth/authorize", ValidateAuthorize)
-	router.POST("/oauth/authorize", Authorize)
+	router.GET("/oauth/authorize", AuthChecker(), ValidateAuthorize)
+	router.POST("/oauth/authorize", AuthChecker(), Authorize)
 	router.POST("/oauth/token", ExchangeToken)
 	router.GET("/oauth/userinfo", UserInfo)
 	router.POST("/oauth/userinfo", UserInfo)
