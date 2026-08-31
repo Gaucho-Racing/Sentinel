@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -25,8 +26,7 @@ func AuthChecker() gin.HandlerFunc {
 
 		var claims map[string]interface{}
 		if err := sentinel.Post("/api/core/token/validate", map[string]string{"token": token}, &claims); err != nil {
-			logger.SugarLogger.Errorf("Failed to validate token: %v", err)
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid bearer token"})
+			writeBearerValidationError(c, err)
 			return
 		}
 
@@ -40,6 +40,17 @@ func AuthChecker() gin.HandlerFunc {
 		c.Set("Auth-EntityID", entityID)
 		c.Next()
 	}
+}
+
+func writeBearerValidationError(c *gin.Context, err error) {
+	var apiErr *sentinel.APIError
+	if errors.As(err, &apiErr) && apiErr.Status == http.StatusUnauthorized {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid bearer token"})
+		return
+	}
+
+	logger.SugarLogger.Errorf("Failed to validate bearer token: %v", err)
+	c.AbortWithStatusJSON(http.StatusBadGateway, gin.H{"error": "unable to validate bearer token"})
 }
 
 func UnauthorizedPanicHandler() gin.HandlerFunc {
