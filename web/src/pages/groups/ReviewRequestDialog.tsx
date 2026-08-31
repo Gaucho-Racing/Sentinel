@@ -41,14 +41,12 @@ export function ReviewRequestDialog({
   groupID,
   request,
   action,
-  reviewerEntityID,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   groupID: string
   request: GroupJoinRequest | null
   action: Action
-  reviewerEntityID: string
 }) {
   const qc = useQueryClient()
   const [comment, setComment] = useState("")
@@ -101,12 +99,11 @@ export function ReviewRequestDialog({
       const trimmed = comment.trim()
       if (trimmed) {
         await api.post(`/groups/${groupID}/requests/${request.id}/comments`, {
-          entity_id: reviewerEntityID,
           comment: trimmed,
         })
       }
 
-      const payload: Record<string, unknown> = { reviewed_by: reviewerEntityID }
+      const payload: Record<string, unknown> = {}
       if (overrideExpiresAt) {
         payload.has_expiration = true
         payload.expires_at = overrideExpiresAt.toISOString()

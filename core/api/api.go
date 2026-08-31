@@ -315,6 +315,14 @@ func RequestTokenHasUserID(c *gin.Context, userID string) bool {
 	return GetRequestTokenUserID(c) == userID
 }
 
+func RequestTokenHasInternalAccess(c *gin.Context) bool {
+	claims := GetRequestTokenClaims(c)
+	if claims == nil || claims["type"] != "service_account" {
+		return false
+	}
+	return RequestTokenHasScope(c, "sentinel:all")
+}
+
 // RequestUserIsAdmin reports whether the bearer's subject entity is a
 // member of the Admins group. Used to grant admin-only write access
 // without requiring per-resource ownership. Returns false for unauth'd
