@@ -3,6 +3,7 @@ package config
 import (
 	"crypto/rsa"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -40,6 +41,8 @@ var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")
 var DatabasePassword = os.Getenv("DATABASE_PASSWORD")
 var DatabaseName = os.Getenv("DATABASE_NAME")
+var DatabaseSlowQueryThreshold = parseDurationOr("DATABASE_SLOW_QUERY_THRESHOLD", 200*time.Millisecond)
+var DatabaseEnableQueryStatistics = strings.EqualFold(os.Getenv("DATABASE_ENABLE_QUERY_STATISTICS"), "true")
 
 // ConditionalSyncInterval is how often the periodic conditional-group
 // reconcile cron fires. Event-driven sync (member add/remove triggers,

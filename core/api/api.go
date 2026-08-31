@@ -35,11 +35,13 @@ func InitializeRouter() *gin.Engine {
 	}))
 	r.Use(AuthChecker())
 	r.Use(UnauthorizedPanicHandler())
+	r.Use(AnalyticsMetrics())
 	return r
 }
 
 func InitializeRoutes(router *gin.Engine) {
 	router.GET("/core/ping", Ping)
+	router.GET("/core/metrics", Metrics)
 	router.GET("/core/keys", JWKS)
 	router.POST("/core/token", GenerateToken)
 	router.POST("/core/token/validate", ValidateToken)

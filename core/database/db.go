@@ -6,6 +6,7 @@ import (
 
 	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/model"
+	"github.com/gaucho-racing/sentinel/core/observability"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -17,7 +18,9 @@ var dbRetries = 0
 
 func Init() {
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC", config.DatabaseHost, config.DatabaseUser, config.DatabasePassword, config.DatabaseName, config.DatabasePort)
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: observability.NewDatabaseLogger(config.DatabaseSlowQueryThreshold),
+	})
 	if err != nil {
 		if dbRetries < 5 {
 			dbRetries++
@@ -29,6 +32,9 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
+		if config.DatabaseEnableQueryStatistics {
+			enableQueryStatistics(db)
+		}
 		db.AutoMigrate(
 			&model.Entity{},
 			&model.EntityEmail{},
@@ -55,4 +61,17 @@ func Init() {
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}
+}
+
+func enableQueryStatistics(db *gorm.DB) {
+	if err := db.Exec("CREATE EXTENSION IF NOT EXISTS pg_stat_statements").Error; err != nil {
+		logger.SugarLogger.Warnf("Failed to enable pg_stat_statements: %v", err)
+		return
+	}
+	var available int
+	if err := db.Raw("SELECT 1 FROM pg_stat_statements LIMIT 1").Scan(&available).Error; err != nil {
+		logger.SugarLogger.Warnf("pg_stat_statements is installed but unavailable: %v", err)
+		return
+	}
+	logger.SugarLogger.Infoln("pg_stat_statements is enabled")
 }
