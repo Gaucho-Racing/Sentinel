@@ -22,6 +22,7 @@ import AuthorizePage from "@/pages/oauth/AuthorizePage"
 import OnboardingPage from "@/pages/onboarding/OnboardingPage"
 import SamlAuthorizePage from "@/pages/saml/SamlAuthorizePage"
 import SAMLSettingsPage from "@/pages/saml/SAMLSettingsPage"
+import SCIMSettingsPage from "@/pages/saml/SCIMSettingsPage"
 import SettingsPage from "@/pages/settings/SettingsPage"
 
 export const router = createBrowserRouter([
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
           { path: "/applications/:id", element: <ApplicationDetailsPage /> },
           { path: "/applications/:id/edit", element: <ApplicationEditPage /> },
           { path: "/applications/:id/saml", element: <SAMLSettingsPage /> },
+          { path: "/applications/:id/saml/scim", element: <SCIMSettingsPage /> },
           { path: "/groups", element: <GroupsPage /> },
           { path: "/groups/new", element: <GroupNewPage /> },
           { path: "/groups/:id", element: <GroupDetailsPage /> },

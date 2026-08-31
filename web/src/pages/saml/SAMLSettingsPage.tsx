@@ -364,6 +364,13 @@ export default function SAMLSettingsPage() {
         </OutlineButton>
       </header>
 
+      <div className="mb-6 flex gap-2">
+        <Button size="sm">Single sign-on</Button>
+        <Button asChild variant="outline" size="sm">
+          <Link to={`/applications/${id}/saml/scim`}>Provisioning</Link>
+        </Button>
+      </div>
+
       <div className="space-y-4">
         <Card>
           <CardHeader>
@@ -386,7 +393,7 @@ export default function SAMLSettingsPage() {
               </Select>
               {awsProfile && (
                 <p className="text-xs text-muted-foreground">
-                  Uses an email-format NameID and prevents multi-valued group claims. AWS users must already exist with a matching username.
+                  Uses an email-format NameID and prevents multi-valued group claims. Linked groups and users can be provisioned from the Provisioning tab.
                 </p>
               )}
             </div>
