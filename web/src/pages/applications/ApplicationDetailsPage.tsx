@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { ApplicationIcon } from "@/components/ApplicationIcon"
 import { OutlineButton } from "@/components/OutlineButton"
 import { PageContainer } from "@/components/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -17,13 +18,8 @@ import type { Application, GroupWithLink } from "@/lib/applications"
 import { loadSession, type Entity } from "@/lib/auth"
 import type { SCIMConfiguration } from "@/lib/scim"
 import type { SAMLConfiguration } from "@/lib/saml"
-import { cn } from "@/lib/utils"
 
 import { ServiceAccountsCard } from "./ServiceAccountsCard"
-
-function initial(name: string) {
-  return name.slice(0, 1).toUpperCase()
-}
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleString(undefined, {
@@ -265,19 +261,12 @@ export default function ApplicationDetailsPage() {
 
       <header className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div
-            className={cn(
-              "flex size-16 items-center justify-center overflow-hidden rounded-xl",
-              !app.icon_url &&
-                "bg-gradient-to-br from-gr-pink to-gr-purple text-2xl font-semibold text-white",
-            )}
-          >
-            {app.icon_url ? (
-              <img src={app.icon_url} alt={app.name} className="size-full object-contain" />
-            ) : (
-              initial(app.name)
-            )}
-          </div>
+          <ApplicationIcon
+            name={app.name}
+            iconUrl={app.icon_url}
+            className="size-16 rounded-xl"
+            fallbackClassName="text-2xl"
+          />
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">{app.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">{app.description}</p>

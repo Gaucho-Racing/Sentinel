@@ -155,6 +155,7 @@ export default function SCIMSettingsPage() {
   const [removing, setRemoving] = useState(false)
   const [removeOpen, setRemoveOpen] = useState(false)
   const [result, setResult] = useState<SCIMSyncResult | null>(null)
+  const [visibleHistoryCount, setVisibleHistoryCount] = useState(3)
 
   const appQuery = useQuery({
     queryKey: ["application", "id", id],
@@ -325,6 +326,7 @@ export default function SCIMSettingsPage() {
   const activeRun = runsQuery.data?.find((run) => run.status === "QUEUED" || run.status === "RUNNING")
   const latestCompletedRun = runsQuery.data?.find((run) => run.status === "SUCCEEDED" || run.status === "FAILED")
   const historyRuns = runsQuery.data?.filter((run) => run.id !== activeRun?.id) ?? []
+  const visibleHistoryRuns = historyRuns.slice(0, visibleHistoryCount)
 
   return (
     <PageContainer>
@@ -401,7 +403,7 @@ export default function SCIMSettingsPage() {
               {!activeRun && latestCompletedRun?.status === "SUCCEEDED" && <ResultSummary result={latestCompletedRun.result} />}
               <div className="space-y-2 border-t border-border/60 pt-4">
                 <h3 className="text-sm font-medium">Sync history</h3>
-                {runsQuery.isLoading ? <Skeleton className="h-20" /> : runsQuery.isError ? <p className="text-sm text-destructive">Could not load synchronization history.</p> : historyRuns.length === 0 ? <p className="text-sm text-muted-foreground">No completed synchronization runs yet.</p> : historyRuns.map((run) => <RunHistoryItem key={run.id} run={run} />)}
+                {runsQuery.isLoading ? <Skeleton className="h-20" /> : runsQuery.isError ? <p className="text-sm text-destructive">Could not load synchronization history.</p> : historyRuns.length === 0 ? <p className="text-sm text-muted-foreground">No completed synchronization runs yet.</p> : <>{visibleHistoryRuns.map((run) => <RunHistoryItem key={run.id} run={run} />)}{visibleHistoryCount < historyRuns.length && <Button type="button" variant="outline" size="sm" onClick={() => setVisibleHistoryCount((count) => count + 3)}>Load more</Button>}</>}
               </div>
             </CardContent>
           </Card>

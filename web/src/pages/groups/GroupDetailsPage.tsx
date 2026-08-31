@@ -18,6 +18,7 @@ import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { ApplicationIcon } from "@/components/ApplicationIcon"
 import { EntityChip } from "@/components/EntityChip"
 import { PageContainer } from "@/components/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -866,17 +867,12 @@ export default function GroupDetailsPage() {
                           key={app.id}
                           className="flex items-center gap-2.5 rounded-md border border-border/60 bg-muted/40 px-3 py-2"
                         >
-                          <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded bg-gradient-to-br from-gr-pink to-gr-purple text-xs font-semibold text-white">
-                            {app.icon_url ? (
-                              <img
-                                src={app.icon_url}
-                                alt={app.name}
-                                className="size-full object-cover"
-                              />
-                            ) : (
-                              app.name.slice(0, 1).toUpperCase()
-                            )}
-                          </div>
+                          <ApplicationIcon
+                            name={app.name}
+                            iconUrl={app.icon_url}
+                            className="size-7 rounded"
+                            fallbackClassName="text-xs"
+                          />
                           <div className="min-w-0 flex-1 leading-tight">
                             <p className="truncate text-sm">{app.name}</p>
                             <p className="truncate font-mono text-xs text-muted-foreground">

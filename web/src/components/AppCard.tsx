@@ -1,12 +1,8 @@
 import { ChevronRight } from "lucide-react"
 import { Link } from "react-router-dom"
 
+import { ApplicationIcon } from "@/components/ApplicationIcon"
 import type { Application } from "@/lib/applications"
-import { cn } from "@/lib/utils"
-
-function initial(name: string) {
-  return name.slice(0, 1).toUpperCase()
-}
 
 function relativeTime(iso?: string) {
   if (!iso) return null
@@ -36,19 +32,12 @@ export function AppCard({
       className="group flex flex-col gap-3 rounded-lg border border-border/60 bg-card p-4 transition-colors hover:bg-muted/40"
     >
       <div className="flex items-start justify-between">
-        <div
-          className={cn(
-            "flex size-10 items-center justify-center overflow-hidden rounded-md",
-            !app.icon_url &&
-              "bg-gradient-to-br from-gr-pink to-gr-purple text-base font-semibold text-white",
-          )}
-        >
-          {app.icon_url ? (
-            <img src={app.icon_url} alt={app.name} className="size-full object-contain" />
-          ) : (
-            initial(app.name)
-          )}
-        </div>
+        <ApplicationIcon
+          name={app.name}
+          iconUrl={app.icon_url}
+          className="size-10 rounded-md"
+          fallbackClassName="text-base"
+        />
         <ChevronRight className="size-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
       </div>
       <div>

@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Navigate, useLocation, useSearchParams } from "react-router-dom"
 
+import { ApplicationIcon } from "@/components/ApplicationIcon"
 import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -65,27 +66,6 @@ function accessDeniedApp(err: unknown): DeniedApp | null {
     return { name: res.data.app_name ?? "", iconUrl: res.data.app_icon_url ?? "" }
   }
   return null
-}
-
-// AppAvatar renders an application's icon — its image when set, otherwise a
-// gradient tile with the first letter. Shared by the consent and denied views.
-function AppAvatar({ name, iconUrl }: { name: string; iconUrl?: string }) {
-  const letter = (name.slice(0, 1) || "?").toUpperCase()
-  if (iconUrl) {
-    return (
-      <Avatar className="size-14 rounded-xl">
-        <AvatarImage src={iconUrl} alt={name} />
-        <AvatarFallback className="rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
-          {letter}
-        </AvatarFallback>
-      </Avatar>
-    )
-  }
-  return (
-    <div className="flex size-14 items-center justify-center rounded-xl bg-gradient-to-br from-gr-pink to-gr-purple text-xl font-semibold text-white">
-      {letter}
-    </div>
-  )
 }
 
 export default function AuthorizePage() {
@@ -224,7 +204,12 @@ export default function AuthorizePage() {
       <main className="flex min-h-svh items-center justify-center px-4 py-12">
         <div className="w-full max-w-md space-y-8">
           <div className="flex flex-col items-center gap-3 text-center">
-            <AppAvatar name={name} iconUrl={denied.iconUrl} />
+            <ApplicationIcon
+              name={name}
+              iconUrl={denied.iconUrl}
+              className="size-14 rounded-xl"
+              fallbackClassName="text-xl"
+            />
             <div>
               <h1 className="text-xl font-semibold tracking-tight">{name}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -287,7 +272,12 @@ export default function AuthorizePage() {
         )}
       >
         <div className="flex flex-col items-center gap-3 text-center">
-          <AppAvatar name={app.app_name} iconUrl={app.app_icon_url} />
+          <ApplicationIcon
+            name={app.app_name}
+            iconUrl={app.app_icon_url}
+            className="size-14 rounded-xl"
+            fallbackClassName="text-xl"
+          />
           <div>
             <h1 className="text-xl font-semibold tracking-tight">{app.app_name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
