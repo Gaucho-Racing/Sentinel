@@ -179,7 +179,6 @@ export default function GroupRequestDetailsPage() {
     setPosting(true)
     try {
       await api.post(`/groups/${id}/requests/${requestID}/comments`, {
-        entity_id: myEntityID,
         comment: body,
       })
       qc.invalidateQueries({ queryKey: ["group", id, "requests", requestID] })
@@ -421,7 +420,6 @@ export default function GroupRequestDetailsPage() {
         groupID={id ?? ""}
         request={request}
         action={reviewAction ?? "approve"}
-        reviewerEntityID={myEntityID}
       />
     </PageContainer>
   )

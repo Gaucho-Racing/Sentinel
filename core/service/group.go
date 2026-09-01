@@ -1,15 +1,25 @@
 package service
 
 import (
+	"errors"
+	"time"
+
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
+	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 // AdminsGroupID is the fixed ID of the global Admins group. Members get
 // owner-equivalent permissions on every group and other admin-gated surfaces.
 const AdminsGroupID = "grp_01kqs3w6h82xkdnft94vpj7qrm"
+
+var (
+	ErrJoinRequestNotPending = errors.New("join request is not pending")
+	ErrGroupMemberExists     = errors.New("entity is already a member of this group")
+)
 
 // IsAdmin reports whether the given entity is a member of the Admins group.
 // Returns false if the lookup fails so callers can treat it as a deny-by-default.
@@ -203,9 +213,9 @@ func GetJoinRequestsByEntity(entityID string) ([]model.GroupJoinRequest, error) 
 	return requests, nil
 }
 
-func GetJoinRequestByID(id string) (model.GroupJoinRequest, error) {
+func GetJoinRequestForGroup(groupID string, id string) (model.GroupJoinRequest, error) {
 	var request model.GroupJoinRequest
-	if err := database.DB.Where("id = ?", id).First(&request).Error; err != nil {
+	if err := database.DB.Where("id = ? AND group_id = ?", id, groupID).First(&request).Error; err != nil {
 		return model.GroupJoinRequest{}, err
 	}
 	PopulateJoinRequest(&request)
@@ -223,19 +233,63 @@ func CreateJoinRequest(request model.GroupJoinRequest) (model.GroupJoinRequest, 
 	return request, nil
 }
 
-func UpdateJoinRequest(request model.GroupJoinRequest) (model.GroupJoinRequest, error) {
-	if err := database.DB.Save(&request).Error; err != nil {
+func ReviewJoinRequest(groupID string, id string, reviewerID string, status model.GroupJoinRequestStatus, hasExpiration bool, expiresAt time.Time) (model.GroupJoinRequest, error) {
+	var request model.GroupJoinRequest
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND group_id = ?", id, groupID).
+			First(&request).Error; err != nil {
+			return err
+		}
+		if request.Status != string(model.GroupJoinRequestStatusPending) {
+			return ErrJoinRequestNotPending
+		}
+
+		if status == model.GroupJoinRequestStatusApproved {
+			member := model.GroupMember{
+				GroupID:       request.GroupID,
+				EntityID:      request.EntityID,
+				Source:        string(model.GroupMemberSourceDirect),
+				AddedBy:       reviewerID,
+				HasExpiration: hasExpiration,
+				ExpiresAt:     expiresAt,
+			}
+			result := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&member)
+			if result.Error != nil {
+				return result.Error
+			}
+			if result.RowsAffected == 0 {
+				return ErrGroupMemberExists
+			}
+		}
+
+		request.Status = string(status)
+		request.ReviewedBy = reviewerID
+		request.ReviewedAt = time.Now()
+		request.HasExpiration = hasExpiration
+		request.ExpiresAt = expiresAt
+		return tx.Save(&request).Error
+	})
+	if err != nil {
 		return model.GroupJoinRequest{}, err
 	}
 	PopulateJoinRequest(&request)
 	return request, nil
 }
 
-func DeleteJoinRequest(id string) error {
-	if err := database.DB.Where("id = ?", id).Delete(&model.GroupJoinRequest{}).Error; err != nil {
-		return err
-	}
-	return nil
+func DeleteJoinRequestForGroup(groupID string, id string) error {
+	return database.DB.Transaction(func(tx *gorm.DB) error {
+		var request model.GroupJoinRequest
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ? AND group_id = ?", id, groupID).
+			First(&request).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("request_id = ?", request.ID).Delete(&model.GroupJoinRequestComment{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&request).Error
+	})
 }
 
 func PopulateJoinRequest(request *model.GroupJoinRequest) {
@@ -257,9 +311,9 @@ func GetCommentsForJoinRequest(requestID string) ([]model.GroupJoinRequestCommen
 // GetJoinRequestComment returns a single comment by ID. Used by the
 // delete handler to authorize the requester against the comment's
 // claimed author before letting them delete it.
-func GetJoinRequestComment(id string) (model.GroupJoinRequestComment, error) {
+func GetJoinRequestCommentForRequest(requestID string, id string) (model.GroupJoinRequestComment, error) {
 	var comment model.GroupJoinRequestComment
-	if err := database.DB.Where("id = ?", id).First(&comment).Error; err != nil {
+	if err := database.DB.Where("id = ? AND request_id = ?", id, requestID).First(&comment).Error; err != nil {
 		return model.GroupJoinRequestComment{}, err
 	}
 	return comment, nil
@@ -275,9 +329,13 @@ func CreateJoinRequestComment(comment model.GroupJoinRequestComment) (model.Grou
 	return comment, nil
 }
 
-func DeleteJoinRequestComment(id string) error {
-	if err := database.DB.Where("id = ?", id).Delete(&model.GroupJoinRequestComment{}).Error; err != nil {
-		return err
+func DeleteJoinRequestCommentForRequest(requestID string, id string) error {
+	result := database.DB.Where("id = ? AND request_id = ?", id, requestID).Delete(&model.GroupJoinRequestComment{})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
 	}
 	return nil
 }
