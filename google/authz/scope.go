@@ -24,7 +24,11 @@ func HasScope(scopes string, required string) bool {
 }
 
 func AudienceContains(audience any, required string) bool {
-	switch value := audience.(type) {
+	return StringClaimContains(audience, required)
+}
+
+func StringClaimContains(claim any, required string) bool {
+	switch value := claim.(type) {
 	case string:
 		return value == required
 	case []string:

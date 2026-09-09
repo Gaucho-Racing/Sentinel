@@ -111,13 +111,6 @@ func RequestTokenCanManageGroup(c *gin.Context, groupID string) bool {
 	return requestCoreAccessCheck(c, "/api/groups/"+url.PathEscape(groupID)+"/write-access")
 }
 
-func RequestTokenHasAdminAccess(c *gin.Context) bool {
-	if RequestTokenHasInternalAccess(c) {
-		return true
-	}
-	return RequestTokenHasFirstPartyAccess(c) && requestCoreAccessCheck(c, "/api/entities/@me/admin-access")
-}
-
 func getRequestTokenScopes(c *gin.Context) string {
 	scopes, _ := c.Get("Auth-Scope")
 	value, _ := scopes.(string)

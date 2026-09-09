@@ -67,7 +67,6 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/internal/bootstrap-token", BootstrapToken)
 
 	router.GET("/entities/@me", GetMe)
-	router.GET("/entities/@me/admin-access", CheckAdminAccess)
 	router.POST("/entities/resolve", ResolveIdentitySummaries)
 	router.GET("/entities/:id", GetEntity)
 
@@ -286,12 +285,6 @@ func RequestTokenHasResourceScope(c *gin.Context, scope string) bool {
 		RequestTokenHasFirstPartyAccess(c),
 		RequestTokenHasScope(c, scope),
 	)
-}
-
-func CheckAdminAccess(c *gin.Context) {
-	Require(c, RequestTokenHasInternalAccess(c) ||
-		RequestTokenHasFirstPartyAccess(c) && RequestUserIsAdmin(c))
-	c.Status(http.StatusNoContent)
 }
 
 // GetRequestTokenEntityID returns the subject (entity_id) of the bearer that

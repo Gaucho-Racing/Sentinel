@@ -127,7 +127,8 @@ func RequestTokenHasAdminAccess(c *gin.Context) bool {
 	if RequestTokenHasInternalAccess(c) {
 		return true
 	}
-	return RequestTokenHasFirstPartyAccess(c) && requestCoreAccessCheck(c, "/api/entities/@me/admin-access")
+	claims := GetRequestTokenClaims(c)
+	return RequestTokenHasFirstPartyAccess(c) && authz.StringClaimContains(claims["groups"], "Admins")
 }
 
 func getRequestTokenScopes(c *gin.Context) string {
