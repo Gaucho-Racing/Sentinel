@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -103,7 +105,10 @@ func PopulateUser(user *model.User) {
 // count, to the point of exceeding the timeouts relying parties allow.
 func GetGroupsForEntity(entityID string) ([]model.Group, error) {
 	var members []model.GroupMember
-	if err := database.DB.Where("entity_id = ?", entityID).Find(&members).Error; err != nil {
+	if err := database.DB.
+		Where("entity_id = ?", entityID).
+		Where("has_expiration = false OR expires_at > ?", time.Now()).
+		Find(&members).Error; err != nil {
 		return []model.Group{}, err
 	}
 	if len(members) == 0 {

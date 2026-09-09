@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -17,7 +19,7 @@ func IsAdmin(entityID string) bool {
 	if entityID == "" {
 		return false
 	}
-	_, err := GetGroupMember(AdminsGroupID, entityID)
+	_, err := GetActiveGroupMember(AdminsGroupID, entityID)
 	return err == nil
 }
 
@@ -42,7 +44,10 @@ func GetGroupByID(id string) (model.Group, error) {
 }
 
 func PopulateGroup(group *model.Group) {
-	if err := database.DB.Model(&model.GroupMember{}).Where("group_id = ?", group.ID).Count(&group.MemberCount).Error; err != nil {
+	if err := database.DB.Model(&model.GroupMember{}).
+		Where("group_id = ?", group.ID).
+		Where("has_expiration = false OR expires_at > ?", time.Now()).
+		Count(&group.MemberCount).Error; err != nil {
 		logger.SugarLogger.Errorf("Failed to count members for group %s: %v", group.ID, err)
 	}
 	if err := database.DB.Model(&model.GroupOwner{}).Where("group_id = ?", group.ID).Count(&group.OwnerCount).Error; err != nil {
@@ -94,7 +99,10 @@ func DeleteGroup(id string) error {
 
 func GetMembersForGroup(groupID string) ([]model.GroupMember, error) {
 	members := []model.GroupMember{}
-	if err := database.DB.Where("group_id = ?", groupID).Find(&members).Error; err != nil {
+	if err := database.DB.
+		Where("group_id = ?", groupID).
+		Where("has_expiration = false OR expires_at > ?", time.Now()).
+		Find(&members).Error; err != nil {
 		return []model.GroupMember{}, err
 	}
 	return members, nil
@@ -103,6 +111,17 @@ func GetMembersForGroup(groupID string) ([]model.GroupMember, error) {
 func GetGroupMember(groupID string, entityID string) (model.GroupMember, error) {
 	var member model.GroupMember
 	if err := database.DB.Where("group_id = ? AND entity_id = ?", groupID, entityID).First(&member).Error; err != nil {
+		return model.GroupMember{}, err
+	}
+	return member, nil
+}
+
+func GetActiveGroupMember(groupID string, entityID string) (model.GroupMember, error) {
+	var member model.GroupMember
+	if err := database.DB.
+		Where("group_id = ? AND entity_id = ?", groupID, entityID).
+		Where("has_expiration = false OR expires_at > ?", time.Now()).
+		First(&member).Error; err != nil {
 		return model.GroupMember{}, err
 	}
 	return member, nil

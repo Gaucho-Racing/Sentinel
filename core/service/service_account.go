@@ -34,11 +34,21 @@ var ErrInvalidServiceAccountScope = errors.New("scope contains a value not allow
 // against ServiceAccountAllowedScopes. Empty scope is allowed (a token
 // with no scope can only be used for endpoints that don't require any).
 func ValidateServiceAccountScope(s string) error {
+	return validateServiceAccountScope(s, ServiceAccountAllowedScopes)
+}
+
+func ValidatePrivilegedServiceAccountScope(s string) error {
+	allowed := append([]string{}, ServiceAccountAllowedScopes...)
+	allowed = append(allowed, ImpersonationScope)
+	return validateServiceAccountScope(s, allowed)
+}
+
+func validateServiceAccountScope(s string, allowedScopes []string) error {
 	if strings.TrimSpace(s) == "" {
 		return nil
 	}
-	allowed := make(map[string]struct{}, len(ServiceAccountAllowedScopes))
-	for _, a := range ServiceAccountAllowedScopes {
+	allowed := make(map[string]struct{}, len(allowedScopes))
+	for _, a := range allowedScopes {
 		allowed[a] = struct{}{}
 	}
 	for _, scope := range strings.Fields(s) {

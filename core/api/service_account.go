@@ -47,6 +47,17 @@ func requireAppOwnerOrAdmin(c *gin.Context, appID string, scope string) (model.A
 	return app, true
 }
 
+func requireImpersonationScopeAdmin(c *gin.Context, scope string) bool {
+	if !authz.HasScope(scope, service.ImpersonationScope) {
+		return true
+	}
+	if RequestTokenHasInternalAccess(c) || RequestUserIsAdmin(c) {
+		return true
+	}
+	c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "sentinel:impersonate can only be assigned or managed by an admin"})
+	return false
+}
+
 func ListServiceAccountsForApplication(c *gin.Context) {
 	id := c.Param("id")
 	if _, ok := requireAppOwnerOrAdmin(c, id, authz.ApplicationsReadScope); !ok {
@@ -93,7 +104,14 @@ func CreateServiceAccountForApp(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
 		return
 	}
-	if err := service.ValidateServiceAccountScope(req.Scope); err != nil {
+	if !requireImpersonationScopeAdmin(c, req.Scope) {
+		return
+	}
+	validateScope := service.ValidateServiceAccountScope
+	if authz.HasScope(req.Scope, service.ImpersonationScope) {
+		validateScope = service.ValidatePrivilegedServiceAccountScope
+	}
+	if err := validateScope(req.Scope); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -141,6 +159,9 @@ func RotateServiceAccountToken(c *gin.Context) {
 	if _, ok := requireAppOwnerOrAdmin(c, sa.ApplicationID, authz.ApplicationsWriteScope); !ok {
 		return
 	}
+	if !requireImpersonationScopeAdmin(c, sa.Scope) {
+		return
+	}
 
 	_, raw, err := service.MintServiceAccountToken(sa)
 	if err != nil {
@@ -169,13 +190,17 @@ func GetServiceAccountToken(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	Require(c, Any(
+	canViewToken := Any(
 		RequestTokenHasInternalAccess(c),
 		RequestTokenHasResourceScope(c, authz.ApplicationsReadScope) && Any(
 			RequestTokenHasEntityID(c, sa.CreatedBy),
 			RequestUserIsAdmin(c),
 		),
-	))
+	)
+	if authz.HasScope(sa.Scope, service.ImpersonationScope) {
+		canViewToken = RequestTokenHasInternalAccess(c) || RequestUserIsAdmin(c)
+	}
+	Require(c, canViewToken)
 	if sa.ActiveToken == nil || sa.SignedToken == "" {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no active token; rotate to mint a new one"})
 		return
