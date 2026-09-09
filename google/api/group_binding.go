@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/mail"
 	"strings"
+	"time"
 
 	"github.com/gaucho-racing/sentinel/google/model"
 	"github.com/gaucho-racing/sentinel/google/service"
@@ -39,8 +41,9 @@ func ListGoogleBindings(c *gin.Context) {
 }
 
 type createGoogleBindingRequest struct {
-	GroupID          string `json:"group_id" binding:"required"`
-	GoogleGroupEmail string `json:"google_group_email" binding:"required"`
+	GroupID                               string `json:"group_id" binding:"required"`
+	GoogleGroupEmail                      string `json:"google_group_email" binding:"required"`
+	ConfirmOverwriteRequestedGroupMembers bool   `json:"confirm_overwrite_requested_group_members"`
 }
 
 func CreateGoogleBinding(c *gin.Context) {
@@ -50,21 +53,121 @@ func CreateGoogleBinding(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
-	email := strings.TrimSpace(req.GoogleGroupEmail)
-	if _, err := mail.ParseAddress(email); err != nil {
+	email, err := normalizeGoogleGroupEmail(req.GoogleGroupEmail, false)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
 		return
 	}
-
-	binding, err := service.CreateGoogleBinding(model.GroupGoogleBinding{
-		GroupID:          req.GroupID,
-		GoogleGroupEmail: email,
-	})
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	defer cancel()
+	binding, preflight, err := service.ApplyGoogleBinding(
+		ctx,
+		req.GroupID,
+		email,
+		"",
+		service.GoogleBindingConfirmations{
+			OverwriteRequestedGroupMembers: req.ConfirmOverwriteRequestedGroupMembers,
+		},
+	)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		writeGoogleBindingError(c, err, preflight)
 		return
 	}
 	c.JSON(http.StatusOK, binding)
+}
+
+type googleBindingPreflightRequest struct {
+	GroupID          string `json:"group_id" binding:"required"`
+	GoogleGroupEmail string `json:"google_group_email"`
+}
+
+func PreflightGoogleBinding(c *gin.Context) {
+	var req googleBindingPreflightRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
+	email, err := normalizeGoogleGroupEmail(req.GoogleGroupEmail, true)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	defer cancel()
+	preflight, err := service.PreflightGoogleBinding(ctx, req.GroupID, email)
+	if err != nil {
+		writeGoogleBindingError(c, err, preflight)
+		return
+	}
+	c.JSON(http.StatusOK, preflight)
+}
+
+type applyGoogleBindingRequest struct {
+	GroupID                               string `json:"group_id" binding:"required"`
+	GoogleGroupEmail                      string `json:"google_group_email"`
+	ExpectedCurrentBindingID              string `json:"expected_current_binding_id"`
+	ConfirmOverwriteRequestedGroupMembers bool   `json:"confirm_overwrite_requested_group_members"`
+	ConfirmDeletePreviousGroup            bool   `json:"confirm_delete_previous_group"`
+}
+
+func ApplyGoogleBinding(c *gin.Context) {
+	var req applyGoogleBindingRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
+	email, err := normalizeGoogleGroupEmail(req.GoogleGroupEmail, true)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
+		return
+	}
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	defer cancel()
+	binding, preflight, err := service.ApplyGoogleBinding(
+		ctx,
+		req.GroupID,
+		email,
+		req.ExpectedCurrentBindingID,
+		service.GoogleBindingConfirmations{
+			OverwriteRequestedGroupMembers: req.ConfirmOverwriteRequestedGroupMembers,
+			DeletePreviousGroup:            req.ConfirmDeletePreviousGroup,
+		},
+	)
+	if err != nil {
+		writeGoogleBindingError(c, err, preflight)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"binding": binding})
+}
+
+func normalizeGoogleGroupEmail(value string, allowEmpty bool) (string, error) {
+	email := strings.ToLower(strings.TrimSpace(value))
+	if email == "" && allowEmpty {
+		return "", nil
+	}
+	parsed, err := mail.ParseAddress(email)
+	if err != nil || parsed.Address != email {
+		return "", errors.New("invalid email address")
+	}
+	return email, nil
+}
+
+func writeGoogleBindingError(c *gin.Context, err error, preflight service.GoogleBindingPreflight) {
+	var confirmationErr *service.ConfirmationRequiredError
+	var stateChangedErr *service.BindingStateChangedError
+	var alreadyBoundErr *service.GoogleGroupAlreadyBoundError
+	switch {
+	case errors.As(err, &confirmationErr), errors.As(err, &stateChangedErr):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "preflight": preflight})
+	case errors.As(err, &alreadyBoundErr):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, service.ErrGoogleSyncUnavailable):
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
 }
 
 // DeleteGoogleBinding removes a binding by ID. The group_id query param is
@@ -78,8 +181,19 @@ func DeleteGoogleBinding(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenCanManageGroup(c, groupID))
-	if err := service.DeleteGoogleBinding(groupID, bindingID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	defer cancel()
+	_, preflight, err := service.ApplyGoogleBinding(
+		ctx,
+		groupID,
+		"",
+		bindingID,
+		service.GoogleBindingConfirmations{
+			DeletePreviousGroup: c.Query("confirm_delete_group") == "true",
+		},
+	)
+	if err != nil {
+		writeGoogleBindingError(c, err, preflight)
 		return
 	}
 	c.Status(http.StatusNoContent)

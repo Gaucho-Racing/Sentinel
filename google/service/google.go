@@ -21,7 +21,7 @@ var directorySvc *directory.Service
 // memberEntry is a Google Group member reduced to the fields reconcile needs.
 type memberEntry struct {
 	Email string
-	Role  string // OWNER | MANAGER | MEMBER
+	Role  string
 }
 
 // InitGoogleClient builds the Directory client from GOOGLE_SERVICE_ACCOUNT,
@@ -33,7 +33,11 @@ func InitGoogleClient() error {
 		logger.SugarLogger.Warnln("google sync disabled: GOOGLE_SERVICE_ACCOUNT / GOOGLE_ADMIN_SUBJECT not set")
 		return nil
 	}
-	jwtConfig, err := google.JWTConfigFromJSON([]byte(config.GoogleServiceAccount), directory.AdminDirectoryGroupMemberScope)
+	jwtConfig, err := google.JWTConfigFromJSON(
+		[]byte(config.GoogleServiceAccount),
+		directory.AdminDirectoryGroupScope,
+		directory.AdminDirectoryGroupMemberScope,
+	)
 	if err != nil {
 		return fmt.Errorf("parse google service account: %w", err)
 	}
@@ -46,6 +50,63 @@ func InitGoogleClient() error {
 	}
 	directorySvc = svc
 	logger.SugarLogger.Infof("google sync enabled, impersonating %s", config.GoogleAdminSubject)
+	return nil
+}
+
+func getGoogleGroup(ctx context.Context, groupEmail string) (*directory.Group, bool, error) {
+	group, err := directorySvc.Groups.Get(groupEmail).Context(ctx).Do()
+	if err != nil {
+		if isStatus(err, 404) {
+			return nil, false, nil
+		}
+		return nil, false, fmt.Errorf("get google group %s: %w", groupEmail, err)
+	}
+	return group, true, nil
+}
+
+func createGoogleGroup(ctx context.Context, groupEmail, name string) (*directory.Group, error) {
+	group, err := directorySvc.Groups.Insert(&directory.Group{
+		Email: groupEmail,
+		Name:  name,
+	}).Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("create google group %s: %w", groupEmail, err)
+	}
+	return group, nil
+}
+
+func deleteGoogleGroup(ctx context.Context, groupEmail string) error {
+	err := directorySvc.Groups.Delete(groupEmail).Context(ctx).Do()
+	if err != nil && !isStatus(err, 404) {
+		return fmt.Errorf("delete google group %s: %w", groupEmail, err)
+	}
+	return nil
+}
+
+func ensureGroupOwner(ctx context.Context, groupEmail, ownerEmail string) error {
+	member, err := directorySvc.Members.Get(groupEmail, ownerEmail).Context(ctx).Do()
+	if err != nil {
+		if !isStatus(err, 404) {
+			return fmt.Errorf("get owner %s in %s: %w", ownerEmail, groupEmail, err)
+		}
+		_, err = directorySvc.Members.Insert(groupEmail, &directory.Member{
+			Email: ownerEmail,
+			Role:  "OWNER",
+		}).Context(ctx).Do()
+		if err != nil {
+			return fmt.Errorf("add owner %s to %s: %w", ownerEmail, groupEmail, err)
+		}
+		return nil
+	}
+	if member.Role == "OWNER" {
+		return nil
+	}
+	_, err = directorySvc.Members.Update(groupEmail, ownerEmail, &directory.Member{
+		Role: "OWNER",
+	}).Context(ctx).Do()
+	if err != nil {
+		return fmt.Errorf("promote %s to owner of %s: %w", ownerEmail, groupEmail, err)
+	}
 	return nil
 }
 

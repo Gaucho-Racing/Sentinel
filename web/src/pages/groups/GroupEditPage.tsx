@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, Bot, Mail, Plus, Sparkles, Trash2, X } from "lucide-react"
+import { AlertTriangle, ArrowLeft, Bot, Mail, Plus, Sparkles, Trash2, X } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 import { toast } from "sonner"
@@ -39,7 +39,13 @@ import {
   useGroupDiscordBindings,
   type GroupDiscordRoleBinding,
 } from "@/lib/discord"
-import { useGroupGoogleBinding } from "@/lib/google"
+import {
+  applyGoogleBinding,
+  preflightGoogleBinding,
+  useGroupGoogleBinding,
+  type GoogleBindingConfirmations,
+  type GoogleBindingPreflight,
+} from "@/lib/google"
 import type { Group, GroupMember, GroupOwner, GroupSource } from "@/lib/groups"
 
 import { DiscordRolePickerDialog } from "./DiscordRolePickerDialog"
@@ -249,7 +255,8 @@ function GoogleSyncCard({
         <CardDescription>
           Mirror this group's members into a Google Group. Everyone in the group is
           synced as a MEMBER; owners and managers added directly in Google are left
-          untouched. Leave blank to disable. Changes apply on Save.
+          untouched. Leave blank to disable and delete the linked Google Group. Changes
+          apply on Save.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -464,6 +471,10 @@ export default function GroupEditPage() {
   const [syncingGoogle, setSyncingGoogle] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [cascadeConfirmOpen, setCascadeConfirmOpen] = useState(false)
+  const [googleConfirmOpen, setGoogleConfirmOpen] = useState(false)
+  const [googlePreflight, setGooglePreflight] = useState<GoogleBindingPreflight | null>(
+    null,
+  )
   // Pending binding state — staged changes are applied to the server in
   // commitSave alongside the basics, so the Save button is the single commit
   // point for the entire page.
@@ -626,10 +637,25 @@ export default function GroupEditPage() {
     })
   }
 
-  async function commitSave() {
+  async function commitSave(
+    preflight: GoogleBindingPreflight | null,
+    confirmations: GoogleBindingConfirmations = {
+      overwrite_requested_group_members: false,
+      delete_previous_group: false,
+    },
+  ) {
     if (!values || !id) return
     setSubmitting(true)
     try {
+      if (preflight?.binding_changed) {
+        await applyGoogleBinding(
+          id,
+          googleEmail.trim(),
+          preflight.current_binding?.id ?? "",
+          confirmations,
+        )
+      }
+
       // Only apply staged binding changes if Discord is staying enabled.
       // If DISCORD is being unchecked the group will stop honoring bindings
       // regardless, so any pending edits would just create orphans.
@@ -663,27 +689,6 @@ export default function GroupEditPage() {
           })
         }
       }
-      // Google Group binding is 1:1, so diff the input against the server
-      // binding: clear/replace deletes the old row, a non-empty value upserts.
-      // Not gated on allowed_sources — Google is an outbound projection, not a
-      // membership source.
-      const serverGoogleBinding = googleBindingQuery.data ?? null
-      const desiredGoogleEmail = googleEmail.trim()
-      const currentGoogleEmail = serverGoogleBinding?.google_group_email ?? ""
-      if (desiredGoogleEmail !== currentGoogleEmail) {
-        if (serverGoogleBinding) {
-          await api.delete(`/google/group-bindings/${serverGoogleBinding.id}`, {
-            params: { group_id: id },
-          })
-        }
-        if (desiredGoogleEmail) {
-          await api.post(`/google/group-bindings`, {
-            group_id: id,
-            google_group_email: desiredGoogleEmail,
-          })
-        }
-      }
-
       // Diff application links against the server state. POST is upsert,
       // so we send any link whose required flag differs (or doesn't exist
       // yet); DELETE anything the server has that's no longer in our state.
@@ -716,16 +721,76 @@ export default function GroupEditPage() {
       qc.invalidateQueries({ queryKey: ["group", id, "discord-bindings"] })
       qc.invalidateQueries({ queryKey: ["group", id, "google-binding"] })
       qc.invalidateQueries({ queryKey: ["group", id, "applications"] })
+      setGoogleConfirmOpen(false)
+      setGooglePreflight(null)
       toast.success("Group updated")
       navigate(`/groups/${id}`)
     } catch (err: unknown) {
+      const response = (
+        err as {
+          response?: {
+            status?: number
+            data?: { error?: string; preflight?: GoogleBindingPreflight }
+          }
+        }
+      ).response
+      if (response?.status === 409 && response.data?.preflight) {
+        const freshPreflight = response.data.preflight
+        const requiresConfirmation =
+          freshPreflight.required_confirmation.overwrite_requested_group_members ||
+          freshPreflight.required_confirmation.delete_previous_group
+        if (requiresConfirmation) {
+          setGooglePreflight(freshPreflight)
+          setGoogleConfirmOpen(true)
+        } else {
+          setGoogleConfirmOpen(false)
+          setGooglePreflight(null)
+          void qc.invalidateQueries({ queryKey: ["group", id, "google-binding"] })
+          toast.error(
+            "The Google Group binding changed while you were editing. Review it and save again.",
+          )
+        }
+        return
+      }
       const message =
-        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
-        "Couldn't save the group."
+        response?.data?.error ?? "Couldn't save the group."
       toast.error(message)
     } finally {
       setSubmitting(false)
       setCascadeConfirmOpen(false)
+    }
+  }
+
+  async function preflightGoogleAndSave() {
+    if (!id) return
+    const desiredGoogleEmail = googleEmail.trim().toLowerCase()
+    const currentGoogleEmail = (
+      googleBindingQuery.data?.google_group_email ?? ""
+    ).toLowerCase()
+    if (desiredGoogleEmail === currentGoogleEmail) {
+      await commitSave(null)
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const preflight = await preflightGoogleBinding(id, desiredGoogleEmail)
+      const requiresConfirmation =
+        preflight.required_confirmation.overwrite_requested_group_members ||
+        preflight.required_confirmation.delete_previous_group
+      if (requiresConfirmation) {
+        setGooglePreflight(preflight)
+        setGoogleConfirmOpen(true)
+        return
+      }
+      await commitSave(preflight)
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
+        "Couldn't inspect the Google Group."
+      toast.error(message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -752,7 +817,7 @@ export default function GroupEditPage() {
       setCascadeConfirmOpen(true)
       return
     }
-    void commitSave()
+    void preflightGoogleAndSave()
   }
 
   async function handleDelete() {
@@ -1037,9 +1102,114 @@ export default function GroupEditPage() {
               type="button"
               variant="destructive"
               disabled={submitting}
-              onClick={commitSave}
+              onClick={() => {
+                setCascadeConfirmOpen(false)
+                void preflightGoogleAndSave()
+              }}
             >
               {submitting ? "Saving…" : "Save anyway"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={googleConfirmOpen}
+        onOpenChange={(open) => {
+          if (submitting) return
+          setGoogleConfirmOpen(open)
+          if (!open) setGooglePreflight(null)
+        }}
+      >
+        <DialogContent className="gap-5 sm:max-w-lg">
+          <DialogHeader className="gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+              <AlertTriangle className="size-5" />
+            </div>
+            <DialogTitle>Confirm Google Group changes</DialogTitle>
+            <DialogDescription>
+              Google Group membership and group deletion happen outside Sentinel. Review
+              these changes before saving.
+            </DialogDescription>
+          </DialogHeader>
+
+          {googlePreflight && (
+            <div className="space-y-3 text-sm">
+              {googlePreflight.required_confirmation
+                .overwrite_requested_group_members &&
+                googlePreflight.requested_group && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+                    <p className="font-medium text-amber-950">
+                      Replace existing membership
+                    </p>
+                    <p className="mt-1 text-amber-900/80">
+                      <span className="font-medium">
+                        {googlePreflight.requested_group.email}
+                      </span>{" "}
+                      already has {googlePreflight.requested_group.members.length} direct
+                      member
+                      {googlePreflight.requested_group.members.length === 1 ? "" : "s"}.
+                      Ordinary members will be reconciled to this Sentinel group. Existing
+                      owners and managers will remain, and team@gauchoracing.com will be an
+                      owner.
+                    </p>
+                    <ul className="mt-3 max-h-32 space-y-1 overflow-y-auto font-mono text-xs text-amber-950/70">
+                      {googlePreflight.requested_group.members.map((member) => (
+                        <li key={`${member.email}:${member.role}`}>
+                          {member.email} · {member.role.toLowerCase()}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+              {googlePreflight.required_confirmation.delete_previous_group &&
+                googlePreflight.previous_group && (
+                  <div className="rounded-lg border border-destructive/25 bg-destructive/5 p-4">
+                    <p className="font-medium text-destructive">
+                      Delete the previous Google Group
+                    </p>
+                    <p className="mt-1 text-muted-foreground">
+                      <span className="font-medium text-foreground">
+                        {googlePreflight.previous_group.email}
+                      </span>{" "}
+                      and its {googlePreflight.previous_group.members.length} direct member
+                      {googlePreflight.previous_group.members.length === 1 ? "" : "s"} will
+                      be permanently deleted from Google Workspace.
+                    </p>
+                  </div>
+                )}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={submitting}
+              onClick={() => {
+                setGoogleConfirmOpen(false)
+                setGooglePreflight(null)
+              }}
+            >
+              Keep editing
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={submitting || !googlePreflight}
+              onClick={() => {
+                if (!googlePreflight) return
+                void commitSave(googlePreflight, {
+                  overwrite_requested_group_members:
+                    googlePreflight.required_confirmation
+                      .overwrite_requested_group_members,
+                  delete_previous_group:
+                    googlePreflight.required_confirmation.delete_previous_group,
+                })
+              }}
+            >
+              {submitting ? "Saving…" : "Confirm and save"}
             </Button>
           </div>
         </DialogContent>

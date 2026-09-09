@@ -39,7 +39,9 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/google/ping", Ping)
 
 	router.GET("/google/group-bindings", ListGoogleBindings)
+	router.POST("/google/group-bindings/preflight", PreflightGoogleBinding)
 	router.POST("/google/group-bindings", CreateGoogleBinding)
+	router.PUT("/google/group-bindings", ApplyGoogleBinding)
 	router.DELETE("/google/group-bindings/:bindingID", DeleteGoogleBinding)
 
 	router.POST("/google/reconcile", TriggerReconcile)
