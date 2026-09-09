@@ -219,13 +219,11 @@ func OnUserUpdate(s *discordgo.Session, u *discordgo.UserUpdate) {
 	service.SyncDiscordUserAvatar(u.ID, member.AvatarURL("256"))
 }
 
-// OnThreadUpdate keeps guild threads alive indefinitely. Discord doesn't
-// allow disabling thread auto-archival (7-day window at most), so when a
-// thread flips to archived we immediately flip it back. Unarchiving emits
-// another ThreadUpdate with Archived=false, which falls through the guard
-// below — no loop. Locked threads are left alone: locking is an explicit
-// moderator "this thread is closed" signal, and force-unarchiving those
-// would fight moderation.
+// OnThreadUpdate unarchives guild threads that still auto-archive after the
+// periodic bump missed them (bot was down, 1-hour window elapsed between
+// sweeps). Unarchiving emits another ThreadUpdate with Archived=false, which
+// falls through the guard below — no loop. Locked threads are left alone:
+// locking is an explicit moderator "this thread is closed" signal.
 func OnThreadUpdate(s *discordgo.Session, t *discordgo.ThreadUpdate) {
 	if t.GuildID != config.DiscordGuild {
 		return

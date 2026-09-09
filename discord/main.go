@@ -32,6 +32,7 @@ func main() {
 	service.ConnectDiscord()
 	commands.InitializeBot()
 	service.StartReconcileCron()
+	service.StartThreadKeepaliveCron()
 
 	api.Run()
 }
