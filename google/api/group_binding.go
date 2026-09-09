@@ -14,7 +14,7 @@ import (
 // ListGoogleBindings returns all group→Google-Group bindings, optionally
 // filtered to a single group_id. Used by the web UI and by reconciliation.
 func ListGoogleBindings(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c) || RequestTokenHasFirstPartyAccess(c))
 
 	if groupID := c.Query("group_id"); groupID != "" {
 		binding, err := service.GetGoogleBindingForGroup(groupID)
@@ -44,13 +44,12 @@ type createGoogleBindingRequest struct {
 }
 
 func CreateGoogleBinding(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
-
 	var req createGoogleBindingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
 	email := strings.TrimSpace(req.GoogleGroupEmail)
 	if _, err := mail.ParseAddress(email); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
@@ -72,14 +71,13 @@ func CreateGoogleBinding(c *gin.Context) {
 // required to scope the delete — protects against URL tampering that would
 // otherwise let a caller delete a binding for a group they don't control.
 func DeleteGoogleBinding(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
-
 	bindingID := c.Param("bindingID")
 	groupID := c.Query("group_id")
 	if groupID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "group_id query param is required"})
 		return
 	}
+	Require(c, RequestTokenCanManageGroup(c, groupID))
 	if err := service.DeleteGoogleBinding(groupID, bindingID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

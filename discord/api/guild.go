@@ -29,7 +29,7 @@ type discordChannel struct {
 }
 
 func GetRoles(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c) || RequestTokenHasFirstPartyAccess(c))
 
 	roles, err := service.GetGuildRoles()
 	if err != nil {
@@ -54,7 +54,7 @@ func GetRoles(c *gin.Context) {
 }
 
 func GetChannels(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c) || RequestTokenHasFirstPartyAccess(c))
 
 	channels, err := service.GetGuildChannels()
 	if err != nil {

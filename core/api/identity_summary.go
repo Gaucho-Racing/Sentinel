@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
 )
@@ -15,11 +16,7 @@ type identitySummaryRequest struct {
 }
 
 func ResolveIdentitySummaries(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "user:read"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
 
 	var req identitySummaryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

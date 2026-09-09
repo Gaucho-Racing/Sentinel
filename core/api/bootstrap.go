@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/jobs"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -76,6 +77,10 @@ func BootstrapToken(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	if sa.Scope != authz.SentinelInternalScope {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "internal service account scope is not configured"})
 		return
 	}
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/oauth/authz"
 	"github.com/gaucho-racing/sentinel/oauth/config"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
@@ -96,7 +97,7 @@ func RefreshSession(c *gin.Context) {
 // groups:read, etc.) exist for third-party OAuth clients to request via
 // the consent flow; first-party sessions don't need them since the audit
 // surface already gates on the sentinel audience or sentinel:all scope.
-const firstPartyAccessScope = "sentinel:all"
+const firstPartyAccessScope = authz.SentinelAllScope
 const firstPartyRefreshScope = firstPartyAccessScope + " refresh_token"
 
 // mintFirstPartySession builds claims, mints access + refresh JWTs, and

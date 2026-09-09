@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -66,6 +67,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/internal/bootstrap-token", BootstrapToken)
 
 	router.GET("/entities/@me", GetMe)
+	router.GET("/entities/@me/admin-access", CheckAdminAccess)
 	router.POST("/entities/resolve", ResolveIdentitySummaries)
 	router.GET("/entities/:id", GetEntity)
 
@@ -101,6 +103,7 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.GET("/groups", GetAllGroups)
 	router.GET("/groups/:id", GetGroupByID)
+	router.GET("/groups/:id/write-access", CheckGroupWriteAccess)
 	router.POST("/groups", CreateOrUpdateGroup)
 	router.DELETE("/groups/:id", DeleteGroup)
 
@@ -218,13 +221,7 @@ func RequestTokenExists(c *gin.Context) bool {
 }
 
 func RequestTokenHasScope(c *gin.Context, scope string) bool {
-	scopes := GetRequestTokenScopes(c)
-	for _, s := range strings.Split(scopes, " ") {
-		if s == scope {
-			return true
-		}
-	}
-	return false
+	return authz.HasScope(GetRequestTokenScopes(c), scope)
 }
 
 func RequestTokenHasAudience(c *gin.Context, audience string) bool {
@@ -265,6 +262,36 @@ func GetRequestTokenClaims(c *gin.Context) map[string]interface{} {
 		return nil
 	}
 	return claims.(map[string]interface{})
+}
+
+func RequestTokenHasFirstPartyAccess(c *gin.Context) bool {
+	return authz.IsFirstPartyUser(
+		GetRequestTokenScopes(c),
+		GetRequestTokenAudience(c),
+		GetRequestTokenClaims(c),
+	)
+}
+
+func RequestTokenHasInternalAccess(c *gin.Context) bool {
+	return authz.IsInternalServiceAccount(
+		GetRequestTokenScopes(c),
+		GetRequestTokenAudience(c),
+		GetRequestTokenClaims(c),
+	)
+}
+
+func RequestTokenHasResourceScope(c *gin.Context, scope string) bool {
+	return Any(
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasFirstPartyAccess(c),
+		RequestTokenHasScope(c, scope),
+	)
+}
+
+func CheckAdminAccess(c *gin.Context) {
+	Require(c, RequestTokenHasInternalAccess(c) ||
+		RequestTokenHasFirstPartyAccess(c) && RequestUserIsAdmin(c))
+	c.Status(http.StatusNoContent)
 }
 
 // GetRequestTokenEntityID returns the subject (entity_id) of the bearer that
@@ -324,8 +351,10 @@ func RequestUserIsGroupOwner(c *gin.Context, groupID string) bool {
 // with 403 on failure and returns false; otherwise returns true and
 // the caller continues.
 func requireGroupOwnerOrAdmin(c *gin.Context, groupID string) bool {
-	if Any(
-		RequestTokenHasScope(c, "sentinel:all"),
+	if RequestTokenHasInternalAccess(c) {
+		return true
+	}
+	if RequestTokenHasResourceScope(c, authz.GroupsWriteScope) && Any(
 		RequestUserIsGroupOwner(c, groupID),
 		RequestUserIsAdmin(c),
 	) {

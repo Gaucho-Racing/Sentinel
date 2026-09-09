@@ -18,7 +18,7 @@ func CreateEntity(c *gin.Context) {
 	// off (users, service accounts, group memberships). Creation is
 	// reserved for internal automation — the discord onboarding flow
 	// is the canonical caller and now carries sentinel:all via its SA.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	var req createEntityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -47,7 +47,7 @@ func CreateEntityEmailAuth(c *gin.Context) {
 	// callers (discord onboarding mints the initial email auth; future
 	// password-reset flows would go through a separate token-mediated
 	// path before hitting this handler).
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	entityID := c.Param("entityID")
 	var req createEmailAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -89,7 +89,7 @@ type createPhoneAuthRequest struct {
 func CreateEntityPhoneAuth(c *gin.Context) {
 	// Same trust level as the other entity-auth writers: internal
 	// onboarding only.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	entityID := c.Param("entityID")
 	var req createPhoneAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -113,7 +113,7 @@ func CreateEntityExternalAuth(c *gin.Context) {
 	// Linking an external identity (DISCORD, GITHUB, etc.) to an
 	// entity is account-takeover-adjacent — anyone able to write this
 	// row can claim any entity. Internal callers only.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	entityID := c.Param("entityID")
 	var req createExternalAuthRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -144,7 +144,7 @@ func UpdateEntityExternalAuthMetadata(c *gin.Context) {
 	// Called by login handlers on every successful provider sign-in
 	// (oauth-discord-login refreshes the cached email/username/avatar
 	// after a successful Discord exchange). Internal callers only.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	entityID := c.Param("entityID")
 	provider := c.Param("provider")
 	var req updateExternalAuthMetadataRequest

@@ -28,7 +28,7 @@ func GenerateToken(c *gin.Context) {
 	// the caller a JWT identifying themselves as whoever they like, with
 	// whatever permissions they specify (including sentinel:all itself).
 	// Reserved for first-party automations carrying sentinel:all.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 
 	var req generateTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -65,7 +65,7 @@ func RevokeToken(c *gin.Context) {
 	// Revoking arbitrary tokens lets a caller deny any user service
 	// access by ID. Same trust level as minting — reserved for
 	// first-party automations carrying sentinel:all.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 
 	id := c.Param("id")
 	if err := service.RevokeToken(id); err != nil {

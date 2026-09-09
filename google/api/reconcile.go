@@ -10,7 +10,7 @@ import (
 // TriggerReconcile kicks a full reconcile sweep in the background. Useful for
 // ops and for applying a binding change without waiting for the cron.
 func TriggerReconcile(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasAdminAccess(c))
 	service.TriggerReconcile()
 	c.JSON(http.StatusAccepted, gin.H{"message": "reconcile triggered"})
 }

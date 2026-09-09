@@ -8,7 +8,7 @@ import (
 )
 
 func GetApplicationProvisioningSnapshot(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	snapshot, err := service.GetApplicationProvisioningSnapshot(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not build provisioning snapshot"})

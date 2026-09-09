@@ -15,8 +15,8 @@ import (
 // (sentinel:all). Mirrors the GetApplicationSecret gate.
 func requireAnalyticsAccess(c *gin.Context) {
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasFirstPartyAccess(c) && RequestUserIsAdmin(c),
 	))
 }
 

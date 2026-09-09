@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -26,7 +27,7 @@ var allowedSATTLs = map[int]struct{}{
 // first-party automation carrying sentinel:all skips the check entirely
 // (matches the codebase-wide convention where sentinel:all is the
 // internal-services bypass scope). Returns the resolved app on success.
-func requireAppOwnerOrAdmin(c *gin.Context, appID string) (model.Application, bool) {
+func requireAppOwnerOrAdmin(c *gin.Context, appID string, scope string) (model.Application, bool) {
 	app, err := service.GetApplicationByID(appID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -36,11 +37,10 @@ func requireAppOwnerOrAdmin(c *gin.Context, appID string) (model.Application, bo
 		}
 		return model.Application{}, false
 	}
-	if !Any(
-		RequestTokenHasScope(c, "sentinel:all"),
+	if !RequestTokenHasInternalAccess(c) && !(RequestTokenHasResourceScope(c, scope) && Any(
 		RequestTokenHasEntityID(c, app.OwnerID),
 		RequestUserIsAdmin(c),
-	) {
+	)) {
 		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "you are not authorized to manage this application"})
 		return model.Application{}, false
 	}
@@ -49,7 +49,7 @@ func requireAppOwnerOrAdmin(c *gin.Context, appID string) (model.Application, bo
 
 func ListServiceAccountsForApplication(c *gin.Context) {
 	id := c.Param("id")
-	if _, ok := requireAppOwnerOrAdmin(c, id); !ok {
+	if _, ok := requireAppOwnerOrAdmin(c, id, authz.ApplicationsReadScope); !ok {
 		return
 	}
 	sas, err := service.GetServiceAccountsByApplicationID(id)
@@ -80,7 +80,7 @@ type serviceAccountWithToken struct {
 
 func CreateServiceAccountForApp(c *gin.Context) {
 	id := c.Param("id")
-	if _, ok := requireAppOwnerOrAdmin(c, id); !ok {
+	if _, ok := requireAppOwnerOrAdmin(c, id, authz.ApplicationsWriteScope); !ok {
 		return
 	}
 	var req createServiceAccountRequest
@@ -138,7 +138,7 @@ func RotateServiceAccountToken(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if _, ok := requireAppOwnerOrAdmin(c, sa.ApplicationID); !ok {
+	if _, ok := requireAppOwnerOrAdmin(c, sa.ApplicationID, authz.ApplicationsWriteScope); !ok {
 		return
 	}
 
@@ -170,9 +170,11 @@ func GetServiceAccountToken(c *gin.Context) {
 		return
 	}
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, sa.CreatedBy),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.ApplicationsReadScope) && Any(
+			RequestTokenHasEntityID(c, sa.CreatedBy),
+			RequestUserIsAdmin(c),
+		),
 	))
 	if sa.ActiveToken == nil || sa.SignedToken == "" {
 		c.JSON(http.StatusNotFound, gin.H{"error": "no active token; rotate to mint a new one"})
@@ -192,7 +194,7 @@ func DeleteServiceAccount(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	if _, ok := requireAppOwnerOrAdmin(c, sa.ApplicationID); !ok {
+	if _, ok := requireAppOwnerOrAdmin(c, sa.ApplicationID, authz.ApplicationsWriteScope); !ok {
 		return
 	}
 

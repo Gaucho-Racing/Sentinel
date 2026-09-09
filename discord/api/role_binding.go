@@ -11,7 +11,7 @@ import (
 // ListRoleBindings returns all role bindings, optionally filtered by group_id.
 // Used by the web UI (per-group view) and by reconciliation (full sweep).
 func ListRoleBindings(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c) || RequestTokenHasFirstPartyAccess(c))
 
 	groupID := c.Query("group_id")
 	var (
@@ -36,13 +36,12 @@ type createRoleBindingRequest struct {
 }
 
 func CreateRoleBinding(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
-
 	var req createRoleBindingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
 	if len(req.DiscordRoleIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "discord_role_ids must be non-empty"})
 		return
@@ -63,14 +62,13 @@ func CreateRoleBinding(c *gin.Context) {
 // required to scope the delete — protects against URL tampering that would
 // otherwise let a caller delete a binding they don't own access to.
 func DeleteRoleBinding(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
-
 	bindingID := c.Param("bindingID")
 	groupID := c.Query("group_id")
 	if groupID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "group_id query param is required"})
 		return
 	}
+	Require(c, RequestTokenCanManageGroup(c, groupID))
 	if err := service.DeleteRoleBinding(groupID, bindingID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
