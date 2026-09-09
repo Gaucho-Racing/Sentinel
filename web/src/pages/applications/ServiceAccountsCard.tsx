@@ -41,6 +41,7 @@ import { loadSession } from "@/lib/auth"
 import {
   isNeverExpires,
   SA_ALLOWED_SCOPES,
+  SA_IMPERSONATION_SCOPE,
   SA_SCOPE_DESCRIPTIONS,
   TTL_PRESETS,
   useApplicationServiceAccounts,
@@ -76,6 +77,10 @@ function expirySummary(expiresAt: string | null | undefined): string {
 function extractError(e: unknown, fallback: string): string {
   const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
   return msg ?? fallback
+}
+
+function hasImpersonationScope(scope: string): boolean {
+  return scope.split(/\s+/).includes(SA_IMPERSONATION_SCOPE)
 }
 
 export function ServiceAccountsCard({ applicationID }: { applicationID: string }) {
@@ -117,7 +122,12 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
                 key={sa.id}
                 sa={sa}
                 applicationID={applicationID}
-                canViewToken={isAdmin || sa.created_by === myEntityID}
+                canViewToken={
+                  isAdmin ||
+                  (!hasImpersonationScope(sa.scope) &&
+                    sa.created_by === myEntityID)
+                }
+                canRotateToken={isAdmin || !hasImpersonationScope(sa.scope)}
                 onRevealToken={(result) => setRevealed(result)}
               />
             ))}
@@ -136,6 +146,7 @@ export function ServiceAccountsCard({ applicationID }: { applicationID: string }
           open={createOpen}
           onOpenChange={setCreateOpen}
           applicationID={applicationID}
+          canAssignImpersonationScope={isAdmin}
           onCreated={(result) => {
             setCreateOpen(false)
             setRevealed(result)
@@ -155,11 +166,13 @@ function ServiceAccountItem({
   sa,
   applicationID,
   canViewToken,
+  canRotateToken,
   onRevealToken,
 }: {
   sa: ServiceAccount
   applicationID: string
   canViewToken: boolean
+  canRotateToken: boolean
   onRevealToken: (result: ServiceAccountWithToken) => void
 }) {
   const viewToken = useViewServiceAccountToken()
@@ -223,14 +236,16 @@ function ServiceAccountItem({
               </Button>
             </>
           )}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setConfirmRotate(true)}
-            title="Rotate token"
-          >
-            <RefreshCw className="size-3.5" />
-          </Button>
+          {canRotateToken && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setConfirmRotate(true)}
+              title="Rotate token"
+            >
+              <RefreshCw className="size-3.5" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon-sm"
@@ -291,11 +306,13 @@ function CreateServiceAccountDialog({
   open,
   onOpenChange,
   applicationID,
+  canAssignImpersonationScope,
   onCreated,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   applicationID: string
+  canAssignImpersonationScope: boolean
   onCreated: (result: ServiceAccountWithToken) => void
 }) {
   const createSA = useCreateServiceAccount(applicationID)
@@ -304,6 +321,9 @@ function CreateServiceAccountDialog({
   // 365-day default — picked over the PR #78 "90 days" since the user
   // chose 1 year as the default for SA tokens.
   const [ttlDays, setTtlDays] = useState("365")
+  const availableScopes: readonly SAScope[] = canAssignImpersonationScope
+    ? [...SA_ALLOWED_SCOPES, SA_IMPERSONATION_SCOPE]
+    : SA_ALLOWED_SCOPES
 
   function toggleScope(s: SAScope) {
     setScopeSet((prev) => {
@@ -363,7 +383,7 @@ function CreateServiceAccountDialog({
           <div className="space-y-2">
             <Label>Scope</Label>
             <ul className="space-y-1.5">
-              {SA_ALLOWED_SCOPES.map((s) => {
+              {availableScopes.map((s) => {
                 const checked = scopeSet.has(s)
                 return (
                   <li key={s}>

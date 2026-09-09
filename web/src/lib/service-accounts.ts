@@ -47,12 +47,17 @@ export const SA_ALLOWED_SCOPES = [
   "applications:read",
 ] as const
 
-export type SAScope = (typeof SA_ALLOWED_SCOPES)[number]
+export const SA_IMPERSONATION_SCOPE = "sentinel:impersonate" as const
+
+export type SAScope =
+  | (typeof SA_ALLOWED_SCOPES)[number]
+  | typeof SA_IMPERSONATION_SCOPE
 
 export const SA_SCOPE_DESCRIPTIONS: Record<SAScope, string> = {
   "user:read": "Read user and entity profiles",
   "groups:read": "Read group memberships",
   "applications:read": "Read application details",
+  "sentinel:impersonate": "Mint short-lived user tokens for an application",
 }
 
 // TTL_PRESETS is the dropdown shown on the create / rotate dialogs.
