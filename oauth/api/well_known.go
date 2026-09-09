@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"sort"
 
+	"github.com/gaucho-racing/sentinel/oauth/authz"
 	"github.com/gaucho-racing/sentinel/oauth/config"
 	"github.com/gaucho-racing/sentinel/oauth/model"
 	"github.com/gin-gonic/gin"
@@ -41,7 +42,7 @@ func OpenIDConfiguration(c *gin.Context) {
 func supportedScopes() []string {
 	scopes := make([]string, 0, len(model.ValidScopes))
 	for scope := range model.ValidScopes {
-		if scope == "sentinel:all" {
+		if scope == authz.SentinelAllScope || scope == authz.SentinelInternalScope {
 			continue
 		}
 		scopes = append(scopes, scope)

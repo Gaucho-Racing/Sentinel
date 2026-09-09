@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/config"
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
@@ -233,7 +234,7 @@ func initializeInternalServiceAccounts() {
 			sa, err = service.CreateServiceAccountForApp(
 				SentinelApplicationID,
 				name,
-				"sentinel:all",
+				authz.SentinelInternalScope,
 				0, // never expires
 				SentinelCoreEntityID,
 			)
@@ -245,6 +246,20 @@ func initializeInternalServiceAccounts() {
 		} else if err != nil {
 			logger.SugarLogger.Errorf("Failed to look up internal SA %s: %v", name, err)
 			continue
+		}
+
+		if sa.Scope != authz.SentinelInternalScope {
+			if err := database.DB.Model(&model.ServiceAccount{}).
+				Where("id = ?", sa.ID).
+				Updates(map[string]any{
+					"scope":        authz.SentinelInternalScope,
+					"signed_token": "",
+				}).Error; err != nil {
+				logger.SugarLogger.Errorf("Failed to migrate internal SA %s scope: %v", name, err)
+				continue
+			}
+			sa.Scope = authz.SentinelInternalScope
+			sa.SignedToken = ""
 		}
 
 		if sa.SignedToken == "" {

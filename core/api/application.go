@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
@@ -10,11 +11,7 @@ import (
 )
 
 func GetAllApplications(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "applications:read"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
 	applications, err := service.GetAllApplications()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -24,11 +21,7 @@ func GetAllApplications(c *gin.Context) {
 }
 
 func GetApplicationByID(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "applications:read"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
 	id := c.Param("id")
 	app, err := service.GetApplicationByID(id)
 	if err != nil {
@@ -62,10 +55,7 @@ func GetApplicationByClientID(c *gin.Context) {
 	// internal metadata. The oauth/saml services use it to look up
 	// the app a token request is targeting, so internal automation
 	// must work; admins also have full read.
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestUserIsAdmin(c),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
 	clientID := c.Param("clientID")
 	app, err := service.GetApplicationByClientID(clientID)
 	if err != nil {
@@ -117,11 +107,7 @@ type createdApplicationResponse struct {
 }
 
 func CreateApplication(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "applications:write"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsWriteScope))
 
 	var req createApplicationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -196,9 +182,11 @@ func GetApplicationSecret(c *gin.Context) {
 		return
 	}
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
-		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.ApplicationsReadScope) && Any(
+			RequestTokenHasEntityID(c, app.OwnerID),
+			RequestUserIsAdmin(c),
+		),
 	))
 	recordAudit(c, model.AuditActionApplicationSecretRevealed, "application", app.ID, model.JSONMap{"name": app.Name})
 	c.JSON(http.StatusOK, gin.H{"client_secret": app.ClientSecret})
@@ -225,11 +213,7 @@ func DeleteApplication(c *gin.Context) {
 }
 
 func GetApplicationGroups(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "applications:read"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
 	id := c.Param("id")
 	groups, err := service.GetGroupsForApplication(id)
 	if err != nil {
@@ -244,7 +228,7 @@ func GetApplicationGroups(c *gin.Context) {
 // groups claim and enforce the access gate. Now that oauth carries its own SA
 // bearer, the gate is sentinel:all (matches the other internal-only reads).
 func GetApplicationGroupsByClientID(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	clientID := c.Param("clientID")
 	app, err := service.GetApplicationByClientID(clientID)
 	if err != nil {
@@ -320,11 +304,7 @@ func RemoveApplicationGroup(c *gin.Context) {
 }
 
 func GetApplicationRedirectURIs(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "applications:read"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
 	id := c.Param("id")
 	uris, err := service.GetRedirectURIsForApplication(id)
 	if err != nil {
@@ -392,10 +372,9 @@ func RemoveApplicationRedirectURI(c *gin.Context) {
 // owner OR an Admins-group member, or a third-party token with
 // applications:write granted by the owner.
 func ApplicationWriteAuthorized(c *gin.Context, app model.Application) bool {
-	return Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasAudience(c, "sentinel") && RequestTokenHasEntityID(c, app.OwnerID),
-		RequestTokenHasAudience(c, "sentinel") && RequestUserIsAdmin(c),
-		RequestTokenHasScope(c, "applications:write") && RequestTokenHasEntityID(c, app.OwnerID),
-	)
+	return RequestTokenHasInternalAccess(c) ||
+		RequestTokenHasResourceScope(c, authz.ApplicationsWriteScope) && Any(
+			RequestTokenHasEntityID(c, app.OwnerID),
+			RequestUserIsAdmin(c),
+		)
 }

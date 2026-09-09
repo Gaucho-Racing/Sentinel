@@ -6,6 +6,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/sentinel/core/service"
@@ -49,7 +50,7 @@ func validateMembershipExpiration(hasExpiration bool, expiresAt time.Time) error
 }
 
 func GetAllGroups(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 
 	groups, err := service.GetAllGroups()
 	if err != nil {
@@ -92,7 +93,7 @@ func cascadeRemovedSources(groupID string, before model.StringSlice, after []str
 }
 
 func GetGroupByID(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 
 	id := c.Param("id")
 	group, err := service.GetGroupByID(id)
@@ -105,6 +106,13 @@ func GetGroupByID(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, group)
+}
+
+func CheckGroupWriteAccess(c *gin.Context) {
+	if !requireGroupOwnerOrAdmin(c, c.Param("id")) {
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 type upsertGroupRequest struct {
@@ -140,10 +148,7 @@ func CreateOrUpdateGroup(c *gin.Context) {
 	// without this check, anyone could rename or rewrite allowed_sources
 	// on any group, including the Admins group.
 	if existing.ID == "" {
-		Require(c, Any(
-			RequestTokenHasScope(c, "sentinel:all"),
-			RequestTokenHasScope(c, "groups:write"),
-		))
+		Require(c, RequestTokenHasResourceScope(c, authz.GroupsWriteScope))
 	} else if !requireGroupOwnerOrAdmin(c, existing.ID) {
 		return
 	}
@@ -212,7 +217,7 @@ func CreateOrUpdateGroup(c *gin.Context) {
 }
 
 func GetGroupApplications(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 
 	id := c.Param("id")
 	apps, err := service.GetApplicationsForGroup(id)
@@ -242,7 +247,7 @@ func DeleteGroup(c *gin.Context) {
 // Members
 
 func GetGroupMembers(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 
 	id := c.Param("id")
 	members, err := service.GetMembersForGroup(id)
@@ -262,7 +267,7 @@ type addGroupMemberRequest struct {
 }
 
 func requestAddedBy(c *gin.Context, claimed string) string {
-	if RequestTokenHasScope(c, "sentinel:all") && claimed != "" {
+	if RequestTokenHasInternalAccess(c) && claimed != "" {
 		return claimed
 	}
 	return GetRequestTokenEntityID(c)
@@ -303,13 +308,13 @@ func AddGroupMember(c *gin.Context) {
 	if source == "" {
 		source = string(model.GroupMemberSourceDirect)
 	}
-	if source != string(model.GroupMemberSourceDirect) && !RequestTokenHasScope(c, "sentinel:all") {
+	if source != string(model.GroupMemberSourceDirect) && !RequestTokenHasInternalAccess(c) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "only internal services can add synced group members"})
 		return
 	}
 	if source == string(model.GroupMemberSourceDirect) &&
 		!containsSource(group.AllowedSources, model.GroupMemberSourceDirect) &&
-		!RequestTokenHasScope(c, "sentinel:all") {
+		!RequestTokenHasInternalAccess(c) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "direct memberships are not enabled for this group"})
 		return
 	}
@@ -368,7 +373,7 @@ func RemoveGroupMember(c *gin.Context) {
 // Owners
 
 func GetGroupOwners(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 
 	id := c.Param("id")
 	owners, err := service.GetOwnersForGroup(id)
@@ -448,9 +453,13 @@ func RemoveGroupOwner(c *gin.Context) {
 
 func GetGroupJoinRequests(c *gin.Context) {
 	id := c.Param("id")
-	if !requireGroupOwnerOrAdmin(c, id) {
-		return
-	}
+	Require(c, Any(
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.GroupsReadScope) && Any(
+			RequestUserIsGroupOwner(c, id),
+			RequestUserIsAdmin(c),
+		),
+	))
 	requests, err := service.GetJoinRequestsByGroup(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -473,10 +482,12 @@ func GetGroupJoinRequest(c *gin.Context) {
 	// Applicants can read their own request; otherwise the group's
 	// owner roster, admins, and internal services can see it.
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, request.EntityID),
-		RequestUserIsGroupOwner(c, request.GroupID),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.GroupsReadScope) && Any(
+			RequestTokenHasEntityID(c, request.EntityID),
+			RequestUserIsGroupOwner(c, request.GroupID),
+			RequestUserIsAdmin(c),
+		),
 	))
 	c.JSON(http.StatusOK, request)
 }
@@ -499,9 +510,11 @@ func CreateGroupJoinRequest(c *gin.Context) {
 	// that is admin or internal; group owners can't backdoor people in
 	// via this endpoint (they'd use AddGroupMember directly).
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, req.EntityID),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.GroupsWriteScope) && Any(
+			RequestTokenHasEntityID(c, req.EntityID),
+			RequestUserIsAdmin(c),
+		),
 	))
 	if err := validateMembershipExpiration(req.HasExpiration, req.ExpiresAt); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -669,10 +682,12 @@ func CreateJoinRequestComment(c *gin.Context) {
 	// Bearer must match the comment's claimed entity_id; the owner/
 	// admin path bypasses the self check.
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, req.EntityID),
-		RequestUserIsGroupOwner(c, id),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.GroupsWriteScope) && Any(
+			RequestTokenHasEntityID(c, req.EntityID),
+			RequestUserIsGroupOwner(c, id),
+			RequestUserIsAdmin(c),
+		),
 	))
 	comment, err := service.CreateJoinRequestComment(model.GroupJoinRequestComment{
 		RequestID: requestID,
@@ -702,10 +717,12 @@ func DeleteJoinRequestComment(c *gin.Context) {
 		return
 	}
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, comment.EntityID),
-		RequestUserIsGroupOwner(c, id),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.GroupsWriteScope) && Any(
+			RequestTokenHasEntityID(c, comment.EntityID),
+			RequestUserIsGroupOwner(c, id),
+			RequestUserIsAdmin(c),
+		),
 	))
 	if err := service.DeleteJoinRequestComment(commentID); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})

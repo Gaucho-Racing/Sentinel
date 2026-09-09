@@ -4,13 +4,14 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
 )
 
 func GetGroupConditionalBindings(c *gin.Context) {
-	Require(c, RequestTokenExists(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 
 	id := c.Param("id")
 	bindings, err := service.GetConditionalBindingsForGroup(id)

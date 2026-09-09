@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
@@ -10,10 +11,7 @@ import (
 )
 
 func GetMe(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "user:read"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
 	id := GetRequestTokenEntityID(c)
 
 	entity, err := service.GetEntityByID(id)
@@ -30,11 +28,7 @@ func GetMe(c *gin.Context) {
 
 func GetEntity(c *gin.Context) {
 	id := c.Param("id")
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "user:read") && RequestTokenHasEntityID(c, id),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
 
 	entity, err := service.GetEntityByID(id)
 	if err != nil {
@@ -53,11 +47,7 @@ func GetEntityByID(c *gin.Context) {
 	// Entity rows carry PII (email-auth, phone-auth, linked external
 	// identities, user profile). Self can read their own; admin and
 	// internal automation override.
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, entityID),
-		RequestUserIsAdmin(c),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
 	entity, err := service.GetEntityByID(entityID)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -75,11 +65,7 @@ func GetEntityGroups(c *gin.Context) {
 	// Group membership is an authorization signal — leaking another
 	// user's groups would tell an attacker who has admin-equivalent
 	// access. Self / admin / internal only.
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, entityID),
-		RequestUserIsAdmin(c),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 	groups, err := service.GetGroupsForEntity(entityID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -96,11 +82,7 @@ func GetEntityMemberships(c *gin.Context) {
 	// Raw GroupMember rows (with source labels) are used by integration
 	// services to diff their own writes — same self/admin/internal
 	// trust level as GetEntityGroups.
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, entityID),
-		RequestUserIsAdmin(c),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 	source := c.Query("source")
 	memberships, err := service.GetMembershipsForEntity(entityID, source)
 	if err != nil {
@@ -115,7 +97,7 @@ func GetEntityByExternalAuth(c *gin.Context) {
 	// map to?" — leaks the user/Discord identity pairing. Reserved for
 	// internal automation; the oauth-discord-login flow is the
 	// canonical caller.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	provider := c.Param("provider")
 	externalID := c.Param("externalID")
 	entity, err := service.GetEntityByExternalAuth(provider, externalID)
@@ -133,7 +115,7 @@ func GetEntityByExternalAuth(c *gin.Context) {
 func ListExternalAuthsByProvider(c *gin.Context) {
 	// Enumeration of every onboarded user for a provider — used by
 	// the discord sync's full sweep. Internal callers only.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	provider := c.Param("provider")
 	auths, err := service.ListExternalAuthsByProvider(provider)
 	if err != nil {
@@ -148,7 +130,7 @@ func CreateEntityLogin(c *gin.Context) {
 	// them is reserved for the oauth service (which records each
 	// session it mints); admins/users shouldn't be backdating their
 	// own entries.
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c))
 	var login model.EntityLogin
 	if err := c.ShouldBindJSON(&login); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -167,9 +149,11 @@ func GetEntityLogins(c *gin.Context) {
 	// Login history is an audit-grade signal. Self / admin / internal
 	// only.
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasEntityID(c, entityID),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.UserReadScope) && Any(
+			RequestTokenHasEntityID(c, entityID),
+			RequestUserIsAdmin(c),
+		),
 	))
 	logins, err := service.GetEntityLogins(service.EntityLoginsFilter{
 		EntityID: entityID,

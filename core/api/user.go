@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/service"
 	"github.com/gin-gonic/gin"
@@ -11,10 +12,7 @@ import (
 )
 
 func GetAllUsers(c *gin.Context) {
-	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
 	users, err := service.GetAllUsers()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -44,12 +42,7 @@ func GetUserByID(c *gin.Context) {
 	// internal only. The user:read scope is allowed when the caller
 	// is reading themselves (matches the existing patterns on
 	// GetUserLogins and GetUserRecentApplications).
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasUserID(c, id),
-		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
-		RequestUserIsAdmin(c),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
 	user, err := service.GetUserByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -81,16 +74,17 @@ func CreateOrUpdateUser(c *gin.Context) {
 	// their own profile, plus the usual admin/internal overrides.
 	if existing.ID == "" {
 		Require(c, Any(
-			RequestTokenHasScope(c, "sentinel:all"),
-			RequestUserIsAdmin(c),
+			RequestTokenHasInternalAccess(c),
+			RequestTokenHasResourceScope(c, authz.UserWriteScope) && RequestUserIsAdmin(c),
 		))
 	} else {
 		Require(c, Any(
-			RequestTokenHasScope(c, "sentinel:all"),
-			RequestTokenHasUserID(c, existing.ID),
-			RequestTokenHasEntityID(c, existing.EntityID),
-			RequestTokenHasScope(c, "user:write") && RequestTokenHasUserID(c, existing.ID),
-			RequestUserIsAdmin(c),
+			RequestTokenHasInternalAccess(c),
+			RequestTokenHasResourceScope(c, authz.UserWriteScope) && Any(
+				RequestTokenHasUserID(c, existing.ID),
+				RequestTokenHasEntityID(c, existing.EntityID),
+				RequestUserIsAdmin(c),
+			),
 		))
 	}
 
@@ -111,8 +105,8 @@ func DeleteUser(c *gin.Context) {
 	// this endpoint (a separate account-closure flow would handle
 	// that with the right cleanup).
 	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestUserIsAdmin(c),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.UserWriteScope) && RequestUserIsAdmin(c),
 	))
 	id := c.Param("id")
 	if err := service.DeleteUser(id); err != nil {
@@ -127,12 +121,7 @@ func GetUserGroups(c *gin.Context) {
 	// Same authorization-signal concern as GetEntityGroups — leaking
 	// who has admin-equivalent groups would be a recon win for an
 	// attacker. Self / admin / internal only.
-	Require(c, Any(
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasUserID(c, id),
-		RequestTokenHasScope(c, "groups:read") && RequestTokenHasUserID(c, id),
-		RequestUserIsAdmin(c),
-	))
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 	user, err := service.GetUserByID(id)
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -148,9 +137,11 @@ func GetUserGroups(c *gin.Context) {
 func GetUserRecentApplications(c *gin.Context) {
 	id := c.Param("id")
 	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.UserReadScope) && Any(
+			RequestTokenHasUserID(c, id),
+			RequestUserIsAdmin(c),
+		),
 	))
 
 	user, err := service.GetUserByID(id)
@@ -181,9 +172,11 @@ func GetUserRecentApplications(c *gin.Context) {
 func GetUserLogins(c *gin.Context) {
 	id := c.Param("id")
 	Require(c, Any(
-		RequestTokenHasAudience(c, "sentinel"),
-		RequestTokenHasScope(c, "sentinel:all"),
-		RequestTokenHasScope(c, "user:read") && RequestTokenHasUserID(c, id),
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasResourceScope(c, authz.UserReadScope) && Any(
+			RequestTokenHasUserID(c, id),
+			RequestUserIsAdmin(c),
+		),
 	))
 
 	user, err := service.GetUserByID(id)

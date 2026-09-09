@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/gaucho-racing/sentinel/oauth/authz"
 	"github.com/gaucho-racing/sentinel/oauth/config"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 )
@@ -105,7 +106,7 @@ func SetGroupClaims(claims map[string]interface{}, groups []GroupRef) {
 // include the groups claim — granted by the first-party sentinel:all scope or
 // the explicit groups:read scope.
 func GroupsClaimAllowed(scope string) bool {
-	return ScopesContain(scope, "sentinel:all") || ScopesContain(scope, "groups:read")
+	return ScopesContain(scope, authz.SentinelAllScope) || ScopesContain(scope, authz.GroupsReadScope)
 }
 
 // FilteredGroups resolves the groups an entity should expose to a given

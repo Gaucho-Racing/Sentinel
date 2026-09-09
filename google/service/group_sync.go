@@ -58,7 +58,10 @@ func resolveEntityEmail(entityID string) (string, error) {
 // agreement with its Sentinel group. The Google Group's role=MEMBER set is the
 // sync's authoritative state: anything manually added is OWNER/MANAGER and is
 // never touched. Adds are skipped when the user is already present in any role.
-func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding) error {
+func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulkRemovals bool) error {
+	if err := ensureGroupOwner(ctx, b.GoogleGroupEmail, ManagedGoogleGroupOwnerEmail); err != nil {
+		return err
+	}
 	members, err := getGroupMembers(b.GroupID)
 	if err != nil {
 		return fmt.Errorf("fetch sentinel members for group %s: %w", b.GroupID, err)
@@ -114,7 +117,7 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding) error {
 		}
 		toRemove = append(toRemove, email)
 	}
-	if len(toRemove) > config.GoogleSyncMaxRemovals {
+	if !allowBulkRemovals && len(toRemove) > config.GoogleSyncMaxRemovals {
 		logger.SugarLogger.Errorf("google sync: refusing to remove %d members from %s (exceeds GOOGLE_SYNC_MAX_REMOVALS=%d); skipping removals for this group", len(toRemove), b.GoogleGroupEmail, config.GoogleSyncMaxRemovals)
 		return nil
 	}
@@ -142,7 +145,7 @@ func ReconcileAll(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := reconcileBinding(ctx, b); err != nil {
+		if err := reconcileBinding(ctx, b, false); err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
 			}

@@ -145,7 +145,11 @@ func do(method, route string, body, result interface{}, headers []map[string]str
 	// it at startup. The explicit `headers` param (used by Bootstrap
 	// itself for the X-Bootstrap-Secret header) overrides nothing here;
 	// it's additive, applied after SetAuthToken.
-	if b := getBearer(); b != "" {
+	explicitBearer := false
+	if len(headers) > 0 {
+		_, explicitBearer = headers[0]["Authorization"]
+	}
+	if b := getBearer(); b != "" && !explicitBearer {
 		req = req.SetAuthToken(b)
 	}
 	if body != nil {

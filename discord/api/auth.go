@@ -2,8 +2,10 @@ package api
 
 import (
 	"net/http"
+	"net/url"
 	"strings"
 
+	"github.com/gaucho-racing/sentinel/discord/authz"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
 	"github.com/gin-gonic/gin"
@@ -29,6 +31,7 @@ func AuthChecker() gin.HandlerFunc {
 				return
 			}
 			c.Set("Auth-Token", token)
+			c.Set("Auth-Claims", claims)
 			if sub, ok := claims["sub"].(string); ok {
 				c.Set("Auth-EntityID", sub)
 			}
@@ -69,10 +72,55 @@ func RequestTokenHasScope(c *gin.Context, scope string) bool {
 	if !ok {
 		return false
 	}
-	for _, s := range strings.Split(scopes.(string), " ") {
-		if s == scope {
-			return true
-		}
+	return authz.HasScope(scopes.(string), scope)
+}
+
+func GetRequestToken(c *gin.Context) string {
+	token, _ := c.Get("Auth-Token")
+	value, _ := token.(string)
+	return value
+}
+
+func GetRequestTokenClaims(c *gin.Context) map[string]any {
+	claims, _ := c.Get("Auth-Claims")
+	value, _ := claims.(map[string]any)
+	return value
+}
+
+func RequestTokenHasInternalAccess(c *gin.Context) bool {
+	claims := GetRequestTokenClaims(c)
+	return authz.IsInternalServiceAccount(
+		getRequestTokenScopes(c),
+		claims["aud"],
+		claims,
+	)
+}
+
+func RequestTokenHasFirstPartyAccess(c *gin.Context) bool {
+	claims := GetRequestTokenClaims(c)
+	return authz.IsFirstPartyUser(getRequestTokenScopes(c), claims["aud"], claims)
+}
+
+func RequestTokenCanManageGroup(c *gin.Context, groupID string) bool {
+	if RequestTokenHasInternalAccess(c) {
+		return true
 	}
-	return false
+	if !RequestTokenHasFirstPartyAccess(c) && !RequestTokenHasScope(c, authz.GroupsWriteScope) {
+		return false
+	}
+	return requestCoreAccessCheck(c, "/api/groups/"+url.PathEscape(groupID)+"/write-access")
+}
+
+func getRequestTokenScopes(c *gin.Context) string {
+	scopes, _ := c.Get("Auth-Scope")
+	value, _ := scopes.(string)
+	return value
+}
+
+func requestCoreAccessCheck(c *gin.Context, route string) bool {
+	token := GetRequestToken(c)
+	if token == "" {
+		return false
+	}
+	return sentinel.Get(route, nil, map[string]string{"Authorization": "Bearer " + token}) == nil
 }

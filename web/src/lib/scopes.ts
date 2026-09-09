@@ -53,6 +53,11 @@ const SCOPES: Record<string, ScopeMeta> = {
     description: "See which groups you belong to and your role in each.",
     icon: Users,
   },
+  "groups:write": {
+    label: "Manage groups",
+    description: "Create groups and manage groups you own.",
+    icon: Users,
+  },
   "applications:read": {
     label: "Read application details",
     description: "See registered applications and their metadata.",

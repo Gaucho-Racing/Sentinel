@@ -9,7 +9,7 @@ import (
 )
 
 func GetArchivedChannels(c *gin.Context) {
-	Require(c, RequestTokenHasScope(c, "sentinel:all"))
+	Require(c, RequestTokenHasInternalAccess(c) || RequestTokenHasFirstPartyAccess(c))
 
 	records, err := service.GetAllArchivedChannels()
 	if err != nil {

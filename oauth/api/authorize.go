@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/gaucho-racing/sentinel/oauth/authz"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/logger"
 	"github.com/gaucho-racing/sentinel/oauth/pkg/sentinel"
 	"github.com/gaucho-racing/sentinel/oauth/service"
@@ -79,8 +80,8 @@ func ValidateAuthorize(c *gin.Context) {
 		return
 	}
 
-	if service.ScopesContain(scope, "sentinel:all") {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "sentinel:all scope cannot be requested by client applications"})
+	if containsReservedScope(scope) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "reserved Sentinel scopes cannot be requested by client applications"})
 		return
 	}
 
@@ -151,7 +152,7 @@ func Authorize(c *gin.Context) {
 		return
 	}
 
-	if !service.ValidateScopes(scope) || service.ScopesContain(scope, "sentinel:all") {
+	if !service.ValidateScopes(scope) || containsReservedScope(scope) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid scope"})
 		return
 	}
@@ -171,4 +172,9 @@ func Authorize(c *gin.Context) {
 		"code":         authCode.Code,
 		"redirect_uri": redirectURI,
 	})
+}
+
+func containsReservedScope(scope string) bool {
+	return service.ScopesContain(scope, authz.SentinelAllScope) ||
+		service.ScopesContain(scope, authz.SentinelInternalScope)
 }
