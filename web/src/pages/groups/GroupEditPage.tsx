@@ -239,11 +239,13 @@ function GoogleSyncCard({
   onChange,
   onSyncNow,
   syncing,
+  canManage,
 }: {
   email: string
   onChange: (email: string) => void
   onSyncNow: () => void
   syncing: boolean
+  canManage: boolean
 }) {
   return (
     <Card>
@@ -265,13 +267,20 @@ function GoogleSyncCard({
           autoComplete="off"
           placeholder="team-aero@gauchoracing.com"
           value={email}
+          disabled={!canManage}
           onChange={(e) => onChange(e.target.value)}
         />
-        <div className="pt-1">
-          <Button type="button" variant="outline" disabled={syncing} onClick={onSyncNow}>
-            {syncing ? "Syncing…" : "Sync now"}
-          </Button>
-        </div>
+        {canManage ? (
+          <div className="pt-1">
+            <Button type="button" variant="outline" disabled={syncing} onClick={onSyncNow}>
+              {syncing ? "Syncing…" : "Sync now"}
+            </Button>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Only Sentinel admins can change Google Group sync.
+          </p>
+        )}
       </CardContent>
     </Card>
   )
@@ -961,6 +970,7 @@ export default function GroupEditPage() {
           onChange={setGoogleEmail}
           onSyncNow={handleSyncGoogleNow}
           syncing={syncingGoogle}
+          canManage={isAdmin}
         />
 
         <LinkedApplicationsCard

@@ -52,7 +52,7 @@ func CreateGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
+	Require(c, RequestTokenHasAdminAccess(c))
 	email, err := normalizeGoogleGroupEmail(req.GoogleGroupEmail, false)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
@@ -87,7 +87,7 @@ func PreflightGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
+	Require(c, RequestTokenHasAdminAccess(c))
 	email, err := normalizeGoogleGroupEmail(req.GoogleGroupEmail, true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
@@ -117,7 +117,7 @@ func ApplyGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	Require(c, RequestTokenCanManageGroup(c, req.GroupID))
+	Require(c, RequestTokenHasAdminAccess(c))
 	email, err := normalizeGoogleGroupEmail(req.GoogleGroupEmail, true)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
@@ -180,7 +180,7 @@ func DeleteGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "group_id query param is required"})
 		return
 	}
-	Require(c, RequestTokenCanManageGroup(c, groupID))
+	Require(c, RequestTokenHasAdminAccess(c))
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
 	defer cancel()
 	_, preflight, err := service.ApplyGoogleBinding(
