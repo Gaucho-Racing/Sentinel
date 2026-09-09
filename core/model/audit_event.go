@@ -15,6 +15,7 @@ const (
 	AuditActionGroupMemberRemoved        AuditAction = "GROUP_MEMBER_REMOVED"
 	AuditActionJoinRequestApproved       AuditAction = "JOIN_REQUEST_APPROVED"
 	AuditActionJoinRequestRejected       AuditAction = "JOIN_REQUEST_REJECTED"
+	AuditActionImpersonationTokenIssued  AuditAction = "IMPERSONATION_TOKEN_ISSUED"
 )
 
 // AuditEvent is one recorded administrative action. Rows are written

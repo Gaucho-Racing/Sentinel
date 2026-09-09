@@ -93,7 +93,11 @@ func CreateServiceAccountForApp(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "name is required"})
 		return
 	}
-	if err := service.ValidateServiceAccountScope(req.Scope); err != nil {
+	validateScope := service.ValidateServiceAccountScope
+	if RequestTokenHasScope(c, "sentinel:all") || RequestUserIsAdmin(c) {
+		validateScope = service.ValidatePrivilegedServiceAccountScope
+	}
+	if err := validateScope(req.Scope); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

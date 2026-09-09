@@ -43,6 +43,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/core/ping", Ping)
 	router.GET("/core/keys", JWKS)
 	router.POST("/core/token", GenerateToken)
+	router.POST("/core/token/impersonate", ImpersonateToken)
 	router.POST("/core/token/validate", ValidateToken)
 	router.DELETE("/core/token/:id", RevokeToken)
 

@@ -122,6 +122,10 @@ func PublicKeyToJWKS(publicKey *rsa.PublicKey) map[string]interface{} {
 }
 
 func GenerateToken(entityID string, clientID string, scope string, expiresIn int, claims map[string]interface{}) (string, string, error) {
+	return GenerateTokenWithActor(entityID, clientID, scope, expiresIn, claims, "")
+}
+
+func GenerateTokenWithActor(entityID string, clientID string, scope string, expiresIn int, claims map[string]interface{}, actorID string) (string, string, error) {
 	expirationTime := time.Now().Add(time.Duration(expiresIn) * time.Second)
 
 	tokenID := ulid.Make().Prefixed("jwt")
@@ -149,6 +153,7 @@ func GenerateToken(entityID string, clientID string, scope string, expiresIn int
 	dbToken := &model.Token{
 		ID:        tokenID,
 		EntityID:  entityID,
+		ActorID:   actorID,
 		ClientID:  clientID,
 		Scope:     scope,
 		ExpiresAt: expirationTime,

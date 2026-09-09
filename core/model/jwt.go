@@ -74,6 +74,7 @@ func (tc *TokenClaims) UnmarshalJSON(data []byte) error {
 type Token struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
 	EntityID  string    `json:"entity_id"`
+	ActorID   string    `json:"actor_id,omitempty" gorm:"index"`
 	ClientID  string    `json:"client_id"`
 	Scope     string    `json:"scope"`
 	ExpiresAt time.Time `json:"expires_at"`
