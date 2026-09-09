@@ -1,6 +1,8 @@
 package service
 
 import (
+	"time"
+
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
@@ -17,7 +19,7 @@ func IsAdmin(entityID string) bool {
 	if entityID == "" {
 		return false
 	}
-	_, err := GetGroupMember(AdminsGroupID, entityID)
+	_, err := GetActiveGroupMember(AdminsGroupID, entityID)
 	return err == nil
 }
 
@@ -103,6 +105,17 @@ func GetMembersForGroup(groupID string) ([]model.GroupMember, error) {
 func GetGroupMember(groupID string, entityID string) (model.GroupMember, error) {
 	var member model.GroupMember
 	if err := database.DB.Where("group_id = ? AND entity_id = ?", groupID, entityID).First(&member).Error; err != nil {
+		return model.GroupMember{}, err
+	}
+	return member, nil
+}
+
+func GetActiveGroupMember(groupID string, entityID string) (model.GroupMember, error) {
+	var member model.GroupMember
+	if err := database.DB.
+		Where("group_id = ? AND entity_id = ?", groupID, entityID).
+		Where("has_expiration = false OR expires_at > ?", time.Now()).
+		First(&member).Error; err != nil {
 		return model.GroupMember{}, err
 	}
 	return member, nil
