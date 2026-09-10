@@ -732,7 +732,11 @@ export default function GroupEditPage() {
       qc.invalidateQueries({ queryKey: ["group", id, "applications"] })
       setGoogleConfirmOpen(false)
       setGooglePreflight(null)
-      toast.success("Group updated")
+      toast.success(
+        preflight?.binding_changed
+          ? "Group updated. Google sync started."
+          : "Group updated",
+      )
       navigate(`/groups/${id}`)
     } catch (err: unknown) {
       const response = (

@@ -8,7 +8,11 @@ export type GroupGoogleBinding = {
   id: string
   group_id: string
   google_group_email: string
+  status: "active" | "pending"
+  operation_id?: string
+  last_sync_error?: string
   created_at: string
+  updated_at: string
 }
 
 export type GoogleGroupMemberSnapshot = {
@@ -60,7 +64,11 @@ export async function applyGoogleBinding(
   expectedCurrentBindingID: string,
   confirmations: GoogleBindingConfirmations,
 ) {
-  const res = await api.put<{ binding: GroupGoogleBinding | null }>(
+  const res = await api.put<{
+    binding: GroupGoogleBinding | null
+    operation_id?: string
+    status: "queued" | "unchanged"
+  }>(
     "/google/group-bindings",
     {
       group_id: groupID,
@@ -71,7 +79,7 @@ export async function applyGoogleBinding(
       confirm_delete_previous_group: confirmations.delete_previous_group,
     },
   )
-  return res.data.binding
+  return res.data
 }
 
 // useGroupGoogleBinding returns the single binding for a group, or null. The

@@ -9,6 +9,7 @@ import (
 
 	"github.com/gaucho-racing/sentinel/google/database"
 	"github.com/gaucho-racing/sentinel/google/model"
+	"github.com/gaucho-racing/sentinel/google/pkg/logger"
 	"github.com/gaucho-racing/sentinel/google/pkg/sentinel"
 	"github.com/gaucho-racing/ulid-go"
 	"gorm.io/gorm"
@@ -16,8 +17,12 @@ import (
 
 var ErrBindingNotFound = errors.New("group google binding not found")
 var ErrGoogleSyncUnavailable = errors.New("google group management is not configured")
+var ErrBindingSyncInProgress = errors.New("google group binding sync is already in progress")
+var ErrGoogleGroupStateChanged = errors.New("google group changed after preflight")
 
 const ManagedGoogleGroupOwnerEmail = "team@gauchoracing.com"
+const BindingStatusActive = "active"
+const BindingStatusPending = "pending"
 
 type GoogleGroupMemberSnapshot struct {
 	Email string `json:"email"`
@@ -102,24 +107,6 @@ func getGoogleBindingForEmail(googleGroupEmail string) (model.GroupGoogleBinding
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return model.GroupGoogleBinding{}, ErrBindingNotFound
 		}
-		return model.GroupGoogleBinding{}, err
-	}
-	return binding, nil
-}
-
-func CreateGoogleBinding(binding model.GroupGoogleBinding) (model.GroupGoogleBinding, error) {
-	if binding.ID == "" {
-		binding.ID = ulid.Make().Prefixed("ggb")
-	}
-	if err := database.DB.Create(&binding).Error; err != nil {
-		return model.GroupGoogleBinding{}, err
-	}
-	return binding, nil
-}
-
-func updateGoogleBinding(binding model.GroupGoogleBinding, googleGroupEmail string) (model.GroupGoogleBinding, error) {
-	binding.GoogleGroupEmail = googleGroupEmail
-	if err := database.DB.Save(&binding).Error; err != nil {
 		return model.GroupGoogleBinding{}, err
 	}
 	return binding, nil
@@ -230,7 +217,7 @@ func getCoreGroup(groupID string) (coreGroup, error) {
 	return group, nil
 }
 
-func ApplyGoogleBinding(
+func QueueGoogleBinding(
 	ctx context.Context,
 	groupID string,
 	requestedEmail string,
@@ -243,6 +230,9 @@ func ApplyGoogleBinding(
 	preflight, err := PreflightGoogleBinding(ctx, groupID, requestedEmail)
 	if err != nil {
 		return nil, GoogleBindingPreflight{}, err
+	}
+	if preflight.CurrentBinding != nil && preflight.CurrentBinding.Status == BindingStatusPending {
+		return nil, preflight, ErrBindingSyncInProgress
 	}
 	currentBindingID := ""
 	if preflight.CurrentBinding != nil {
@@ -260,74 +250,216 @@ func ApplyGoogleBinding(
 	}
 
 	canonicalRequestedEmail := preflight.RequestedEmail
-	createdRequestedGroup := false
 	if preflight.RequestedGroup != nil {
 		if preflight.RequestedGroup.Exists {
 			canonicalRequestedEmail = preflight.RequestedGroup.Email
-		} else {
-			group, err := getCoreGroup(groupID)
-			if err != nil {
-				return nil, preflight, fmt.Errorf("load sentinel group: %w", err)
-			}
-			created, err := createGoogleGroup(ctx, preflight.RequestedEmail, group.Name)
-			if err != nil {
-				return nil, preflight, err
-			}
-			createdRequestedGroup = true
-			canonicalRequestedEmail = strings.ToLower(created.Email)
-		}
-		candidate := model.GroupGoogleBinding{
-			GroupID:          groupID,
-			GoogleGroupEmail: canonicalRequestedEmail,
-		}
-		if err := reconcileBinding(
-			ctx,
-			candidate,
-			confirmations.OverwriteRequestedGroupMembers,
-		); err != nil {
-			if createdRequestedGroup {
-				_ = deleteGoogleGroup(ctx, canonicalRequestedEmail)
-			}
-			return nil, preflight, err
 		}
 	}
-
+	operationID := ulid.Make().Prefixed("gbo")
+	previousGoogleGroupEmail := ""
+	previousGoogleGroupID := ""
 	if preflight.RequiredConfirmation.DeletePreviousGroup {
-		if err := deleteGoogleGroup(ctx, preflight.PreviousGroup.Email); err != nil {
-			return nil, preflight, err
-		}
+		previousGoogleGroupEmail = preflight.PreviousGroup.Email
+		previousGoogleGroupID = preflight.PreviousGroup.ID
+	}
+	targetGoogleGroupID := ""
+	if preflight.RequestedGroup != nil && preflight.RequestedGroup.Exists {
+		targetGoogleGroupID = preflight.RequestedGroup.ID
 	}
 
-	if canonicalRequestedEmail == "" {
-		if preflight.CurrentBinding != nil {
-			if err := DeleteGoogleBinding(groupID, preflight.CurrentBinding.ID); err != nil {
-				return nil, preflight, err
-			}
-		}
-		return nil, preflight, nil
-	}
+	var binding model.GroupGoogleBinding
 	if preflight.CurrentBinding != nil {
-		binding, err := updateGoogleBinding(*preflight.CurrentBinding, canonicalRequestedEmail)
-		if err != nil {
+		binding = *preflight.CurrentBinding
+		updates := map[string]any{
+			"status":                      BindingStatusPending,
+			"operation_id":                operationID,
+			"previous_google_group_email": previousGoogleGroupEmail,
+			"previous_google_group_id":    previousGoogleGroupID,
+			"target_google_group_id":      targetGoogleGroupID,
+			"delete_requested":            canonicalRequestedEmail == "",
+			"allow_bulk_removals":         confirmations.OverwriteRequestedGroupMembers,
+			"last_sync_error":             "",
+		}
+		if canonicalRequestedEmail != "" {
+			updates["google_group_email"] = canonicalRequestedEmail
+		}
+		result := database.DB.Model(&model.GroupGoogleBinding{}).
+			Where("id = ? AND group_id = ? AND status = ?", binding.ID, groupID, BindingStatusActive).
+			Updates(updates)
+		if result.Error != nil {
+			return nil, preflight, result.Error
+		}
+		if result.RowsAffected != 1 {
+			return nil, preflight, &BindingStateChangedError{Preflight: preflight}
+		}
+		if err := database.DB.First(&binding, "id = ?", binding.ID).Error; err != nil {
 			return nil, preflight, err
 		}
-		return &binding, preflight, nil
+	} else {
+		if canonicalRequestedEmail == "" {
+			return nil, preflight, nil
+		}
+		binding = model.GroupGoogleBinding{
+			ID:                       ulid.Make().Prefixed("ggb"),
+			GroupID:                  groupID,
+			GoogleGroupEmail:         canonicalRequestedEmail,
+			Status:                   BindingStatusPending,
+			OperationID:              operationID,
+			PreviousGoogleGroupEmail: previousGoogleGroupEmail,
+			PreviousGoogleGroupID:    previousGoogleGroupID,
+			TargetGoogleGroupID:      targetGoogleGroupID,
+			AllowBulkRemovals:        confirmations.OverwriteRequestedGroupMembers,
+		}
+		if err := database.DB.Create(&binding).Error; err != nil {
+			return nil, preflight, err
+		}
 	}
-	binding, err := CreateGoogleBinding(model.GroupGoogleBinding{
-		GroupID:          groupID,
-		GoogleGroupEmail: canonicalRequestedEmail,
-	})
-	if err != nil {
-		return nil, preflight, err
-	}
+	logger.SugarLogger.Infof(
+		"google binding: queued operation=%s group=%s google=%s delete=%t",
+		binding.OperationID,
+		binding.GroupID,
+		binding.GoogleGroupEmail,
+		binding.DeleteRequested,
+	)
+	TriggerReconcile()
 	return &binding, preflight, nil
 }
 
-// DeleteGoogleBinding scopes the delete to (groupID, bindingID) so a tampered
-// request can't drop a binding for a different group.
-func DeleteGoogleBinding(groupID, bindingID string) error {
-	if err := database.DB.Where("group_id = ? AND id = ?", groupID, bindingID).Delete(&model.GroupGoogleBinding{}).Error; err != nil {
+func applyPendingGoogleBinding(ctx context.Context, binding model.GroupGoogleBinding) error {
+	if binding.Status != BindingStatusPending || binding.OperationID == "" {
+		return nil
+	}
+	if binding.DeleteRequested {
+		groupKey := binding.PreviousGoogleGroupID
+		if groupKey == "" {
+			groupKey = binding.GoogleGroupEmail
+		}
+		if err := deleteGoogleGroup(ctx, groupKey); err != nil {
+			return err
+		}
+		result := database.DB.Where(
+			"id = ? AND operation_id = ? AND status = ?",
+			binding.ID,
+			binding.OperationID,
+			BindingStatusPending,
+		).Delete(&model.GroupGoogleBinding{})
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrBindingSyncInProgress
+		}
+		return nil
+	}
+
+	group, exists, err := getGoogleGroup(ctx, binding.GoogleGroupEmail)
+	if err != nil {
 		return err
 	}
+	if exists && binding.TargetGoogleGroupID != "" && group.Id != binding.TargetGoogleGroupID {
+		return ErrGoogleGroupStateChanged
+	}
+	if !exists {
+		if binding.TargetGoogleGroupID != "" {
+			return ErrGoogleGroupStateChanged
+		}
+		coreGroup, err := getCoreGroup(binding.GroupID)
+		if err != nil {
+			return fmt.Errorf("load sentinel group: %w", err)
+		}
+		group, err = createGoogleGroup(ctx, binding.GoogleGroupEmail, coreGroup.Name)
+		if err != nil {
+			return err
+		}
+		binding.TargetGoogleGroupID = group.Id
+		result := database.DB.Model(&model.GroupGoogleBinding{}).
+			Where(
+				"id = ? AND operation_id = ? AND status = ?",
+				binding.ID,
+				binding.OperationID,
+				BindingStatusPending,
+			).
+			Update("target_google_group_id", binding.TargetGoogleGroupID)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return ErrBindingSyncInProgress
+		}
+	}
+
+	if err := reconcileBinding(ctx, binding, binding.AllowBulkRemovals); err != nil {
+		return err
+	}
+	if binding.PreviousGoogleGroupEmail != "" && !strings.EqualFold(binding.PreviousGoogleGroupEmail, binding.GoogleGroupEmail) {
+		current, err := pendingGoogleBinding(binding.ID, binding.OperationID)
+		if err != nil {
+			return err
+		}
+		if !current {
+			return ErrBindingSyncInProgress
+		}
+		groupKey := binding.PreviousGoogleGroupID
+		if groupKey == "" {
+			groupKey = binding.PreviousGoogleGroupEmail
+		}
+		if err := deleteGoogleGroup(ctx, groupKey); err != nil {
+			return err
+		}
+	}
+
+	result := database.DB.Model(&model.GroupGoogleBinding{}).
+		Where(
+			"id = ? AND operation_id = ? AND status = ?",
+			binding.ID,
+			binding.OperationID,
+			BindingStatusPending,
+		).
+		Updates(map[string]any{
+			"status":                      BindingStatusActive,
+			"operation_id":                "",
+			"previous_google_group_email": "",
+			"previous_google_group_id":    "",
+			"target_google_group_id":      "",
+			"delete_requested":            false,
+			"allow_bulk_removals":         false,
+			"last_sync_error":             "",
+		})
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected != 1 {
+		return ErrBindingSyncInProgress
+	}
 	return nil
+}
+
+func pendingGoogleBinding(bindingID string, operationID string) (bool, error) {
+	var count int64
+	err := database.DB.Model(&model.GroupGoogleBinding{}).
+		Where(
+			"id = ? AND operation_id = ? AND status = ?",
+			bindingID,
+			operationID,
+			BindingStatusPending,
+		).
+		Count(&count).Error
+	return count == 1, err
+}
+
+func recordGoogleBindingSyncError(binding model.GroupGoogleBinding, syncErr error) {
+	message := syncErr.Error()
+	if len(message) > 4096 {
+		message = message[:4096]
+	}
+	if err := database.DB.Model(&model.GroupGoogleBinding{}).
+		Where(
+			"id = ? AND operation_id = ? AND status = ?",
+			binding.ID,
+			binding.OperationID,
+			BindingStatusPending,
+		).
+		Update("last_sync_error", message).Error; err != nil {
+		logger.SugarLogger.Errorf("google sync: record pending binding error: %v", err)
+	}
 }
