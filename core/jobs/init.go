@@ -249,17 +249,13 @@ func initializeInternalServiceAccounts() {
 		}
 
 		if sa.Scope != authz.SentinelInternalScope {
-			if err := database.DB.Model(&model.ServiceAccount{}).
-				Where("id = ?", sa.ID).
-				Updates(map[string]any{
-					"scope":        authz.SentinelInternalScope,
-					"signed_token": "",
-				}).Error; err != nil {
-				logger.SugarLogger.Errorf("Failed to migrate internal SA %s scope: %v", name, err)
-				continue
-			}
-			sa.Scope = authz.SentinelInternalScope
-			sa.SignedToken = ""
+			logger.SugarLogger.Errorf(
+				"Internal service account %s has scope %q; expected %q",
+				name,
+				sa.Scope,
+				authz.SentinelInternalScope,
+			)
+			continue
 		}
 
 		if sa.SignedToken == "" {
