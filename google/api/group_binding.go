@@ -58,9 +58,9 @@ func CreateGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)
 	defer cancel()
-	binding, preflight, err := service.ApplyGoogleBinding(
+	binding, preflight, err := service.QueueGoogleBinding(
 		ctx,
 		req.GroupID,
 		email,
@@ -73,7 +73,7 @@ func CreateGoogleBinding(c *gin.Context) {
 		writeGoogleBindingError(c, err, preflight)
 		return
 	}
-	c.JSON(http.StatusOK, binding)
+	writeGoogleBindingQueued(c, binding)
 }
 
 type googleBindingPreflightRequest struct {
@@ -93,7 +93,7 @@ func PreflightGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)
 	defer cancel()
 	preflight, err := service.PreflightGoogleBinding(ctx, req.GroupID, email)
 	if err != nil {
@@ -123,9 +123,9 @@ func ApplyGoogleBinding(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "google_group_email must be a valid email address"})
 		return
 	}
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)
 	defer cancel()
-	binding, preflight, err := service.ApplyGoogleBinding(
+	binding, preflight, err := service.QueueGoogleBinding(
 		ctx,
 		req.GroupID,
 		email,
@@ -139,7 +139,7 @@ func ApplyGoogleBinding(c *gin.Context) {
 		writeGoogleBindingError(c, err, preflight)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"binding": binding})
+	writeGoogleBindingQueued(c, binding)
 }
 
 func normalizeGoogleGroupEmail(value string, allowEmpty bool) (string, error) {
@@ -163,11 +163,26 @@ func writeGoogleBindingError(c *gin.Context, err error, preflight service.Google
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error(), "preflight": preflight})
 	case errors.As(err, &alreadyBoundErr):
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, service.ErrBindingSyncInProgress):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 	case errors.Is(err, service.ErrGoogleSyncUnavailable):
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
+}
+
+func writeGoogleBindingQueued(c *gin.Context, binding *model.GroupGoogleBinding) {
+	if binding == nil || binding.OperationID == "" {
+		c.JSON(http.StatusOK, gin.H{"binding": binding, "status": "unchanged"})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{
+		"binding":      binding,
+		"message":      "google group sync queued",
+		"operation_id": binding.OperationID,
+		"status":       "queued",
+	})
 }
 
 // DeleteGoogleBinding removes a binding by ID. The group_id query param is
@@ -181,9 +196,9 @@ func DeleteGoogleBinding(c *gin.Context) {
 		return
 	}
 	Require(c, RequestTokenHasAdminAccess(c))
-	ctx, cancel := context.WithTimeout(c.Request.Context(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(c.Request.Context(), 25*time.Second)
 	defer cancel()
-	_, preflight, err := service.ApplyGoogleBinding(
+	binding, preflight, err := service.QueueGoogleBinding(
 		ctx,
 		groupID,
 		"",
@@ -196,5 +211,5 @@ func DeleteGoogleBinding(c *gin.Context) {
 		writeGoogleBindingError(c, err, preflight)
 		return
 	}
-	c.Status(http.StatusNoContent)
+	writeGoogleBindingQueued(c, binding)
 }

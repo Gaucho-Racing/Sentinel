@@ -96,6 +96,7 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 		}
 	}
 
+	var operationErrors []error
 	for email := range desired {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -105,6 +106,7 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 		}
 		if err := insertMember(ctx, b.GoogleGroupEmail, email); err != nil {
 			logger.SugarLogger.Errorf("google sync: %v", err)
+			operationErrors = append(operationErrors, err)
 			continue
 		}
 		logger.SugarLogger.Infof("google sync: added %s to %s", email, b.GoogleGroupEmail)
@@ -127,11 +129,12 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 		}
 		if err := deleteMember(ctx, b.GoogleGroupEmail, email); err != nil {
 			logger.SugarLogger.Errorf("google sync: %v", err)
+			operationErrors = append(operationErrors, err)
 			continue
 		}
 		logger.SugarLogger.Infof("google sync: removed %s from %s", email, b.GoogleGroupEmail)
 	}
-	return nil
+	return errors.Join(operationErrors...)
 }
 
 // ReconcileAll reconciles every binding. A failure on one binding is logged and
@@ -145,11 +148,23 @@ func ReconcileAll(ctx context.Context) error {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := reconcileBinding(ctx, b, false); err != nil {
-			if errors.Is(err, context.Canceled) {
-				return err
+		var reconcileErr error
+		if b.Status == BindingStatusPending {
+			logger.SugarLogger.Infof("google binding: starting operation=%s group=%s", b.OperationID, b.GroupID)
+			reconcileErr = applyPendingGoogleBinding(ctx, b)
+		} else {
+			reconcileErr = reconcileBinding(ctx, b, false)
+		}
+		if reconcileErr != nil {
+			if b.Status == BindingStatusPending {
+				recordGoogleBindingSyncError(b, reconcileErr)
 			}
-			logger.SugarLogger.Errorf("google sync: reconcile failed for group=%s google=%s: %v", b.GroupID, b.GoogleGroupEmail, err)
+			if errors.Is(reconcileErr, context.Canceled) {
+				return reconcileErr
+			}
+			logger.SugarLogger.Errorf("google sync: reconcile failed for group=%s google=%s: %v", b.GroupID, b.GoogleGroupEmail, reconcileErr)
+		} else if b.Status == BindingStatusPending {
+			logger.SugarLogger.Infof("google binding: completed operation=%s group=%s", b.OperationID, b.GroupID)
 		}
 	}
 	return nil
@@ -204,4 +219,5 @@ func StartReconcileCron() {
 			runSweep()
 		}
 	}()
+	runSweep()
 }
