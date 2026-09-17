@@ -93,11 +93,8 @@ func GetEntityMemberships(c *gin.Context) {
 }
 
 func GetEntityByExternalAuth(c *gin.Context) {
-	// Reverse-lookup of "which Sentinel entity does Discord user X
-	// map to?" — leaks the user/Discord identity pairing. Reserved for
-	// internal automation; the oauth-discord-login flow is the
-	// canonical caller.
-	Require(c, RequestTokenHasInternalAccess(c))
+	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))
+	c.Header("Cache-Control", "no-store")
 	provider := c.Param("provider")
 	externalID := c.Param("externalID")
 	entity, err := service.GetEntityByExternalAuth(provider, externalID)
@@ -109,7 +106,33 @@ func GetEntityByExternalAuth(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, entity)
+	if RequestTokenHasInternalAccess(c) {
+		c.JSON(http.StatusOK, entity)
+		return
+	}
+	c.JSON(http.StatusOK, externalIdentityResponse(entity))
+}
+
+type linkedExternalIdentity struct {
+	EntityID   string                     `json:"entity_id"`
+	ExternalID string                     `json:"external_id"`
+	Provider   model.ExternalAuthProvider `json:"provider"`
+}
+
+type entityExternalIdentityResponse struct {
+	model.Entity
+	ExternalAuths []linkedExternalIdentity `json:"external_auths"`
+}
+
+func externalIdentityResponse(entity model.Entity) entityExternalIdentityResponse {
+	links := make([]linkedExternalIdentity, 0, len(entity.ExternalAuths))
+	for _, account := range entity.ExternalAuths {
+		links = append(links, linkedExternalIdentity{
+			EntityID: account.EntityID, ExternalID: account.ExternalID, Provider: account.Provider,
+		})
+	}
+	entity.ExternalAuths = nil
+	return entityExternalIdentityResponse{Entity: entity, ExternalAuths: links}
 }
 
 func ListExternalAuthsByProvider(c *gin.Context) {
