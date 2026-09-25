@@ -1,11 +1,13 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { ArrowLeft } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
+import { DiscordIcon, GithubIcon } from "@/components/icons/socials"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
@@ -75,39 +77,54 @@ export default function ConnectedAccountsPage() {
 
   return (
     <PageContainer>
+      <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
+        <Link to="/settings">
+          <ArrowLeft className="mr-1 size-3.5" />
+          Back to settings
+        </Link>
+      </Button>
       <PageHeader title="Connected accounts" description="Manage the external accounts connected to Sentinel." />
-      <Button asChild variant="ghost" className="mb-6"><Link to="/settings">Back to settings</Link></Button>
       {isLoading ? <Skeleton className="h-48" /> : !user ? (
         <p className="text-sm text-muted-foreground">Couldn't load your accounts. Refresh the page to try again.</p>
       ) : (
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Discord</CardTitle>
-              <CardDescription>Your team Discord connection.</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <DiscordIcon className="size-5 text-discord-blurple" />
+                Discord
+              </CardTitle>
             </CardHeader>
             <CardContent className="text-sm">
-              {discord ? <p>Connected as <strong>{discord.metadata?.username ?? discord.external_id}</strong></p> : (
+              {discord ? (
+                <div className="space-y-1">
+                  <p>Username: <span className="font-medium">{discord.metadata?.username || "Unknown"}</span></p>
+                  <p>Discord ID: <code className="font-mono text-xs">{discord.external_id}</code></p>
+                </div>
+              ) : (
                 <p className="text-muted-foreground">No Discord account connected.</p>
               )}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <CardTitle>GitHub</CardTitle>
-              <CardDescription>Link your GitHub account to manage Gaucho Racing organization access.</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <GithubIcon className="size-5" />
+                GitHub
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {github ? <div className="space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm">Connected as <strong>{githubStatus.data?.username ?? github.metadata?.username ?? github.external_id}</strong></p>
+                  <div className="space-y-1 text-sm">
+                    <p>Username: <span className="font-medium">{githubStatus.data?.username ?? github.metadata?.username ?? "Unknown"}</span></p>
+                    <p>GitHub ID: <code className="font-mono text-xs">{github.external_id}</code></p>
+                  </div>
                   <Button type="button" variant="outline" onClick={() => setUnlinkOpen(true)}>Unlink GitHub</Button>
                 </div>
                 {githubStatus.data?.status === "pending" && (
-                  <p className="text-sm text-muted-foreground">Your Gaucho Racing GitHub invitation is pending. <a className="text-foreground underline" href="https://github.com/orgs/gaucho-racing/invitation" target="_blank" rel="noreferrer">Accept your invitation</a>.</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-400">Your Gaucho Racing GitHub invitation is pending. <a className="font-medium underline underline-offset-2 hover:text-amber-900 dark:hover:text-amber-300" href="https://github.com/orgs/gaucho-racing/invitation" target="_blank" rel="noreferrer">Accept your invitation</a>.</p>
                 )}
-                {githubStatus.data?.status === "active" && <p className="text-sm text-muted-foreground">You’re a member of the Gaucho Racing GitHub organization.</p>}
-                {githubStatus.data?.status === "not_invited" && <p className="text-sm text-muted-foreground">No active GitHub invitation. Organization access requires a GithubMembers or GithubAdmins group.</p>}
                 {githubStatus.isError && <p className="text-sm text-destructive">Couldn’t load GitHub invitation status.</p>}
               </div> : (
                 <Button type="button" disabled={linking} onClick={linkGithub}>{linking ? "Connecting…" : "Connect GitHub"}</Button>
