@@ -135,3 +135,6 @@ func Post(ctx context.Context, route string, body, result interface{}, headers .
 func Put(ctx context.Context, route string, body, result interface{}, headers ...map[string]string) error {
 	return do(ctx, http.MethodPut, route, body, result, headers)
 }
+func Delete(ctx context.Context, route string, result interface{}, headers ...map[string]string) error {
+	return do(ctx, http.MethodDelete, route, nil, result, headers)
+}

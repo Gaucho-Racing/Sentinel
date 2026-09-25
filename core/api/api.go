@@ -59,6 +59,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/core/entity/:entityID/phone-auth", CreateEntityPhoneAuth)
 	router.POST("/core/entity/:entityID/external-auth", CreateEntityExternalAuth)
 	router.PUT("/core/entity/:entityID/github-auth", LinkGitHubExternalAuth)
+	router.DELETE("/core/entity/:entityID/github-auth/:externalID", UnlinkGitHubExternalAuth)
 	router.PATCH("/core/entity/:entityID/external-auth/:provider", UpdateEntityExternalAuthMetadata)
 	router.POST("/core/users", CreateOrUpdateUser)
 

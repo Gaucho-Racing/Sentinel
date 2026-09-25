@@ -30,11 +30,14 @@ func main() {
 		logger.SugarLogger.Fatalf("bootstrap core service account: %v", err)
 	}
 	server := service.NewServer(cfg, client)
+	logger.SugarLogger.Infof("GitHub org sync: enabled, interval=%v", cfg.SyncInterval)
 	go func() {
+		logger.SugarLogger.Infof("GitHub org sync: kicking startup sweep")
 		server.RunReconcile(context.Background())
 		ticker := time.NewTicker(cfg.SyncInterval)
 		defer ticker.Stop()
 		for range ticker.C {
+			logger.SugarLogger.Infof("GitHub org sync: cron tick, kicking full sweep")
 			server.RunReconcile(context.Background())
 		}
 	}()

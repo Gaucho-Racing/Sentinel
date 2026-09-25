@@ -35,6 +35,26 @@ func LinkGitHubExternalAuth(c *gin.Context) {
 	}
 }
 
+func UnlinkGitHubExternalAuth(c *gin.Context) {
+	Require(c, RequestTokenHasInternalAccess(c))
+	externalID := c.Param("externalID")
+	if externalID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "external_id is required"})
+		return
+	}
+	auth, err := service.UnlinkGitHubIdentity(c.Param("entityID"), externalID)
+	switch {
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "GitHub account not linked"})
+	case errors.Is(err, service.ErrGitHubIdentityChanged):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	default:
+		c.JSON(http.StatusOK, auth)
+	}
+}
+
 type createEntityRequest struct {
 	Type model.EntityType `json:"type" binding:"required"`
 }

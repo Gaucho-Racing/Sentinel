@@ -25,6 +25,7 @@ import SamlAuthorizePage from "@/pages/saml/SamlAuthorizePage"
 import SAMLSettingsPage from "@/pages/saml/SAMLSettingsPage"
 import SCIMSettingsPage from "@/pages/saml/SCIMSettingsPage"
 import SettingsPage from "@/pages/settings/SettingsPage"
+import ConnectedAccountsPage from "@/pages/settings/ConnectedAccountsPage"
 
 export const router = createBrowserRouter([
   {
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
           { path: "/groups/:id/requests/:requestID", element: <GroupRequestDetailsPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/settings/connected-accounts", element: <ConnectedAccountsPage /> },
           { path: "/profile", element: <ProfilePage /> },
           { path: "/debug", element: <DebugPage /> },
         ],
