@@ -29,8 +29,12 @@ func main() {
 	}
 
 	database.Init()
-	service.ConnectDiscord()
-	commands.InitializeBot()
+	if err := service.ConnectDiscord(); err != nil {
+		logger.SugarLogger.Fatalf("Failed to create Discord session: %v", err)
+	}
+	if err := commands.InitializeBot(); err != nil {
+		logger.SugarLogger.Fatalf("Failed to connect to Discord: %v", err)
+	}
 	service.StartReconcileCron()
 	service.StartThreadKeepaliveCron()
 

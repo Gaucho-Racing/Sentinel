@@ -60,10 +60,9 @@ func requireNotThread(s *discordgo.Session, m *discordgo.MessageCreate, command 
 // are covered by the periodic cron + per-user event reconciles anyway.
 var readyOnce sync.Once
 
-func InitializeBot() {
+func InitializeBot() error {
 	if service.Discord == nil {
-		logger.SugarLogger.Errorln("Discord session is not connected")
-		return
+		return fmt.Errorf("Discord session is not initialized")
 	}
 	service.Discord.AddHandler(OnReady)
 	service.Discord.AddHandler(OnDiscordMessage)
@@ -76,10 +75,10 @@ func InitializeBot() {
 	service.Discord.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsAll)
 	err := service.Discord.Open()
 	if err != nil {
-		logger.SugarLogger.Errorln("Error opening Discord connection:", err)
-		return
+		return fmt.Errorf("open Discord gateway: %w", err)
 	}
 	logger.SugarLogger.Infof("Discord Bot is now running! [Prefix = %s]", config.DiscordPrefix)
+	return nil
 }
 
 func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -186,8 +185,9 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 // sync.Once guard keeps this to a single sweep per process.
 func OnReady(s *discordgo.Session, r *discordgo.Ready) {
 	readyOnce.Do(func() {
-		logger.SugarLogger.Infof("Discord gateway ready, kicking initial group sync")
+		logger.SugarLogger.Infof("Discord gateway ready, kicking initial member and group sweeps")
 		service.TriggerReconcileAll()
+		service.TriggerUnlinkedMemberSweep()
 	})
 }
 
