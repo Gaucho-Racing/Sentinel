@@ -51,9 +51,9 @@ const (
 )
 
 type Entity struct {
-	ID        string    `json:"id" gorm:"primaryKey"`
+	ID        string     `json:"id" gorm:"primaryKey"`
 	Type      EntityType `json:"type"`
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
 
 	EmailAuth      EntityEmail          `json:"email_auth" gorm:"-"`
 	PhoneAuth      EntityPhone          `json:"phone_auth" gorm:"-"`
@@ -88,23 +88,22 @@ func (EntityPhone) TableName() string {
 }
 
 type EntityExternalAuth struct {
-	EntityID     string               `json:"entity_id" gorm:"primaryKey"`
-	ExternalID   string               `json:"external_id"`
-	Provider     ExternalAuthProvider `json:"provider" gorm:"primaryKey"`
+	EntityID   string               `json:"entity_id" gorm:"primaryKey"`
+	ExternalID string               `json:"external_id" gorm:"index"`
+	Provider   ExternalAuthProvider `json:"provider" gorm:"primaryKey"`
 	// Arbitrary per-provider data — email, username, avatar, etc. Provider
 	// keys are whatever each provider hands back (Discord: email, username,
 	// global_name, avatar, verified; Google would put its own shape here).
 	// NOT the entity's primary login email (that's EntityEmail) — a user's
 	// Discord / Google account email can intentionally differ. Refreshed on
 	// every successful provider login so it stays current.
-	Metadata     JSONMap              `json:"metadata" gorm:"type:jsonb"`
-	AccessToken  string               `json:"access_token"`
-	RefreshToken string               `json:"refresh_token"`
-	ExpiresAt    time.Time            `json:"expires_at"`
-	CreatedAt    time.Time            `json:"created_at" gorm:"autoCreateTime"`
+	Metadata     JSONMap   `json:"metadata" gorm:"type:jsonb"`
+	AccessToken  string    `json:"access_token"`
+	RefreshToken string    `json:"refresh_token"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
 
 func (EntityExternalAuth) TableName() string {
 	return "auth_entity_external_auth"
 }
-

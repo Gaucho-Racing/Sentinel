@@ -57,6 +57,12 @@ upstreams:
     instances:
       - http://google:9995
 
+  github:
+    name: sentinel-github
+    version: 0.1.0
+    instances:
+      - http://github:9994
+
   web:
     name: sentinel-web
     version: 0.1.0
@@ -148,6 +154,14 @@ routes:
     match:
       path: /api/google/*
     upstream: google
+    rewrite:
+      strip_prefix: /api
+    envelope: passthrough
+
+  - name: github
+    match:
+      path: /api/github/*
+    upstream: github
     rewrite:
       strip_prefix: /api
     envelope: passthrough

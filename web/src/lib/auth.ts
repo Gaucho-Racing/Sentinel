@@ -99,6 +99,7 @@ export type Entity = {
     entity_id: string
     provider: "DISCORD" | "GOOGLE" | "GITHUB"
     external_id: string
+    metadata?: { username?: string }
     created_at: string
   }>
   user?: {
