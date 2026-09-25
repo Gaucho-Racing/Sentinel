@@ -12,7 +12,7 @@ import (
 )
 
 const Name = "sentinel-github"
-const Version = "5.12.0"
+const Version = "5.13.0"
 const InternalServiceName = "sentinel-github"
 
 type Configuration struct {
