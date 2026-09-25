@@ -3,6 +3,7 @@ package api
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gaucho-racing/sentinel/core/authz"
 	"github.com/gaucho-racing/sentinel/core/model"
@@ -10,6 +11,59 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+type profileUpdate struct {
+	FirstName             string `json:"first_name"`
+	LastName              string `json:"last_name"`
+	Gender                string `json:"gender"`
+	GraduateLevel         string `json:"graduate_level"`
+	GraduationYear        int    `json:"graduation_year"`
+	Major                 string `json:"major"`
+	ShirtSize             string `json:"shirt_size"`
+	JacketSize            string `json:"jacket_size"`
+	SAERegistrationNumber string `json:"sae_registration_number"`
+	OccupationTitle       string `json:"occupation_title"`
+	OccupationCompany     string `json:"occupation_company"`
+}
+
+func UpdateMyProfile(c *gin.Context) {
+	Require(c, RequestTokenHasResourceScope(c, authz.UserWriteScope) && GetRequestTokenEntityID(c) != "")
+
+	var input profileUpdate
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	input.FirstName = strings.TrimSpace(input.FirstName)
+	input.LastName = strings.TrimSpace(input.LastName)
+	if input.FirstName == "" || input.LastName == "" || input.GraduationYear < 0 || input.GraduationYear > 2100 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "first and last name are required; graduation year must be between 0 and 2100"})
+		return
+	}
+
+	user, err := service.GetUserByEntityID(GetRequestTokenEntityID(c))
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	user, err = service.UpdateUserProfile(user, service.UserProfileUpdate{
+		FirstName: input.FirstName, LastName: input.LastName, Gender: input.Gender,
+		GraduateLevel: input.GraduateLevel, GraduationYear: input.GraduationYear,
+		Major: input.Major, ShirtSize: input.ShirtSize, JacketSize: input.JacketSize,
+		SAERegistrationNumber: input.SAERegistrationNumber,
+		OccupationTitle:       input.OccupationTitle, OccupationCompany: input.OccupationCompany,
+	})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, user)
+}
 
 func GetAllUsers(c *gin.Context) {
 	Require(c, RequestTokenHasResourceScope(c, authz.UserReadScope))

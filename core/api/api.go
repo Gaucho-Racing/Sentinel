@@ -73,6 +73,7 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.GET("/users", GetAllUsers)
 	router.GET("/users/check-username", CheckUsername)
+	router.PATCH("/users/@me/profile", UpdateMyProfile)
 	router.GET("/users/:id", GetUserByID)
 	router.POST("/users", CreateOrUpdateUser)
 	router.DELETE("/users/:id", DeleteUser)
