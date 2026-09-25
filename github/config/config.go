@@ -12,7 +12,7 @@ import (
 )
 
 const Name = "sentinel-github"
-const Version = "5.13.1"
+const Version = "5.13.2"
 const InternalServiceName = "sentinel-github"
 
 var Env = env("ENV", "PROD")
