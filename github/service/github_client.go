@@ -42,10 +42,10 @@ func (g *githubClient) installationToken(ctx context.Context) (string, error) {
 		return g.token, nil
 	}
 	now := time.Now()
-	appJWT, err := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.RegisteredClaims{
-		Issuer:    g.config.ClientID,
-		IssuedAt:  jwt.NewNumericDate(now.Add(-time.Minute)),
-		ExpiresAt: jwt.NewNumericDate(now.Add(9 * time.Minute)),
+	appJWT, err := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
+		"iss": g.config.AppID,
+		"iat": now.Add(-time.Minute).Unix(),
+		"exp": now.Add(9 * time.Minute).Unix(),
 	}).SignedString(g.key)
 	if err != nil {
 		return "", err
