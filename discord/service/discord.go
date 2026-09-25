@@ -10,14 +10,14 @@ import (
 
 var Discord *discordgo.Session
 
-func ConnectDiscord() {
+func ConnectDiscord() error {
 	dg, err := discordgo.New("Bot " + config.DiscordToken)
 	if err != nil {
-		logger.SugarLogger.Errorln("Error creating Discord session:", err)
-		return
+		return err
 	}
 	Discord = dg
 	logger.SugarLogger.Infoln("Created Discord session")
+	return nil
 }
 
 func GetChannelName(channelID string) string {

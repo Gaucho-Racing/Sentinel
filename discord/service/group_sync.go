@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/config"
 	"github.com/gaucho-racing/sentinel/discord/model"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
@@ -236,8 +238,9 @@ func StartReconcileCron() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
 		for range ticker.C {
-			logger.SugarLogger.Debugf("group sync: cron tick, kicking full sweep")
+			logger.SugarLogger.Debugf("discord sync: cron tick, kicking member and group sweeps")
 			TriggerReconcileAll()
+			TriggerUnlinkedMemberSweep()
 		}
 	}()
 }
@@ -322,14 +325,19 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 			logger.SugarLogger.Infof("group sync: sweep cancelled mid-iteration after %d users", indexOf(auths, a))
 			return err
 		}
-		// Absent from the authoritative member list means the user has left
-		// the guild. Skip rather than strip — OnGuildMemberRemove already
-		// handles leave-cleanup, and skipping avoids touching memberships if
-		// the bulk fetch returned a partial picture.
 		roles, present := memberRoles[a.ExternalID]
 		if !present {
-			logger.SugarLogger.Debugf("group sync: skipping entity=%s discord=%s, not in guild member list", a.EntityID, a.ExternalID)
-			continue
+			member, err := Discord.GuildMember(config.DiscordGuild, a.ExternalID)
+			switch {
+			case err == nil:
+				roles = member.Roles
+			case isDiscordNotFound(err):
+				roles = nil
+				logger.SugarLogger.Infof("group sync: entity=%s discord=%s left guild; removing DISCORD memberships", a.EntityID, a.ExternalID)
+			default:
+				logger.SugarLogger.Errorf("group sync: cannot confirm guild departure for entity=%s discord=%s: %v", a.EntityID, a.ExternalID, err)
+				continue
+			}
 		}
 		if err := reconcileOneWithSnapshot(ctx, a.EntityID, roles, bindingsByGroup, discordEnabled); err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -349,7 +357,19 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 // Roles, which silently yields the wrong desired set. ctx is checked between
 // pages so a cancellation lands at the next page boundary.
 func fetchAllGuildMemberRoles(ctx context.Context) (map[string][]string, error) {
-	roles := make(map[string][]string)
+	members, err := fetchAllGuildMembers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	roles := make(map[string][]string, len(members))
+	for _, member := range members {
+		roles[member.User.ID] = member.Roles
+	}
+	return roles, nil
+}
+
+func fetchAllGuildMembers(ctx context.Context) ([]*discordgo.Member, error) {
+	var all []*discordgo.Member
 	after := ""
 	for {
 		if err := ctx.Err(); err != nil {
@@ -363,17 +383,26 @@ func fetchAllGuildMemberRoles(ctx context.Context) (map[string][]string, error) 
 			break
 		}
 		for _, m := range members {
-			if m.User == nil {
+			if m == nil || m.User == nil {
 				continue
 			}
-			roles[m.User.ID] = m.Roles
-			after = m.User.ID
+			all = append(all, m)
 		}
+		last := members[len(members)-1]
+		if last == nil || last.User == nil || last.User.ID == "" || last.User.ID == after {
+			return nil, fmt.Errorf("guild member pagination did not advance")
+		}
+		after = last.User.ID
 		if len(members) < 1000 {
 			break
 		}
 	}
-	return roles, nil
+	return all, nil
+}
+
+func isDiscordNotFound(err error) bool {
+	var restErr *discordgo.RESTError
+	return errors.As(err, &restErr) && restErr.Response != nil && restErr.Response.StatusCode == http.StatusNotFound
 }
 
 // indexOf returns the index of row in auths, or -1 if not found. Used only
