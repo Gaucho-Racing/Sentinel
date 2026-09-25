@@ -109,7 +109,9 @@ export default function ConnectedAccountsPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <GithubIcon className="size-5" />
+                <span className="flex size-7 items-center justify-center rounded-full bg-black">
+                  <GithubIcon className="size-5 text-white" />
+                </span>
                 GitHub
               </CardTitle>
             </CardHeader>
