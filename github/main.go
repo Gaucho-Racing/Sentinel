@@ -14,11 +14,13 @@ import (
 )
 
 func main() {
-	logger.Init()
+	logger.Init(config.Env == "PROD")
+	defer logger.Logger.Sync()
 	cfg, err := config.Load()
 	if err != nil {
 		logger.SugarLogger.Fatal(err)
 	}
+	config.PrintStartupBanner()
 	kerbecs.Init(cfg.KerbecsEndpoint, cfg.KerbecsUser, cfg.KerbecsPassword)
 	client, err := service.NewGitHubClient(cfg)
 	if err != nil {
