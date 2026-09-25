@@ -20,6 +20,7 @@ import HomePage from "@/pages/HomePage"
 import NotFoundPage from "@/pages/NotFoundPage"
 import AuthorizePage from "@/pages/oauth/AuthorizePage"
 import OnboardingPage from "@/pages/onboarding/OnboardingPage"
+import ProfilePage from "@/pages/profile/ProfilePage"
 import SamlAuthorizePage from "@/pages/saml/SamlAuthorizePage"
 import SAMLSettingsPage from "@/pages/saml/SAMLSettingsPage"
 import SCIMSettingsPage from "@/pages/saml/SCIMSettingsPage"
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
           { path: "/groups/:id/requests/:requestID", element: <GroupRequestDetailsPage /> },
           { path: "/analytics", element: <AnalyticsPage /> },
           { path: "/settings", element: <SettingsPage /> },
+          { path: "/profile", element: <ProfilePage /> },
           { path: "/debug", element: <DebugPage /> },
         ],
       },

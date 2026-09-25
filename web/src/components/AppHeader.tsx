@@ -52,6 +52,7 @@ function HeaderUserMenu() {
           <span className="text-xs font-normal text-muted-foreground">{email}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => navigate("/profile")}>Profile</DropdownMenuItem>
         <DropdownMenuItem onSelect={() => navigate("/settings")}>Settings</DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

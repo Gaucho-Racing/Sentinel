@@ -117,6 +117,8 @@ export type Entity = {
     shirt_size: string
     jacket_size: string
     sae_registration_number: string
+    occupation_title: string
+    occupation_company: string
     avatar_url: string
     initial_role: string
     groups: string[]

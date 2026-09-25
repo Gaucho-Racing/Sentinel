@@ -69,6 +69,40 @@ func UpdateUser(user model.User) (model.User, error) {
 	return user, nil
 }
 
+type UserProfileUpdate struct {
+	FirstName             string
+	LastName              string
+	Gender                string
+	GraduateLevel         string
+	GraduationYear        int
+	Major                 string
+	ShirtSize             string
+	JacketSize            string
+	SAERegistrationNumber string
+	OccupationTitle       string
+	OccupationCompany     string
+}
+
+func UpdateUserProfile(user model.User, input UserProfileUpdate) (model.User, error) {
+	updates := map[string]interface{}{
+		"first_name":              input.FirstName,
+		"last_name":               input.LastName,
+		"gender":                  input.Gender,
+		"graduate_level":          input.GraduateLevel,
+		"graduation_year":         input.GraduationYear,
+		"major":                   input.Major,
+		"shirt_size":              input.ShirtSize,
+		"jacket_size":             input.JacketSize,
+		"sae_registration_number": input.SAERegistrationNumber,
+		"occupation_title":        input.OccupationTitle,
+		"occupation_company":      input.OccupationCompany,
+	}
+	if err := database.DB.Model(&user).Updates(updates).Error; err != nil {
+		return model.User{}, err
+	}
+	return GetUserByID(user.ID)
+}
+
 func DeleteUser(id string) error {
 	if err := database.DB.Where("id = ?", id).Delete(&model.User{}).Error; err != nil {
 		return err

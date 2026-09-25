@@ -1,4 +1,7 @@
+import { Link } from "react-router-dom"
+
 import { PageContainer, PageHeader } from "@/components/PageContainer"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 export default function SettingsPage() {
@@ -6,15 +9,17 @@ export default function SettingsPage() {
     <PageContainer>
       <PageHeader
         title="Settings"
-        description="Profile, authentication methods, linked accounts, and active sessions."
+        description="Manage your account and profile."
       />
       <Card>
         <CardHeader>
-          <CardTitle>Coming soon</CardTitle>
-          <CardDescription>Profile editor and security settings will live here.</CardDescription>
+          <CardTitle>Your profile</CardTitle>
+          <CardDescription>Update your name, team details, and occupation.</CardDescription>
         </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          Placeholder page during design phase.
+        <CardContent>
+          <Button asChild variant="outline">
+            <Link to="/profile">Edit profile</Link>
+          </Button>
         </CardContent>
       </Card>
     </PageContainer>
