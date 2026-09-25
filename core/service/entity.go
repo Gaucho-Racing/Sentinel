@@ -14,6 +14,7 @@ import (
 )
 
 var ErrGitHubIdentityAlreadyLinked = errors.New("GitHub account is linked to another Sentinel user")
+var ErrGitHubIdentityChanged = errors.New("GitHub account link changed; refresh and try again")
 
 const SentinelServiceAccountName = "sentinel-core"
 
@@ -219,6 +220,32 @@ func LinkGitHubIdentity(entityID, githubID, login string) (model.EntityExternalA
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return model.EntityExternalAuth{}, ErrGitHubIdentityAlreadyLinked
 		}
+		return model.EntityExternalAuth{}, err
+	}
+	return linked, nil
+}
+
+func UnlinkGitHubIdentity(entityID, expectedExternalID string) (model.EntityExternalAuth, error) {
+	var linked model.EntityExternalAuth
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("entity_id = ? AND provider = ?", entityID, model.ExternalAuthProviderGitHub).
+			First(&linked).Error; err != nil {
+			return err
+		}
+		if linked.ExternalID != expectedExternalID {
+			return ErrGitHubIdentityChanged
+		}
+		result := tx.Delete(&linked)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected != 1 {
+			return gorm.ErrRecordNotFound
+		}
+		return nil
+	})
+	if err != nil {
 		return model.EntityExternalAuth{}, err
 	}
 	return linked, nil
