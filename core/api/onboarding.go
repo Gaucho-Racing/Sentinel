@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gaucho-racing/sentinel/core/model"
@@ -8,6 +9,31 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
+
+type linkGitHubRequest struct {
+	ExternalID string `json:"external_id" binding:"required"`
+	Login      string `json:"login" binding:"required"`
+}
+
+func LinkGitHubExternalAuth(c *gin.Context) {
+	Require(c, RequestTokenHasInternalAccess(c))
+	var req linkGitHubRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	linked, err := service.LinkGitHubIdentity(c.Param("entityID"), req.ExternalID, req.Login)
+	switch {
+	case errors.Is(err, service.ErrGitHubIdentityAlreadyLinked):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, gorm.ErrRecordNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+	case err != nil:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	default:
+		c.JSON(http.StatusOK, linked)
+	}
+}
 
 type createEntityRequest struct {
 	Type model.EntityType `json:"type" binding:"required"`

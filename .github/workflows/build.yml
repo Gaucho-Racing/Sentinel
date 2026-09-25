@@ -84,4 +84,5 @@ jobs:
           wait_for_workflow "discord" "discord.yml"
           wait_for_workflow "saml" "saml.yml"
           wait_for_workflow "google" "google.yml"
+          wait_for_workflow "github" "github.yml"
           wait_for_workflow "web" "web.yml"

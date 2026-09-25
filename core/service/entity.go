@@ -1,12 +1,19 @@
 package service
 
 import (
+	"errors"
+	"strings"
+
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
 	"github.com/gaucho-racing/ulid-go"
+	"github.com/jackc/pgx/v5/pgconn"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
+
+var ErrGitHubIdentityAlreadyLinked = errors.New("GitHub account is linked to another Sentinel user")
 
 const SentinelServiceAccountName = "sentinel-core"
 
@@ -170,6 +177,51 @@ func CreateExternalAuthForEntity(auth model.EntityExternalAuth) (model.EntityExt
 		return model.EntityExternalAuth{}, err
 	}
 	return auth, nil
+}
+
+func LinkGitHubIdentity(entityID, githubID, login string) (model.EntityExternalAuth, error) {
+	if githubID == "" || strings.TrimSpace(login) == "" {
+		return model.EntityExternalAuth{}, errors.New("GitHub account ID and login are required")
+	}
+	var linked model.EntityExternalAuth
+	err := database.DB.Transaction(func(tx *gorm.DB) error {
+		var entity model.Entity
+		if err := tx.Where("id = ? AND type = ?", entityID, model.EntityTypeUser).First(&entity).Error; err != nil {
+			return err
+		}
+		var claimed model.EntityExternalAuth
+		err := tx.Where("provider = ? AND external_id = ?", model.ExternalAuthProviderGitHub, githubID).First(&claimed).Error
+		if err == nil && claimed.EntityID != entityID {
+			return ErrGitHubIdentityAlreadyLinked
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("entity_id = ? AND provider = ?", entityID, model.ExternalAuthProviderGitHub).
+			First(&linked).Error; err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		if linked.ExternalID != "" && linked.ExternalID != githubID {
+			return ErrGitHubIdentityAlreadyLinked
+		}
+		linked.EntityID = entityID
+		linked.Provider = model.ExternalAuthProviderGitHub
+		linked.ExternalID = githubID
+		linked.Metadata = model.JSONMap{"username": strings.TrimSpace(login)}
+		if err := tx.Save(&linked).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return model.EntityExternalAuth{}, ErrGitHubIdentityAlreadyLinked
+		}
+		return model.EntityExternalAuth{}, err
+	}
+	return linked, nil
 }
 
 // UpdateExternalAuthMetadata refreshes the provider-supplied metadata jsonb on

@@ -29,7 +29,7 @@ func Init() {
 		}
 	} else {
 		logger.SugarLogger.Infoln("Connected to database")
-		db.AutoMigrate(
+		if err := db.AutoMigrate(
 			&model.Entity{},
 			&model.EntityEmail{},
 			&model.EntityPhone{},
@@ -51,7 +51,12 @@ func Init() {
 			&model.GroupConditionalBinding{},
 			&model.SigningKey{},
 			&model.AuditEvent{},
-		)
+		); err != nil {
+			logger.SugarLogger.Fatalf("AutoMigration failed: %v", err)
+		}
+		if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_github_external_id ON auth_entity_external_auth (external_id) WHERE provider = 'GITHUB'").Error; err != nil {
+			logger.SugarLogger.Fatalf("GitHub identity index migration failed: %v", err)
+		}
 		logger.SugarLogger.Infoln("AutoMigration complete")
 		DB = db
 	}

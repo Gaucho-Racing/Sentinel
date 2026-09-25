@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query"
-import { useState, type FormEvent } from "react"
+import { useEffect, useState, type FormEvent } from "react"
+import { useSearchParams } from "react-router-dom"
 import { toast } from "sonner"
 
 import { PageContainer, PageHeader } from "@/components/PageContainer"
@@ -247,10 +248,44 @@ function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
 
 export default function ProfilePage() {
   const { user, isLoading } = useAuth()
+  const [searchParams] = useSearchParams()
+  const queryClient = useQueryClient()
+  const linkedCallback = searchParams.get("github") === "linked"
+  const [linking, setLinking] = useState(false)
+  const github = user?.external_auths?.find((auth) => auth.provider === "GITHUB")
+
+  async function linkGithub() {
+    setLinking(true)
+    try {
+      const response = await api.post<{ url: string }>("/github/link")
+      window.location.assign(response.data.url)
+    } catch (error: unknown) {
+      const message = (error as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Couldn't start GitHub linking."
+      toast.error(message)
+      setLinking(false)
+    }
+  }
+
+  useEffect(() => {
+    if (linkedCallback) {
+      void queryClient.invalidateQueries({ queryKey: ["currentEntity"] })
+    }
+  }, [linkedCallback, queryClient])
 
   return (
     <PageContainer className="max-w-3xl">
       <PageHeader title="Profile" description="Manage the details on your team profile." />
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle>GitHub</CardTitle>
+          <CardDescription>Link your GitHub account to manage Gaucho Racing organization access.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {github ? <p className="text-sm">Connected as <strong>{github.metadata?.username ?? github.external_id}</strong></p> : (
+            <Button type="button" disabled={linking || !user} onClick={linkGithub}>{linking ? "Connecting…" : "Connect GitHub"}</Button>
+          )}
+        </CardContent>
+      </Card>
       {isLoading ? (
         <Skeleton className="h-96" />
       ) : user?.user ? (
