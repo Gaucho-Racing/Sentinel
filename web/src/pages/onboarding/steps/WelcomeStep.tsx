@@ -16,8 +16,8 @@ const ROLE_OPTIONS: {
 }[] = [
   {
     value: "member",
-    label: "Current member",
-    description: "Active student on the team",
+    label: "Member",
+    description: "UCSB students. New and interested members should select this.",
     Icon: Users,
   },
   {
@@ -29,7 +29,7 @@ const ROLE_OPTIONS: {
   {
     value: "guest",
     label: "Guest",
-    description: "Mentor, sponsor, or other",
+    description: "Only for non-UCSB members, such as mentors or sponsors",
     Icon: UserPlus,
   },
 ]
