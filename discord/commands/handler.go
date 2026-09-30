@@ -123,6 +123,8 @@ func OnDiscordMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		Archive(args, s, m)
 	case "unarchive":
 		Unarchive(args, s, m)
+	case "say":
+		Say(args, s, m)
 	default:
 		logger.SugarLogger.Infof("Unknown command: %s", command)
 	}
