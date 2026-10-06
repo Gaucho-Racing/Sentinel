@@ -246,6 +246,20 @@ func DeleteGroup(c *gin.Context) {
 
 // Members
 
+// GetAllGroupMembers returns every group_member row in one request. Exposes
+// nothing new — the per-group route is already readable by any session with
+// groups:read — it just saves a round trip per group.
+func GetAllGroupMembers(c *gin.Context) {
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
+
+	members, err := service.GetAllGroupMembers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, members)
+}
+
 func GetGroupMembers(c *gin.Context) {
 	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 

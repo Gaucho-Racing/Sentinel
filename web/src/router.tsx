@@ -9,6 +9,8 @@ import ApplicationNewPage from "@/pages/applications/ApplicationNewPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginDiscordPage from "@/pages/auth/LoginDiscordPage"
 import LoginPage from "@/pages/auth/LoginPage"
+import MemberProfilePage from "@/pages/members/MemberProfilePage"
+import MembersPage from "@/pages/members/MembersPage"
 import DebugPage from "@/pages/debug/DebugPage"
 import GroupDetailsPage from "@/pages/groups/GroupDetailsPage"
 import GroupEditPage from "@/pages/groups/GroupEditPage"
@@ -43,6 +45,8 @@ export const router = createBrowserRouter([
           { path: "/applications/:id/edit", element: <ApplicationEditPage /> },
           { path: "/applications/:id/saml", element: <SAMLSettingsPage /> },
           { path: "/applications/:id/saml/scim", element: <SCIMSettingsPage /> },
+          { path: "/members", element: <MembersPage /> },
+          { path: "/members/:entityID", element: <MemberProfilePage /> },
           { path: "/groups", element: <GroupsPage /> },
           { path: "/groups/new", element: <GroupNewPage /> },
           // The graph is a view on the groups page now; keep the old path
