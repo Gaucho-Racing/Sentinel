@@ -7,29 +7,38 @@ import (
 	"gorm.io/gorm"
 )
 
+// LinkedAccount is directory-safe identity data, never provider credentials or
+// arbitrary metadata. It is populated only by the members list query.
+type LinkedAccount struct {
+	Provider   ExternalAuthProvider `json:"provider"`
+	ExternalID string               `json:"external_id"`
+	Username   string               `json:"username"`
+}
+
 type User struct {
-	ID                    string    `json:"id" gorm:"primaryKey"`
-	EntityID              string    `json:"entity_id" gorm:"index"`
-	Username              string    `json:"username" gorm:"uniqueIndex"`
-	FirstName             string    `json:"first_name"`
-	LastName              string    `json:"last_name"`
-	Email                 string    `json:"email" gorm:"-"`
-	PhoneNumber           string    `json:"phone_number" gorm:"-"`
-	Gender                string    `json:"gender"`
-	Birthday              time.Time `json:"birthday"`
-	GraduateLevel         string    `json:"graduate_level"`
-	GraduationYear        int       `json:"graduation_year"`
-	Major                 string    `json:"major"`
-	ShirtSize             string    `json:"shirt_size"`
-	JacketSize            string    `json:"jacket_size"`
-	SAERegistrationNumber string    `json:"sae_registration_number"`
-	OccupationTitle       string    `json:"occupation_title"`
-	OccupationCompany     string    `json:"occupation_company"`
-	AvatarURL             string    `json:"avatar_url"`
-	InitialRole           string    `json:"initial_role"`
-	Groups                []string  `json:"groups" gorm:"-"`
-	UpdatedAt             time.Time `json:"updated_at"`
-	CreatedAt             time.Time `json:"created_at" gorm:"index"`
+	ID                    string          `json:"id" gorm:"primaryKey"`
+	EntityID              string          `json:"entity_id" gorm:"index"`
+	Username              string          `json:"username" gorm:"uniqueIndex"`
+	FirstName             string          `json:"first_name"`
+	LastName              string          `json:"last_name"`
+	Email                 string          `json:"email" gorm:"-"`
+	PhoneNumber           string          `json:"phone_number" gorm:"-"`
+	Gender                string          `json:"gender"`
+	Birthday              time.Time       `json:"birthday"`
+	GraduateLevel         string          `json:"graduate_level"`
+	GraduationYear        int             `json:"graduation_year"`
+	Major                 string          `json:"major"`
+	ShirtSize             string          `json:"shirt_size"`
+	JacketSize            string          `json:"jacket_size"`
+	SAERegistrationNumber string          `json:"sae_registration_number"`
+	OccupationTitle       string          `json:"occupation_title"`
+	OccupationCompany     string          `json:"occupation_company"`
+	AvatarURL             string          `json:"avatar_url"`
+	InitialRole           string          `json:"initial_role"`
+	Groups                []string        `json:"groups" gorm:"-"`
+	LinkedAccounts        []LinkedAccount `json:"linked_accounts,omitempty" gorm:"-"`
+	UpdatedAt             time.Time       `json:"updated_at"`
+	CreatedAt             time.Time       `json:"created_at" gorm:"index"`
 }
 
 func (User) TableName() string {

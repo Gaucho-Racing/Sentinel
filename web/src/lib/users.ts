@@ -14,6 +14,12 @@ export type UserOption = {
   avatar_url: string
 }
 
+export type LinkedAccount = {
+  provider: "GITHUB" | "DISCORD"
+  external_id: string
+  username: string
+}
+
 // Full mirror of core/model/user.go. `GET /users` has always returned every
 // field — including email and phone, which PopulateUser fills from the entity's
 // auth rows — the directory is just the first surface to show them.
@@ -32,6 +38,7 @@ export type Member = UserOption & {
   // Group *names*, not IDs. Filter by group through the membership table
   // instead (useAllGroupMembers) so a rename can't break the filter.
   groups: string[] | null
+  linked_accounts?: LinkedAccount[]
   initial_role: string
   updated_at: string
   created_at: string

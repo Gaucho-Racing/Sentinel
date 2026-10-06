@@ -14,8 +14,33 @@ func GetAllUsers() ([]model.User, error) {
 	if err := database.DB.Find(&users).Error; err != nil {
 		return []model.User{}, err
 	}
+	if len(users) == 0 {
+		return users, nil
+	}
+	entityIDs := make([]string, len(users))
+	userByEntity := make(map[string]*model.User, len(users))
 	for i := range users {
 		PopulateUser(&users[i])
+		entityIDs[i] = users[i].EntityID
+		userByEntity[users[i].EntityID] = &users[i]
+	}
+	// Project only display fields in one query; do not load or serialize tokens.
+	var accounts []struct {
+		EntityID string
+		model.LinkedAccount
+	}
+	if err := database.DB.Model(&model.EntityExternalAuth{}).
+		Select("entity_id, provider, external_id, COALESCE(metadata->>'username', '') AS username").
+		Where("entity_id IN ? AND provider IN ?", entityIDs, []model.ExternalAuthProvider{
+			model.ExternalAuthProviderGitHub, model.ExternalAuthProviderDiscord,
+		}).
+		Order("provider").
+		Scan(&accounts).Error; err != nil {
+		return nil, err
+	}
+	for _, account := range accounts {
+		user := userByEntity[account.EntityID]
+		user.LinkedAccounts = append(user.LinkedAccounts, account.LinkedAccount)
 	}
 	return users, nil
 }

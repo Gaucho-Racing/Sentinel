@@ -10,6 +10,8 @@ Sentinel is the backbone of Gaucho Racing's authentication and access management
 It streamlines member onboarding, offboarding, and provides secure single sign-on (SSO) capabilities for all internal team applications.
 At its core, Sentinel maintains a directory of active team members and their associated information, streamlining the processes of onboarding and offboarding within the organization.
 
+The members directory shows 25 members per page after search and filtering, with dedicated email and linked GitHub/Discord account fields instead of group lists. Pagination currently bounds rendering; the API still returns the full directory. Linked account summaries include only the provider, external ID, and username, never provider tokens or arbitrary metadata.
+
 Sentinel also provides single sign-on (SSO) access to the team's internal applications.
 By implementing OAuth 2.0, applications can securely authenticate members and retrieve relevant information through the Sentinel API. This centralized approach simplifies the user experience while providing applications with up-to-date member information.
 
