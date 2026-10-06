@@ -71,3 +71,12 @@ export function redirectURIWildcardExamples(pattern: string): string[] {
   if (!pattern.includes("*")) return []
   return WILDCARD_EXAMPLE_SUBSTITUTIONS.map((sub) => pattern.replaceAll("*", sub))
 }
+
+// Team convention: an application whose name ends in `-dev` is a development
+// or local-testing client rather than something people sign into day to day.
+// There is no flag on the record for this, so the name is the only signal.
+const DEV_APPLICATION_SUFFIX = "-dev"
+
+export function isDevApplication(app: Application): boolean {
+  return app.name.trim().toLowerCase().endsWith(DEV_APPLICATION_SUFFIX)
+}

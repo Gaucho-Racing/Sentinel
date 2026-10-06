@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
-import { Plus, Search } from "lucide-react"
+import { FlaskConical, Plus, Search } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
-import type { Application } from "@/lib/applications"
+import { isDevApplication, type Application } from "@/lib/applications"
 import { fuzzyFilter } from "@/lib/fuzzy"
 
 export default function ApplicationsPage() {
@@ -28,6 +28,9 @@ export default function ApplicationsPage() {
   const sorted = needle
     ? fuzzyFilter(apps, needle, (a) => [a.name, a.description, a.client_id])
     : [...apps].sort((a, b) => a.name.localeCompare(b.name))
+
+  const devApps = sorted.filter(isDevApplication)
+  const liveApps = sorted.filter((app) => !isDevApplication(app))
 
   return (
     <PageContainer>
@@ -62,10 +65,35 @@ export default function ApplicationsPage() {
           <p className="col-span-full py-12 text-center text-sm text-muted-foreground">
             {needle ? `No applications match "${query}".` : "No applications registered yet."}
           </p>
+        ) : liveApps.length === 0 ? (
+          <p className="col-span-full py-8 text-center text-sm text-muted-foreground">
+            Only development applications{needle ? " match" : " are registered"}.
+          </p>
         ) : (
-          sorted.map((app) => <AppCard key={app.id} app={app} />)
+          liveApps.map((app) => <AppCard key={app.id} app={app} />)
         )}
       </div>
+
+      {devApps.length > 0 && (
+        <section className="mt-10 border-t border-border/60 pt-8">
+          <div className="mb-4 flex items-center gap-2">
+            <FlaskConical className="size-4 text-muted-foreground" />
+            <h2 className="text-sm font-medium">Development</h2>
+            <span className="text-xs text-muted-foreground">
+              · {devApps.length} app{devApps.length === 1 ? "" : "s"}
+            </span>
+          </div>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Clients named <code className="font-mono">*-dev</code>, used for local
+            development and testing.
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {devApps.map((app) => (
+              <AppCard key={app.id} app={app} />
+            ))}
+          </div>
+        </section>
+      )}
     </PageContainer>
   )
 }
