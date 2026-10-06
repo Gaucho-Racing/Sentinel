@@ -12,13 +12,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useAdmins } from "@/lib/admin"
 
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/applications", label: "Applications", icon: Boxes },
   { to: "/groups", label: "Groups", icon: Users },
-  { to: "/analytics", label: "Analytics", icon: BarChart3, adminOnly: true },
+  { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
   { to: "/debug", label: "Debug", icon: Bug },
 ]
@@ -30,9 +29,6 @@ function isActive(currentPath: string, target: string) {
 
 export function AppSidebar() {
   const { pathname } = useLocation()
-  const { isAdmin } = useAdmins()
-
-  const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || isAdmin)
 
   return (
     <Sidebar collapsible="none">
@@ -47,7 +43,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navItems.map((item) => (
+              {NAV_ITEMS.map((item) => (
                 <SidebarMenuItem key={item.to}>
                   <SidebarMenuButton asChild isActive={isActive(pathname, item.to)}>
                     <Link to={item.to}>

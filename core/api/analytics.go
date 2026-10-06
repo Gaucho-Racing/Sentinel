@@ -9,11 +9,22 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// requireAnalyticsAccess gates the analytics + audit endpoints. They expose
-// team-wide aggregates and administrative history, so access is limited to
-// first-party admin sessions (the dashboard UI) and internal automation
-// (sentinel:all). Mirrors the GetApplicationSecret gate.
+// requireAnalyticsAccess gates the aggregate analytics endpoints. These report
+// team-wide counts and distributions with no per-person detail, so any signed-in
+// member can read them through the dashboard UI. Third-party tokens are still
+// excluded: the gate is the first-party session, not a grantable scope.
 func requireAnalyticsAccess(c *gin.Context) {
+	Require(c, Any(
+		RequestTokenHasInternalAccess(c),
+		RequestTokenHasFirstPartyAccess(c),
+	))
+}
+
+// requireAuditAccess gates the audit endpoints. Unlike the aggregates these
+// return identifying rows — the acting entity and their IP address for every
+// recorded action, including secret reveals and impersonation — so they stay
+// limited to admins. Mirrors the GetApplicationSecret gate.
+func requireAuditAccess(c *gin.Context) {
 	Require(c, Any(
 		RequestTokenHasInternalAccess(c),
 		RequestTokenHasFirstPartyAccess(c) && RequestUserIsAdmin(c),
@@ -165,7 +176,7 @@ func AnalyticsJoinRequests(c *gin.Context) {
 }
 
 func AnalyticsAuditEvents(c *gin.Context) {
-	requireAnalyticsAccess(c)
+	requireAuditAccess(c)
 	limit, ok := boundedQueryInt(c, "limit", 100, service.MaxAuditEventLimit)
 	if !ok {
 		return
@@ -187,7 +198,7 @@ func AnalyticsAuditEvents(c *gin.Context) {
 }
 
 func AnalyticsAuditSummary(c *gin.Context) {
-	requireAnalyticsAccess(c)
+	requireAuditAccess(c)
 	days, ok := boundedQueryInt(c, "days", 30, service.MaxAnalyticsDays)
 	if !ok {
 		return
