@@ -1,10 +1,14 @@
+import { ArrowLeft, ScrollText } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 import { ChartCard, ChartTooltip, RangeToggle } from "@/components/analytics/primitives"
 import { AXIS_COLOR, GRID_COLOR, humanizeAction, PALETTE } from "@/components/analytics/utils"
+import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -13,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useAdmins } from "@/lib/admin"
 import { useAuditEvents, useAuditSummary, type AuditEvent } from "@/lib/analytics"
 import { useUsers, userName } from "@/lib/users"
 
@@ -45,7 +50,7 @@ function metaSummary(event: AuditEvent): string {
     .join(" · ")
 }
 
-export function AuditTab() {
+function AuditLog() {
   const [days, setDays] = useState<number>(30)
   const [action, setAction] = useState<string>(ALL)
 
@@ -164,5 +169,49 @@ export function AuditTab() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function AuditLogPage() {
+  const { isAdmin, isLoading } = useAdmins()
+
+  return (
+    <PageContainer>
+      <Button asChild variant="ghost" size="sm" className="-ml-2 mb-4 text-muted-foreground">
+        <Link to="/settings">
+          <ArrowLeft className="size-4" />
+          Settings
+        </Link>
+      </Button>
+      <PageHeader
+        title="Audit log"
+        description="Recorded administrative actions across the team, and who performed them."
+      />
+
+      {isLoading ? (
+        <div className="space-y-6">
+          <Skeleton className="h-64 rounded-lg" />
+          <Skeleton className="h-80 rounded-lg" />
+        </div>
+      ) : isAdmin ? (
+        // Mounted only for admins so the audit queries never fire — and 403 —
+        // for a member who reaches this URL directly.
+        <AuditLog />
+      ) : (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <ScrollText className="size-4 text-muted-foreground" />
+              <CardTitle>Restricted</CardTitle>
+            </div>
+            <CardDescription>The audit log is available to admins.</CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            It records the acting member and their IP address for every administrative
+            action. Ask an existing admin to add you to the Admins group if you need access.
+          </CardContent>
+        </Card>
+      )}
+    </PageContainer>
   )
 }

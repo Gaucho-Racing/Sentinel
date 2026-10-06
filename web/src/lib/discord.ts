@@ -24,6 +24,29 @@ export function useDiscordRoles() {
   })
 }
 
+// Mirror of discord/api/guild.go::discordChannel. `type` is Discord's numeric
+// channel type; `parent_id` points at the category channel when nested.
+export type DiscordChannel = {
+  id: string
+  name: string
+  type: number
+  position: number
+  parent_id: string
+  topic: string
+  nsfw: boolean
+}
+
+export function useDiscordChannels() {
+  return useQuery({
+    queryKey: ["discord", "channels"],
+    queryFn: async () => {
+      const res = await api.get<DiscordChannel[]>("/discord/channels")
+      return res.data
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
 export function discordRoleColorHex(color: number): string | null {
   if (!color) return null
   return `#${color.toString(16).padStart(6, "0")}`
