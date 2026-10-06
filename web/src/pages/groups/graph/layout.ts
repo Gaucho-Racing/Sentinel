@@ -32,7 +32,10 @@ export function layoutGraph(graph: BuiltGraph, direction: GraphDirection) {
   })
 
   for (const node of graph.nodes) {
-    g.setNode(node.id, NODE_SIZE[node.kind])
+    // Fresh object per node: dagre writes the computed x/y back into the label
+    // it is handed, so sharing the NODE_SIZE entry would collapse every node of
+    // a kind onto one position.
+    g.setNode(node.id, { ...NODE_SIZE[node.kind] })
   }
   for (const edge of graph.edges) {
     g.setEdge(edge.source, edge.target)
