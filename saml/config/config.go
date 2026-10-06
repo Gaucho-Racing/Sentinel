@@ -5,7 +5,7 @@ import (
 )
 
 const Name = "sentinel-saml"
-const Version = "5.13.6"
+const Version = "5.13.7"
 
 func FormattedNameWithVersion() string {
 	return Name + ":v" + Version
