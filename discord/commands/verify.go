@@ -20,7 +20,8 @@ func enforceVerificationChannel(s *discordgo.Session, m *discordgo.MessageCreate
 	if config.DiscordVerificationChannel == "" || m.ChannelID != config.DiscordVerificationChannel {
 		return false
 	}
-	if strings.Contains(m.Content, "!verify") {
+	rest, ok := strings.CutPrefix(m.Content, config.DiscordPrefix)
+	if ok && strings.TrimSpace(rest) == "verify" {
 		return false
 	}
 
