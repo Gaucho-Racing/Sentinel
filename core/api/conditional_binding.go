@@ -10,6 +10,20 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// GetAllConditionalBindings returns every conditional binding across all
+// groups. The graph visualizer needs the whole dependency edge set at once;
+// fanning out over the per-group route would be one request per group.
+func GetAllConditionalBindings(c *gin.Context) {
+	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
+
+	bindings, err := service.GetAllConditionalBindings()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, bindings)
+}
+
 func GetGroupConditionalBindings(c *gin.Context) {
 	Require(c, RequestTokenHasResourceScope(c, authz.GroupsReadScope))
 

@@ -91,6 +91,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.PUT("/applications/:id", UpdateApplication)
 	router.DELETE("/applications/:id", DeleteApplication)
 	router.GET("/applications/:id/secret", GetApplicationSecret)
+	router.GET("/applications/groups", GetAllApplicationGroups)
 	router.GET("/applications/:id/groups", GetApplicationGroups)
 	router.POST("/applications/:id/groups", AddApplicationGroup)
 	router.DELETE("/applications/:id/groups/:groupID", RemoveApplicationGroup)
@@ -116,6 +117,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.POST("/groups/:id/members", AddGroupMember)
 	router.DELETE("/groups/:id/members/:entityID", RemoveGroupMember)
 
+	router.GET("/groups/conditional-bindings", GetAllConditionalBindings)
 	router.GET("/groups/:id/conditional-bindings", GetGroupConditionalBindings)
 	router.POST("/groups/:id/conditional-bindings", CreateGroupConditionalBinding)
 	router.DELETE("/groups/:id/conditional-bindings/:bindingID", DeleteGroupConditionalBinding)
