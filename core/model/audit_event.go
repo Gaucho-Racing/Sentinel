@@ -16,6 +16,9 @@ const (
 	AuditActionJoinRequestApproved       AuditAction = "JOIN_REQUEST_APPROVED"
 	AuditActionJoinRequestRejected       AuditAction = "JOIN_REQUEST_REJECTED"
 	AuditActionImpersonationTokenIssued  AuditAction = "IMPERSONATION_TOKEN_ISSUED"
+	AuditActionOrgPositionCreated        AuditAction = "ORG_POSITION_CREATED"
+	AuditActionOrgPositionUpdated        AuditAction = "ORG_POSITION_UPDATED"
+	AuditActionOrgPositionDeleted        AuditAction = "ORG_POSITION_DELETED"
 )
 
 // AuditEvent is one recorded administrative action. Rows are written

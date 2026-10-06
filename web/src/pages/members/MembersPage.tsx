@@ -1,5 +1,5 @@
-import { LayoutGrid, Rows3, Search, X } from "lucide-react"
-import { useMemo, useState } from "react"
+import { LayoutGrid, Network, Rows3, Search, X } from "lucide-react"
+import { lazy, Suspense, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 
 import { MemberAvatar, MemberCard } from "@/components/MemberCard"
@@ -20,9 +20,14 @@ import { useAllGroupMembers, useGroups } from "@/lib/groups"
 import { academicSummary, userName, useUsers, type Member } from "@/lib/users"
 import { cn } from "@/lib/utils"
 
+// Split out: React Flow and dagre only matter for the org chart, and share the
+// chunk with the group graph rather than landing in the entry bundle.
+const OrgChartView = lazy(() => import("./org/OrgChartView"))
+
 const VIEWS = [
   { id: "table", label: "Table", icon: Rows3 },
   { id: "grid", label: "Cards", icon: LayoutGrid },
+  { id: "org", label: "Org chart", icon: Network },
 ] as const
 
 type ViewID = (typeof VIEWS)[number]["id"]
@@ -74,6 +79,7 @@ export default function MembersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const viewParam = searchParams.get("view")
   const view: ViewID = isViewID(viewParam) ? viewParam : "table"
+  const isOrg = view === "org"
 
   const [query, setQuery] = useState("")
   const [groupID, setGroupID] = useState(ANY)
@@ -82,9 +88,9 @@ export default function MembersPage() {
   const [major, setMajor] = useState(ANY)
   const [role, setRole] = useState(ANY)
 
-  const usersQuery = useUsers()
-  const groupsQuery = useGroups()
-  const membershipsQuery = useAllGroupMembers()
+  const usersQuery = useUsers({ enabled: !isOrg })
+  const groupsQuery = useGroups(!isOrg)
+  const membershipsQuery = useAllGroupMembers(!isOrg)
 
   const members = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
@@ -166,7 +172,9 @@ export default function MembersPage() {
     (groupsByEntity.get(member.entity_id) ?? []).map((g) => g.name)
 
   return (
-    <PageContainer>
+    <PageContainer
+      className={cn(isOrg && "flex h-[calc(100svh-3.5rem)] max-w-none flex-col py-6")}
+    >
       <div className="mb-6">
         <PageHeader
           title="Members"
@@ -175,43 +183,62 @@ export default function MembersPage() {
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1 sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search members…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="h-8 pl-9"
-          />
-        </div>
+        {!isOrg && (
+          <>
+            <div className="relative min-w-56 flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search members…"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="h-8 pl-9"
+              />
+            </div>
 
-        <Select value={groupID} onValueChange={setGroupID}>
-          <SelectTrigger size="sm" className="w-auto min-w-28" aria-label="Group">
-            <SelectValue placeholder="Group" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ANY}>Group: any</SelectItem>
-            {[...groups]
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((group) => (
-                <SelectItem key={group.id} value={group.id}>
-                  {group.name}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
+            <Select value={groupID} onValueChange={setGroupID}>
+              <SelectTrigger size="sm" className="w-auto min-w-28" aria-label="Group">
+                <SelectValue placeholder="Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY}>Group: any</SelectItem>
+                {[...groups]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
 
-        <FilterSelect label="Year" value={gradYear} options={options.gradYears} onChange={setGradYear} />
-        <FilterSelect label="Level" value={level} options={options.levels} onChange={setLevel} />
-        <FilterSelect label="Major" value={major} options={options.majors} onChange={setMajor} />
-        <FilterSelect label="Role" value={role} options={options.roles} onChange={setRole} />
+            <FilterSelect
+              label="Year"
+              value={gradYear}
+              options={options.gradYears}
+              onChange={setGradYear}
+            />
+            <FilterSelect
+              label="Level"
+              value={level}
+              options={options.levels}
+              onChange={setLevel}
+            />
+            <FilterSelect
+              label="Major"
+              value={major}
+              options={options.majors}
+              onChange={setMajor}
+            />
+            <FilterSelect label="Role" value={role} options={options.roles} onChange={setRole} />
 
-        {filtersActive && (
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            <X className="size-3.5" />
-            Clear
-          </Button>
+            {filtersActive && (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="size-3.5" />
+                Clear
+              </Button>
+            )}
+          </>
         )}
 
         <div className="ml-auto flex items-center gap-0.5 rounded-lg border border-border/60 bg-card p-0.5">
@@ -231,13 +258,25 @@ export default function MembersPage() {
         </div>
       </div>
 
-      <p className="mb-4 text-xs text-muted-foreground">
-        {isLoading
-          ? "Loading members…"
-          : `${visible.length} of ${members.length} member${members.length === 1 ? "" : "s"}`}
-      </p>
+      {!isOrg && (
+        <p className="mb-4 text-xs text-muted-foreground">
+          {isLoading
+            ? "Loading members…"
+            : `${visible.length} of ${members.length} member${members.length === 1 ? "" : "s"}`}
+        </p>
+      )}
 
-      {isLoading ? (
+      {isOrg ? (
+        <Suspense
+          fallback={
+            <div className="flex min-h-0 flex-1 overflow-hidden rounded-xl border border-border/60">
+              <Skeleton className="size-full rounded-none" />
+            </div>
+          }
+        >
+          <OrgChartView />
+        </Suspense>
+      ) : isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-14 rounded-lg" />

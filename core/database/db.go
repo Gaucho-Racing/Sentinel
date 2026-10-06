@@ -51,6 +51,7 @@ func Init() {
 			&model.GroupConditionalBinding{},
 			&model.SigningKey{},
 			&model.AuditEvent{},
+			&model.OrgPosition{},
 		); err != nil {
 			logger.SugarLogger.Fatalf("AutoMigration failed: %v", err)
 		}

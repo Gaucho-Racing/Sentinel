@@ -73,6 +73,19 @@ export default function SettingsPage() {
                 </Button>
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Org chart</CardTitle>
+                <CardDescription>
+                  The team's reporting structure. Everyone can view it from the Members page.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild variant="outline">
+                  <Link to="/settings/org">Edit org chart</Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </section>
       )}
