@@ -1,4 +1,5 @@
 import { Crown, Users } from "lucide-react"
+import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +9,15 @@ function initial(name: string) {
   return name.slice(0, 1).toUpperCase()
 }
 
-export function GroupCard({ group }: { group: Group }) {
+export function GroupCard({
+  group,
+  accessory,
+}: {
+  group: Group
+  // Context that only makes sense in a particular view — e.g. whether this
+  // group gates the application whose section it is sitting under.
+  accessory?: ReactNode
+}) {
   return (
     <Link
       to={`/groups/${group.id}`}
@@ -18,14 +27,17 @@ export function GroupCard({ group }: { group: Group }) {
         <div className="flex size-10 items-center justify-center overflow-hidden rounded-md bg-gradient-to-br from-gr-pink to-gr-purple text-base font-semibold text-white">
           {initial(group.name)}
         </div>
-        {group.pending_count > 0 && (
-          <Badge
-            variant="outline"
-            className="border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
-          >
-            {group.pending_count} pending
-          </Badge>
-        )}
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {accessory}
+          {group.pending_count > 0 && (
+            <Badge
+              variant="outline"
+              className="border-gr-pink/40 bg-gr-pink/10 text-gr-pink"
+            >
+              {group.pending_count} pending
+            </Badge>
+          )}
+        </div>
       </div>
       <div>
         <p className="text-sm font-medium leading-none">{group.name}</p>
