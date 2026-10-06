@@ -60,6 +60,19 @@ export default function SettingsPage() {
                 </Button>
               </CardContent>
             </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Discord directory</CardTitle>
+                <CardDescription>
+                  Roles and channels as Sentinel currently sees them in the guild.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild variant="outline">
+                  <Link to="/settings/discord">View Discord directory</Link>
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </section>
       )}

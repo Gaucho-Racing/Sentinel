@@ -25,6 +25,7 @@ import SamlAuthorizePage from "@/pages/saml/SamlAuthorizePage"
 import SAMLSettingsPage from "@/pages/saml/SAMLSettingsPage"
 import SCIMSettingsPage from "@/pages/saml/SCIMSettingsPage"
 import AuditLogPage from "@/pages/settings/AuditLogPage"
+import DiscordDirectoryPage from "@/pages/settings/DiscordDirectoryPage"
 import SettingsPage from "@/pages/settings/SettingsPage"
 import ConnectedAccountsPage from "@/pages/settings/ConnectedAccountsPage"
 
@@ -55,6 +56,7 @@ export const router = createBrowserRouter([
           { path: "/settings", element: <SettingsPage /> },
           { path: "/settings/connected-accounts", element: <ConnectedAccountsPage /> },
           { path: "/settings/audit", element: <AuditLogPage /> },
+          { path: "/settings/discord", element: <DiscordDirectoryPage /> },
           { path: "/profile", element: <ProfilePage /> },
           { path: "/debug", element: <DebugPage /> },
         ],
