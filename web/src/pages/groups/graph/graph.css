@@ -1,0 +1,52 @@
+/* React Flow paints its own surface colors from these variables; pointing them
+   at the app's tokens keeps the canvas on-theme instead of the library default. */
+.sentinel-graph .react-flow {
+  --xy-background-color: var(--background);
+  --xy-node-color: var(--foreground);
+  --xy-node-border: none;
+  --xy-node-background-color: transparent;
+  --xy-node-boxshadow-hover: none;
+  --xy-node-boxshadow-selected: none;
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--muted);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--card);
+  --xy-attribution-background-color: transparent;
+}
+
+/* Nodes are styled entirely by their components — strip the library chrome so
+   the custom borders and rings are the only thing drawn. */
+.sentinel-graph .react-flow__node {
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  cursor: pointer;
+}
+
+.sentinel-graph .react-flow__node.is-dimmed {
+  opacity: 0.12;
+}
+
+.sentinel-graph .react-flow__node,
+.sentinel-graph .react-flow__edge path {
+  transition: opacity 150ms ease;
+}
+
+.sentinel-graph .react-flow__handle {
+  border: none;
+  min-width: 1px;
+  min-height: 1px;
+  width: 1px;
+  height: 1px;
+}
+
+.sentinel-graph .react-flow__controls-button {
+  border-bottom-color: var(--border);
+}
+
+.sentinel-graph .react-flow__attribution {
+  font-size: 9px;
+  opacity: 0.4;
+}

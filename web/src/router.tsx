@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom"
+import { createBrowserRouter, Navigate } from "react-router-dom"
 
 import { AppShell } from "@/components/AppShell"
 import { RequireAuth } from "@/components/RequireAuth"
@@ -43,6 +43,9 @@ export const router = createBrowserRouter([
           { path: "/applications/:id/saml/scim", element: <SCIMSettingsPage /> },
           { path: "/groups", element: <GroupsPage /> },
           { path: "/groups/new", element: <GroupNewPage /> },
+          // The graph is a view on the groups page now; keep the old path
+          // working for anything already pointing at it.
+          { path: "/groups/graph", element: <Navigate to="/groups?view=graph" replace /> },
           { path: "/groups/:id", element: <GroupDetailsPage /> },
           { path: "/groups/:id/edit", element: <GroupEditPage /> },
           { path: "/groups/:id/requests", element: <GroupRequestsPage /> },

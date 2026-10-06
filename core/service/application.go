@@ -131,6 +131,18 @@ func DeleteApplication(id string) error {
 	return nil
 }
 
+// GetAllApplicationGroups returns every application_group link row. Unlike
+// GetGroupsForApplication / GetApplicationsForGroup this does not resolve the
+// joined records — callers that already hold the full group and application
+// lists (the graph visualizer) just need the edge set.
+func GetAllApplicationGroups() ([]model.ApplicationGroup, error) {
+	appGroups := []model.ApplicationGroup{}
+	if err := database.DB.Find(&appGroups).Error; err != nil {
+		return []model.ApplicationGroup{}, err
+	}
+	return appGroups, nil
+}
+
 func GetGroupsForApplication(applicationID string) ([]GroupWithRequired, error) {
 	appGroups := []model.ApplicationGroup{}
 	if err := database.DB.Where("application_id = ?", applicationID).Find(&appGroups).Error; err != nil {

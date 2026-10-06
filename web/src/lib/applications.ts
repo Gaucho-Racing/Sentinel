@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query"
+
+import { api } from "@/lib/api"
+
 import type { Group } from "./groups"
 
 // Application API shape — mirror of core's model.Application JSON.
@@ -25,6 +29,38 @@ export type GroupWithLink = Group & { required: boolean }
 // ApplicationWithLink is the inverse — what `GET /groups/:id/applications`
 // returns. Application + the link's `required` flag inline.
 export type ApplicationWithLink = Application & { required: boolean }
+
+// Mirror of core's model.ApplicationGroup — the raw link row, without the
+// joined group/application records. `GET /applications/groups` returns the
+// whole table so a consumer holding both lists can resolve the names itself.
+export type ApplicationGroupLink = {
+  application_id: string
+  group_id: string
+  required: boolean
+  created_at: string
+}
+
+export function useAllApplicationGroupLinks(enabled = true) {
+  return useQuery({
+    queryKey: ["application-group-links"],
+    queryFn: async () => {
+      const res = await api.get<ApplicationGroupLink[]>("/applications/groups")
+      return res.data
+    },
+    enabled,
+  })
+}
+
+export function useApplications(enabled = true) {
+  return useQuery({
+    queryKey: ["applications"],
+    queryFn: async () => {
+      const res = await api.get<Application[]>("/applications")
+      return res.data
+    },
+    enabled,
+  })
+}
 
 // Substitutions chosen to demonstrate that `*` is greedy and matches dots and
 // slashes — the two characters that make wildcard redirect URIs dangerous

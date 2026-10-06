@@ -40,6 +40,18 @@ export type GroupDiscordRoleBinding = {
   created_at: string
 }
 
+// Same endpoint as useGroupDiscordBindings, minus the group_id filter —
+// omitting it makes ListRoleBindings return every binding.
+export function useAllDiscordBindings() {
+  return useQuery({
+    queryKey: ["discord", "role-bindings"],
+    queryFn: async () => {
+      const res = await api.get<GroupDiscordRoleBinding[]>("/discord/role-bindings")
+      return res.data
+    },
+  })
+}
+
 export function useGroupDiscordBindings(groupID: string) {
   return useQuery({
     queryKey: ["group", groupID, "discord-bindings"],

@@ -212,6 +212,19 @@ func DeleteApplication(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "application deleted"})
 }
 
+// GetAllApplicationGroups returns every application_group link. Reading the
+// links in bulk keeps the graph visualizer at one request instead of one per
+// application.
+func GetAllApplicationGroups(c *gin.Context) {
+	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
+	links, err := service.GetAllApplicationGroups()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, links)
+}
+
 func GetApplicationGroups(c *gin.Context) {
 	Require(c, RequestTokenHasResourceScope(c, authz.ApplicationsReadScope))
 	id := c.Param("id")

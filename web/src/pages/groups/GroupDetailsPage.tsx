@@ -9,6 +9,7 @@ import {
   Mail,
   Pencil,
   Search,
+  Share2,
   Shield,
   Sparkles,
   Trash2,
@@ -661,6 +662,12 @@ export default function GroupDetailsPage() {
               Request to join
             </Button>
           )}
+          <Button asChild variant="outline" className="h-10 gap-1.5 rounded-xl px-4 text-sm">
+            <Link to={`/groups?view=graph&focus=${group.id}`}>
+              <Share2 className="size-3.5" />
+              Graph
+            </Link>
+          </Button>
           {isOwner && (
             <Button asChild variant="outline" className="h-10 gap-1.5 rounded-xl px-4 text-sm">
               <Link to={`/groups/${group.id}/edit`}>

@@ -14,6 +14,20 @@ export type GroupConditionalBinding = {
   created_at: string
 }
 
+// Every conditional binding in one shot. The graph needs the whole edge set,
+// and fanning out over the per-group route would be a request per group.
+export function useAllConditionalBindings() {
+  return useQuery({
+    queryKey: ["conditional-bindings"],
+    queryFn: async () => {
+      const res = await api.get<GroupConditionalBinding[]>(
+        "/groups/conditional-bindings",
+      )
+      return res.data
+    },
+  })
+}
+
 export function useGroupConditionalBindings(groupID: string) {
   return useQuery({
     queryKey: ["group", groupID, "conditional-bindings"],
