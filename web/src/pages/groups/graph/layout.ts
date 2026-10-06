@@ -1,6 +1,7 @@
-import Dagre from "@dagrejs/dagre"
 import type { Edge, Node } from "@xyflow/react"
 import { MarkerType, Position } from "@xyflow/react"
+
+import { placeNodes } from "@/lib/dagre-layout"
 
 import type { BuiltGraph, EdgeKind, GraphDirection, GraphNodeKind } from "./model"
 
@@ -21,37 +22,20 @@ export const EDGE_COLOR = {
 } as const
 
 export function layoutGraph(graph: BuiltGraph, direction: GraphDirection) {
-  const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}))
-  g.setGraph({
-    rankdir: direction,
-    ranksep: direction === "LR" ? 120 : 90,
-    nodesep: direction === "LR" ? 28 : 44,
-    edgesep: 16,
-    marginx: 24,
-    marginy: 24,
-  })
-
-  for (const node of graph.nodes) {
-    // Fresh object per node: dagre writes the computed x/y back into the label
-    // it is handed, so sharing the NODE_SIZE entry would collapse every node of
-    // a kind onto one position.
-    g.setNode(node.id, { ...NODE_SIZE[node.kind] })
-  }
-  for (const edge of graph.edges) {
-    g.setEdge(edge.source, edge.target)
-  }
-
-  Dagre.layout(g)
+  const placed = placeNodes(
+    graph.nodes.map((node) => ({ id: node.id, ...NODE_SIZE[node.kind] })),
+    graph.edges,
+    { direction },
+  )
 
   const nodes: Node[] = graph.nodes.map((node) => {
     const size = NODE_SIZE[node.kind]
-    const placed = g.node(node.id)
+    const at = placed.get(node.id)!
     return {
       id: node.id,
       type: node.kind,
       data: node.data,
-      // dagre anchors at the node centre; React Flow anchors at the top left.
-      position: { x: placed.x - size.width / 2, y: placed.y - size.height / 2 },
+      position: { x: at.x, y: at.y },
       width: size.width,
       height: size.height,
       sourcePosition: direction === "LR" ? Position.Right : Position.Bottom,

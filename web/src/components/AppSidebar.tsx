@@ -1,4 +1,4 @@
-import { BarChart3, Boxes, LayoutDashboard, Settings, Users } from "lucide-react"
+import { BarChart3, Boxes, Contact, LayoutDashboard, Settings, Users } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import {
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/applications", label: "Applications", icon: Boxes },
   { to: "/groups", label: "Groups", icon: Users },
+  { to: "/members", label: "Members", icon: Contact },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/settings", label: "Settings", icon: Settings },
 ]

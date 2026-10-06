@@ -1,3 +1,7 @@
+import { useQuery } from "@tanstack/react-query"
+
+import { api } from "@/lib/api"
+
 // Group API shapes — mirror of core's GORM models. `*_count` fields are
 // populated by PopulateGroup on the backend.
 
@@ -62,4 +66,29 @@ export type GroupJoinRequest = {
   expires_at: string
   created_at: string
   comments?: GroupJoinRequestComment[]
+}
+
+// Every membership row in one request. The directory filters by group and the
+// member profile lists a person's groups; both need membership across all
+// groups, which the per-group route would cost a request each to assemble.
+export function useAllGroupMembers(enabled = true) {
+  return useQuery({
+    queryKey: ["group-members"],
+    queryFn: async () => {
+      const res = await api.get<GroupMember[]>("/groups/members")
+      return res.data
+    },
+    enabled,
+  })
+}
+
+export function useGroups(enabled = true) {
+  return useQuery({
+    queryKey: ["groups"],
+    queryFn: async () => {
+      const res = await api.get<Group[]>("/groups")
+      return res.data
+    },
+    enabled,
+  })
 }

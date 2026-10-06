@@ -113,6 +113,7 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.GET("/groups/:id/applications", GetGroupApplications)
 
+	router.GET("/groups/members", GetAllGroupMembers)
 	router.GET("/groups/:id/members", GetGroupMembers)
 	router.POST("/groups/:id/members", AddGroupMember)
 	router.DELETE("/groups/:id/members/:entityID", RemoveGroupMember)
@@ -135,6 +136,12 @@ func InitializeRoutes(router *gin.Engine) {
 
 	router.POST("/groups/:id/requests/:requestID/comments", CreateJoinRequestComment)
 	router.DELETE("/groups/:id/requests/:requestID/comments/:commentID", DeleteJoinRequestComment)
+
+	router.GET("/org/positions", GetOrgPositions)
+	router.GET("/org/chart", GetOrgChart)
+	router.POST("/org/positions", CreateOrgPosition)
+	router.PATCH("/org/positions/:id", UpdateOrgPosition)
+	router.DELETE("/org/positions/:id", DeleteOrgPosition)
 
 	router.GET("/analytics/overview", AnalyticsOverview)
 	router.GET("/analytics/logins/timeseries", AnalyticsLoginTimeSeries)

@@ -105,6 +105,17 @@ func DeleteGroup(id string) error {
 	return nil
 }
 
+// GetAllGroupMembers returns every group_member row. The member directory and
+// the org chart both need membership across all groups at once; fanning out
+// over the per-group route would be a request per group.
+func GetAllGroupMembers() ([]model.GroupMember, error) {
+	members := []model.GroupMember{}
+	if err := database.DB.Find(&members).Error; err != nil {
+		return []model.GroupMember{}, err
+	}
+	return members, nil
+}
+
 func GetMembersForGroup(groupID string) ([]model.GroupMember, error) {
 	members := []model.GroupMember{}
 	if err := database.DB.
