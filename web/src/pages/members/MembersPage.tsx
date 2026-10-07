@@ -2,9 +2,8 @@ import { LayoutGrid, Network, Rows3, Search, X } from "lucide-react"
 import { lazy, Suspense, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 
-import { MemberAvatar, MemberCard } from "@/components/MemberCard"
+import { MemberAvatar, MemberCard, MemberLinkedAccounts } from "@/components/MemberCard"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -17,7 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { fuzzyFilter } from "@/lib/fuzzy"
 import { useAllGroupMembers, useGroups } from "@/lib/groups"
-import { academicSummary, userName, useUsers, type Member } from "@/lib/users"
+import { academicSummary, userName, useUsers } from "@/lib/users"
 import { cn } from "@/lib/utils"
 
 // Split out: React Flow and dagre only matter for the org chart, and share the
@@ -33,6 +32,7 @@ const VIEWS = [
 type ViewID = (typeof VIEWS)[number]["id"]
 
 const ANY = "__any__"
+const PAGE_SIZE = 24
 
 function isViewID(value: string | null): value is ViewID {
   return VIEWS.some((v) => v.id === value)
@@ -87,6 +87,7 @@ export default function MembersPage() {
   const [level, setLevel] = useState(ANY)
   const [major, setMajor] = useState(ANY)
   const [role, setRole] = useState(ANY)
+  const [page, setPage] = useState(1)
 
   const usersQuery = useUsers({ enabled: !isOrg })
   const groupsQuery = useGroups(!isOrg)
@@ -95,22 +96,14 @@ export default function MembersPage() {
   const members = useMemo(() => usersQuery.data ?? [], [usersQuery.data])
   const groups = useMemo(() => groupsQuery.data ?? [], [groupsQuery.data])
 
-  // entity_id -> group names, built from the membership table rather than the
-  // `groups` name array on the user so the group filter keys on a stable ID.
-  const groupsByEntity = useMemo(() => {
-    const nameByID = new Map(groups.map((g) => [g.id, g.name]))
-    const map = new Map<string, { id: string; name: string }[]>()
-    for (const membership of membershipsQuery.data ?? []) {
-      const name = nameByID.get(membership.group_id)
-      if (!name) continue
-      const list = map.get(membership.entity_id)
-      const entry = { id: membership.group_id, name }
-      if (list) list.push(entry)
-      else map.set(membership.entity_id, [entry])
-    }
-    for (const list of map.values()) list.sort((a, b) => a.name.localeCompare(b.name))
-    return map
-  }, [groups, membershipsQuery.data])
+  const groupMembers = useMemo(
+    () => new Set(
+      (membershipsQuery.data ?? [])
+        .filter((membership) => membership.group_id === groupID)
+        .map((membership) => membership.entity_id),
+    ),
+    [membershipsQuery.data, groupID],
+  )
 
   const options = useMemo(
     () => ({
@@ -129,10 +122,7 @@ export default function MembersPage() {
       if (level !== ANY && m.graduate_level !== level) return false
       if (major !== ANY && m.major !== major) return false
       if (role !== ANY && m.initial_role !== role) return false
-      if (groupID !== ANY) {
-        const held = groupsByEntity.get(m.entity_id) ?? []
-        if (!held.some((g) => g.id === groupID)) return false
-      }
+      if (groupID !== ANY && !groupMembers.has(m.entity_id)) return false
       return true
     })
     return needle
@@ -143,7 +133,12 @@ export default function MembersPage() {
           m.major,
         ])
       : [...filtered].sort((a, b) => userName(a).localeCompare(userName(b)))
-  }, [members, groupsByEntity, needle, groupID, gradYear, level, major, role])
+  }, [members, groupMembers, needle, groupID, gradYear, level, major, role])
+
+  const pageCount = Math.max(1, Math.ceil(visible.length / PAGE_SIZE))
+  const currentPage = Math.min(page, pageCount)
+  const pageStart = (currentPage - 1) * PAGE_SIZE
+  const pageMembers = visible.slice(pageStart, pageStart + PAGE_SIZE)
 
   const setView = (next: ViewID) => {
     setSearchParams(
@@ -160,6 +155,7 @@ export default function MembersPage() {
   const filtersActive =
     groupID !== ANY || gradYear !== ANY || level !== ANY || major !== ANY || role !== ANY
   const clearFilters = () => {
+    setPage(1)
     setGroupID(ANY)
     setGradYear(ANY)
     setLevel(ANY)
@@ -168,8 +164,6 @@ export default function MembersPage() {
   }
 
   const isLoading = usersQuery.isLoading
-  const groupNames = (member: Member) =>
-    (groupsByEntity.get(member.entity_id) ?? []).map((g) => g.name)
 
   return (
     <PageContainer
@@ -178,7 +172,7 @@ export default function MembersPage() {
       <div className="mb-6">
         <PageHeader
           title="Members"
-          description="Everyone with a Sentinel account, and the groups they belong to."
+          description="Everyone with a Sentinel account, their email, and linked accounts."
         />
       </div>
 
@@ -191,12 +185,18 @@ export default function MembersPage() {
                 type="search"
                 placeholder="Search members…"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setPage(1)
+                }}
                 className="h-8 pl-9"
               />
             </div>
 
-            <Select value={groupID} onValueChange={setGroupID}>
+            <Select value={groupID} onValueChange={(value) => {
+              setGroupID(value)
+              setPage(1)
+            }}>
               <SelectTrigger size="sm" className="w-auto min-w-28" aria-label="Group">
                 <SelectValue placeholder="Group" />
               </SelectTrigger>
@@ -216,21 +216,38 @@ export default function MembersPage() {
               label="Year"
               value={gradYear}
               options={options.gradYears}
-              onChange={setGradYear}
+              onChange={(value) => {
+                setGradYear(value)
+                setPage(1)
+              }}
             />
             <FilterSelect
               label="Level"
               value={level}
               options={options.levels}
-              onChange={setLevel}
+              onChange={(value) => {
+                setLevel(value)
+                setPage(1)
+              }}
             />
             <FilterSelect
               label="Major"
               value={major}
               options={options.majors}
-              onChange={setMajor}
+              onChange={(value) => {
+                setMajor(value)
+                setPage(1)
+              }}
             />
-            <FilterSelect label="Role" value={role} options={options.roles} onChange={setRole} />
+            <FilterSelect
+              label="Role"
+              value={role}
+              options={options.roles}
+              onChange={(value) => {
+                setRole(value)
+                setPage(1)
+              }}
+            />
 
             {filtersActive && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -259,11 +276,38 @@ export default function MembersPage() {
       </div>
 
       {!isOrg && (
-        <p className="mb-4 text-xs text-muted-foreground">
-          {isLoading
-            ? "Loading members…"
-            : `${visible.length} of ${members.length} member${members.length === 1 ? "" : "s"}`}
-        </p>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground" aria-live="polite">
+            {isLoading
+              ? "Loading members…"
+              : visible.length === 0
+                ? `0 of ${members.length} members`
+                : `${pageStart + 1}–${pageStart + pageMembers.length} of ${visible.length} members${filtersActive || needle ? ` (${members.length} total)` : ""}`}
+          </p>
+          {!isLoading && visible.length > 0 && (
+            <nav aria-label="Members pagination" className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setPage(currentPage - 1)}
+              >
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                Page {currentPage} of {pageCount}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === pageCount}
+                onClick={() => setPage(currentPage + 1)}
+              >
+                Next
+              </Button>
+            </nav>
+          )}
+        </div>
       )}
 
       {isOrg ? (
@@ -288,46 +332,49 @@ export default function MembersPage() {
         </p>
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((member) => (
-            <MemberCard key={member.entity_id} member={member} groups={groupNames(member)} />
+          {pageMembers.map((member) => (
+            <MemberCard key={member.entity_id} member={member} />
           ))}
         </div>
       ) : (
         <div className="overflow-hidden rounded-lg border border-border/60">
+          <div className="hidden grid-cols-3 gap-4 border-b border-border bg-muted/40 px-4 py-2 text-xs font-medium text-muted-foreground lg:grid" aria-hidden="true">
+            <span>Member</span>
+            <span>Email</span>
+            <span>Linked accounts</span>
+          </div>
           <ul className="divide-y divide-border">
-            {visible.map((member) => {
-              const names = groupNames(member)
+            {pageMembers.map((member) => {
               const academic = academicSummary(member)
               return (
                 <li key={member.entity_id}>
                   <Link
                     to={`/members/${member.entity_id}`}
-                    className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/40"
+                    className="grid gap-3 px-4 py-3 transition-colors hover:bg-muted/40 lg:grid-cols-3 lg:items-center lg:gap-4"
                   >
-                    <MemberAvatar member={member} className="size-8" fallbackClassName="text-xs" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium leading-none">
-                        {userName(member)}
-                      </p>
-                      <p className="mt-1 truncate text-xs text-muted-foreground">
-                        {member.username ? `@${member.username}` : member.entity_id}
-                        {member.email ? ` · ${member.email}` : ""}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <MemberAvatar member={member} className="size-8" fallbackClassName="text-xs" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium leading-none">
+                          {userName(member)}
+                        </p>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {member.username ? `@${member.username}` : member.entity_id}
+                        </p>
+                        {academic && (
+                          <p className="mt-1 truncate text-xs text-muted-foreground">
+                            {academic}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <p className="hidden min-w-0 flex-1 truncate text-xs text-muted-foreground md:block">
-                      {academic}
-                    </p>
-                    <div className="hidden shrink-0 items-center gap-1 lg:flex">
-                      {names.slice(0, 2).map((name) => (
-                        <Badge key={name} variant="outline" className="h-5 text-[10px]">
-                          {name}
-                        </Badge>
-                      ))}
-                      {names.length > 2 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          +{names.length - 2}
-                        </span>
-                      )}
+                    <div className="min-w-0">
+                      <p className="mb-1 text-xs text-muted-foreground lg:sr-only">Email</p>
+                      <p className="break-all text-sm">{member.email || "No email"}</p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="mb-1 text-xs text-muted-foreground lg:sr-only">Linked accounts</p>
+                      <MemberLinkedAccounts entityID={member.entity_id} />
                     </div>
                   </Link>
                 </li>
