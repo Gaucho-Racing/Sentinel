@@ -1,7 +1,10 @@
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 
+import { DiscordIcon, GithubIcon } from "@/components/icons/socials"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
+import { api } from "@/lib/api"
+import type { Entity } from "@/lib/auth"
 import { academicSummary, userInitials, userName, type Member } from "@/lib/users"
 import { cn } from "@/lib/utils"
 
@@ -29,7 +32,54 @@ export function MemberAvatar({
   )
 }
 
-export function MemberCard({ member, groups }: { member: Member; groups: string[] }) {
+export function MemberLinkedAccounts({ entityID }: { entityID: string }) {
+  const entityQuery = useQuery({
+    queryKey: ["entity", entityID],
+    queryFn: async ({ signal }) =>
+      (await api.get<Entity>(`/entities/${entityID}`, { signal })).data,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  if (entityQuery.isPending) {
+    return <p className="text-xs text-muted-foreground">Loading accounts…</p>
+  }
+  if (entityQuery.isError) {
+    return <p className="text-xs text-muted-foreground">Accounts unavailable</p>
+  }
+
+  const accounts = entityQuery.data.external_auths ?? []
+  const github = accounts.find((account) => account.provider === "GITHUB")
+  const discord = accounts.find((account) => account.provider === "DISCORD")
+
+  if (!github && !discord) {
+    return <p className="text-xs text-muted-foreground">No GitHub or Discord accounts</p>
+  }
+
+  return (
+    <div className="space-y-1 text-xs">
+      {github && (
+        <p className="flex items-start gap-1.5">
+          <GithubIcon className="mt-0.5 size-3.5 shrink-0" />
+          <span className="min-w-0 break-all">
+            <span className="sr-only">GitHub: </span>
+            {github.metadata?.username || `ID: ${github.external_id}`}
+          </span>
+        </p>
+      )}
+      {discord && (
+        <p className="flex items-start gap-1.5">
+          <DiscordIcon className="mt-0.5 size-3.5 shrink-0" />
+          <span className="min-w-0 break-all">
+            <span className="sr-only">Discord: </span>
+            {discord.metadata?.username || `ID: ${discord.external_id}`}
+          </span>
+        </p>
+      )}
+    </div>
+  )
+}
+
+export function MemberCard({ member }: { member: Member }) {
   const academic = academicSummary(member)
   return (
     <Link
@@ -48,15 +98,14 @@ export function MemberCard({ member, groups }: { member: Member; groups: string[
 
       {academic && <p className="truncate text-xs text-muted-foreground">{academic}</p>}
 
-      <div className="mt-auto flex flex-wrap items-center gap-1">
-        {groups.slice(0, 3).map((name) => (
-          <Badge key={name} variant="outline" className="h-5 max-w-full text-[10px]">
-            <span className="truncate">{name}</span>
-          </Badge>
-        ))}
-        {groups.length > 3 && (
-          <span className="text-[10px] text-muted-foreground">+{groups.length - 3}</span>
-        )}
+      <div className="min-w-0">
+        <p className="mb-1 text-xs text-muted-foreground">Email</p>
+        <p className="break-all text-sm">{member.email || "No email"}</p>
+      </div>
+
+      <div className="mt-auto min-w-0">
+        <p className="mb-1 text-xs text-muted-foreground">Linked accounts</p>
+        <MemberLinkedAccounts entityID={member.entity_id} />
       </div>
     </Link>
   )
