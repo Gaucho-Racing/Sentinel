@@ -22,11 +22,9 @@ type coreGroupMember struct {
 // coreEntity mirrors the entity fields needed to resolve a member's email.
 type coreEntity struct {
 	EmailAuth struct {
-		Email string `json:"email"`
+		Email      string  `json:"email"`
+		VerifiedAt *string `json:"verified_at"`
 	} `json:"email_auth"`
-	User *struct {
-		Email string `json:"email"`
-	} `json:"user"`
 }
 
 func getGroupMembers(groupID string) ([]coreGroupMember, error) {
@@ -37,21 +35,15 @@ func getGroupMembers(groupID string) ([]coreGroupMember, error) {
 	return rows, nil
 }
 
-// resolveEntityEmail returns the entity's login email (email_auth, falling back
-// to the user profile email). Empty string when the entity has no email — e.g.
-// a service account — which the caller skips.
-func resolveEntityEmail(entityID string) (string, error) {
+// resolveEntityEmail returns the entity's login email and whether it is
+// verified. Empty string when the entity has no email — e.g. a service
+// account — which the caller skips.
+func resolveEntityEmail(entityID string) (string, bool, error) {
 	var e coreEntity
 	if err := sentinel.Get("/api/core/entity/"+entityID, &e); err != nil {
-		return "", err
+		return "", false, err
 	}
-	if e.EmailAuth.Email != "" {
-		return e.EmailAuth.Email, nil
-	}
-	if e.User != nil {
-		return e.User.Email, nil
-	}
-	return "", nil
+	return e.EmailAuth.Email, e.EmailAuth.VerifiedAt != nil, nil
 }
 
 // reconcileBinding brings one Google Group's MEMBER-role membership into
@@ -67,9 +59,13 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 		return fmt.Errorf("fetch sentinel members for group %s: %w", b.GroupID, err)
 	}
 
+	// Only verified addresses are added. An unverified member's current
+	// address is left in place if it is already there, so members who have not
+	// verified yet keep their access instead of being removed.
 	desired := make(map[string]struct{}, len(members))
+	unverified := make(map[string]struct{})
 	for _, m := range members {
-		email, err := resolveEntityEmail(m.EntityID)
+		email, verified, err := resolveEntityEmail(m.EntityID)
 		if err != nil {
 			logger.SugarLogger.Errorf("google sync: resolve email for entity %s: %v", m.EntityID, err)
 			continue
@@ -77,7 +73,11 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 		if email == "" {
 			continue
 		}
-		desired[strings.ToLower(email)] = struct{}{}
+		if verified {
+			desired[strings.ToLower(email)] = struct{}{}
+		} else {
+			unverified[strings.ToLower(email)] = struct{}{}
+		}
 	}
 
 	actual, err := listGroupMembers(ctx, b.GoogleGroupEmail)
@@ -115,6 +115,9 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 	var toRemove []string
 	for email := range managed {
 		if _, ok := desired[email]; ok {
+			continue
+		}
+		if _, ok := unverified[email]; ok {
 			continue
 		}
 		toRemove = append(toRemove, email)
