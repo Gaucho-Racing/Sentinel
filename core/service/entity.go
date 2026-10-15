@@ -108,6 +108,9 @@ func UpdateEmailAuthForEntity(entityID string, email string, password string) (m
 	}
 	if !strings.EqualFold(strings.TrimSpace(auth.Email), strings.TrimSpace(email)) {
 		auth.VerifiedAt = nil
+		if err := recordEmailChange(database.DB, entityID, auth.Email, email); err != nil {
+			return model.EntityEmail{}, err
+		}
 	}
 	auth.Email = email
 	auth.Password = password

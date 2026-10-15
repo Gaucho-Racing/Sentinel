@@ -9,6 +9,7 @@ import (
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
+	"github.com/gaucho-racing/ulid-go"
 	"gorm.io/gorm"
 )
 
@@ -54,6 +55,9 @@ func ChangeEmail(entityID string, newEmail string) (model.EntityEmail, error) {
 			Updates(map[string]any{"email": newEmail, "verified_at": nil}).Error; err != nil {
 			return err
 		}
+		if err := recordEmailChange(tx, entityID, auth.Email, newEmail); err != nil {
+			return err
+		}
 		return tx.Model(&model.EmailVerification{}).
 			Where("entity_id = ? AND consumed_at IS NULL", entityID).
 			Update("consumed_at", now).Error
@@ -66,4 +70,31 @@ func ChangeEmail(entityID string, newEmail string) (model.EntityEmail, error) {
 	auth.Email = newEmail
 	auth.VerifiedAt = nil
 	return auth, nil
+}
+
+func recordEmailChange(tx *gorm.DB, entityID string, oldEmail string, newEmail string) error {
+	if oldEmail == "" || strings.EqualFold(oldEmail, newEmail) {
+		return nil
+	}
+	return tx.Create(&model.EmailChange{
+		ID:       ulid.Make().Prefixed("emc"),
+		EntityID: entityID,
+		OldEmail: oldEmail,
+		NewEmail: newEmail,
+	}).Error
+}
+
+// ListRetiredEmails returns addresses that belonged to an account before an
+// email change and that no account uses now, lowercased.
+func ListRetiredEmails() ([]string, error) {
+	emails := []string{}
+	err := database.DB.Raw(`
+		SELECT DISTINCT LOWER(c.old_email)
+		FROM auth_email_change c
+		WHERE NOT EXISTS (
+			SELECT 1 FROM auth_entity_email e WHERE LOWER(e.email) = LOWER(c.old_email)
+		)
+		ORDER BY 1
+	`).Scan(&emails).Error
+	return emails, err
 }

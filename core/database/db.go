@@ -37,6 +37,7 @@ func Init() {
 			&model.PhoneLoginCode{},
 			&model.EmailLoginCode{},
 			&model.EmailVerification{},
+			&model.EmailChange{},
 			&model.Token{},
 			&model.User{},
 			&model.Application{},

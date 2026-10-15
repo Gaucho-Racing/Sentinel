@@ -27,6 +27,27 @@ type coreEntity struct {
 	} `json:"email_auth"`
 }
 
+// protectedEmailDomain addresses are team accounts the sync never removes.
+const protectedEmailDomain = "@gauchoracing.com"
+
+func isProtectedEmail(email string) bool {
+	return strings.HasSuffix(strings.ToLower(email), protectedEmailDomain)
+}
+
+// getRetiredEmails lists addresses Sentinel users had before changing their
+// email, which no account uses anymore.
+func getRetiredEmails() (map[string]struct{}, error) {
+	var emails []string
+	if err := sentinel.Get("/api/core/internal/retired-emails", &emails); err != nil {
+		return nil, err
+	}
+	retired := make(map[string]struct{}, len(emails))
+	for _, email := range emails {
+		retired[strings.ToLower(email)] = struct{}{}
+	}
+	return retired, nil
+}
+
 func getGroupMembers(groupID string) ([]coreGroupMember, error) {
 	var rows []coreGroupMember
 	if err := sentinel.Get("/api/groups/"+groupID+"/members", &rows); err != nil {
@@ -80,18 +101,26 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 		}
 	}
 
+	retired, err := getRetiredEmails()
+	if err != nil {
+		logger.SugarLogger.Errorf("google sync: load retired emails: %v", err)
+		retired = map[string]struct{}{}
+	}
+
 	actual, err := listGroupMembers(ctx, b.GoogleGroupEmail)
 	if err != nil {
 		return err
 	}
 	// present = members in any role (skip ADDs for these); managed = role=MEMBER
 	// only (the only rows the sync may DELETE).
+	// A retired address is removed in any role, since it can only be there
+	// because its owner changed their email.
 	present := make(map[string]struct{}, len(actual))
 	managed := make(map[string]struct{}, len(actual))
 	for _, a := range actual {
 		le := strings.ToLower(a.Email)
 		present[le] = struct{}{}
-		if a.Role == "MEMBER" {
+		if _, isRetired := retired[le]; a.Role == "MEMBER" || isRetired {
 			managed[le] = struct{}{}
 		}
 	}
@@ -118,6 +147,9 @@ func reconcileBinding(ctx context.Context, b model.GroupGoogleBinding, allowBulk
 			continue
 		}
 		if _, ok := unverified[email]; ok {
+			continue
+		}
+		if isProtectedEmail(email) {
 			continue
 		}
 		toRemove = append(toRemove, email)
