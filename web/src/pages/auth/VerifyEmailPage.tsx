@@ -1,11 +1,10 @@
 import { Loader2 } from "lucide-react"
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useEffect, useRef, useState, type FormEvent, type RefObject } from "react"
 import { Navigate, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
 import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { api } from "@/lib/api"
 import { consumeLoginReturnLocation, useAuth } from "@/lib/auth"
@@ -112,6 +111,7 @@ export default function VerifyEmailPage() {
   function handleChange(value: string) {
     const digits = value.replace(/\D/g, "").slice(0, CODE_LENGTH)
     setCode(digits)
+    if (digits) setError(null)
     if (digits.length === CODE_LENGTH) void verify(digits)
   }
 
@@ -165,20 +165,12 @@ export default function VerifyEmailPage() {
               <Label htmlFor="code" className="sr-only">
                 Verification code
               </Label>
-              <Input
-                ref={inputRef}
-                id="code"
+              <CodeInput
+                inputRef={inputRef}
                 value={code}
-                onChange={(event) => handleChange(event.target.value)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="[0-9]*"
-                maxLength={CODE_LENGTH}
-                placeholder="000000"
+                onChange={handleChange}
                 disabled={busy}
-                autoFocus
-                aria-invalid={!!error}
-                className="h-14 pl-[calc(0.75rem+0.5em)] text-center font-mono text-2xl tracking-[0.5em] placeholder:text-muted-foreground/40"
+                invalid={!!error}
               />
               {error && <p className="text-center text-sm text-destructive">{error}</p>}
             </div>
@@ -219,5 +211,67 @@ export default function VerifyEmailPage() {
         </div>
       )}
     </main>
+  )
+}
+
+function CodeInput({
+  inputRef,
+  value,
+  onChange,
+  disabled,
+  invalid,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>
+  value: string
+  onChange: (value: string) => void
+  disabled: boolean
+  invalid: boolean
+}) {
+  const [focused, setFocused] = useState(false)
+  const active = Math.min(value.length, CODE_LENGTH - 1)
+
+  return (
+    <div className="relative" onClick={() => inputRef.current?.focus()}>
+      <div className="flex justify-center gap-2 sm:gap-2.5">
+        {Array.from({ length: CODE_LENGTH }, (_, index) => {
+          const digit = value[index]
+          const isActive = focused && !disabled && index === active
+          return (
+            <div
+              key={index}
+              className={cn(
+                "flex h-16 w-12 items-center justify-center rounded-xl border bg-card font-mono text-3xl font-semibold transition-colors sm:h-[4.25rem] sm:w-[3.25rem] sm:text-4xl",
+                invalid
+                  ? "border-destructive/70"
+                  : isActive
+                    ? "border-gr-pink ring-2 ring-gr-pink/25"
+                    : digit
+                      ? "border-foreground/30"
+                      : "border-border",
+                disabled && "opacity-60",
+              )}
+            >
+              {digit ?? (isActive && <span className="h-8 w-0.5 animate-pulse rounded-full bg-gr-pink" />)}
+            </div>
+          )
+        })}
+      </div>
+      <input
+        ref={inputRef}
+        id="code"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        inputMode="numeric"
+        autoComplete="one-time-code"
+        pattern="[0-9]*"
+        maxLength={CODE_LENGTH}
+        disabled={disabled}
+        autoFocus
+        aria-invalid={invalid}
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+      />
+    </div>
   )
 }
