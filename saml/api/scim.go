@@ -158,3 +158,12 @@ func GetSCIMSyncRun(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, run)
 }
+
+func SynchronizeAllSCIM(c *gin.Context) {
+	Require(c, RequestTokenHasInternalAccess(c))
+	if err := service.EnqueueAllSCIMSyncs(c.Request.Context()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusAccepted, gin.H{"message": "SCIM syncs queued"})
+}
