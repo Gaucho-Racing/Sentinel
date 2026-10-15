@@ -174,7 +174,7 @@ func OnGuildMemberUpdate(s *discordgo.Session, m *discordgo.GuildMemberUpdate) {
 		}
 	}
 
-	service.SyncDiscordUserAvatar(m.User.ID, m.AvatarURL("256"))
+	service.SyncDiscordUserProfile(m.User, m.AvatarURL("256"))
 	if err := service.ReconcileGroupsForDiscordUser(m.User.ID, m.Roles); err != nil {
 		logger.SugarLogger.Errorf("group sync: reconcile failed for %s: %v", m.User.ID, err)
 	}
@@ -218,7 +218,7 @@ func OnUserUpdate(s *discordgo.Session, u *discordgo.UserUpdate) {
 		logger.SugarLogger.Debugf("UserUpdate: user %s not in configured guild: %v", u.ID, err)
 		return
 	}
-	service.SyncDiscordUserAvatar(u.ID, member.AvatarURL("256"))
+	service.SyncDiscordUserProfile(u.User, member.AvatarURL("256"))
 }
 
 // OnThreadUpdate unarchives guild threads that still auto-archive after the

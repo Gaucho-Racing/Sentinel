@@ -18,6 +18,7 @@ export type UserOption = {
 // field — including email and phone, which PopulateUser fills from the entity's
 // auth rows — the directory is just the first surface to show them.
 export type Member = UserOption & {
+  email_verified: boolean
   phone_number: string
   gender: string
   birthday: string

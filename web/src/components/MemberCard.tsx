@@ -68,7 +68,7 @@ export function MemberLinkedAccounts({ entityID }: { entityID: string }) {
       )}
       {discord && (
         <p className="flex items-start gap-1.5">
-          <DiscordIcon className="mt-0.5 size-3.5 shrink-0" />
+          <DiscordIcon className="mt-0.5 size-3.5 shrink-0 text-discord-blurple" />
           <span className="min-w-0 break-all">
             <span className="sr-only">Discord: </span>
             {discord.metadata?.username || `ID: ${discord.external_id}`}
