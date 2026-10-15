@@ -393,3 +393,18 @@ func waitForSCIMWorker(ctx context.Context, duration time.Duration) bool {
 		return true
 	}
 }
+
+// EnqueueAllSCIMSyncs queues a sync for every application with provisioning
+// enabled, so a change to one user's identity reaches every provider.
+func EnqueueAllSCIMSyncs(ctx context.Context) error {
+	var configurations []model.SCIMConfiguration
+	if err := database.DB.WithContext(ctx).Where("enabled = ?", true).Find(&configurations).Error; err != nil {
+		return err
+	}
+	for _, configuration := range configurations {
+		if _, _, err := EnqueueSCIMSync(ctx, configuration.ApplicationID, model.SCIMSyncTriggerManual); err != nil {
+			logger.SugarLogger.Errorf("enqueue SCIM sync for application %s: %v", configuration.ApplicationID, err)
+		}
+	}
+	return nil
+}

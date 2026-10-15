@@ -8,11 +8,12 @@ import (
 )
 
 type ProvisioningUser struct {
-	EntityID  string `json:"entity_id"`
-	Email     string `json:"email"`
-	Username  string `json:"username"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	EntityID      string `json:"entity_id"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Username      string `json:"username"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
 }
 
 type ProvisioningGroup struct {
@@ -27,12 +28,13 @@ type ProvisioningSnapshot struct {
 }
 
 type provisioningMemberRow struct {
-	GroupID   string
-	EntityID  string
-	Email     string
-	Username  string
-	FirstName string
-	LastName  string
+	GroupID       string
+	EntityID      string
+	Email         string
+	EmailVerified bool
+	Username      string
+	FirstName     string
+	LastName      string
 }
 
 func GetApplicationProvisioningSnapshot(applicationID string) (ProvisioningSnapshot, error) {
@@ -59,7 +61,7 @@ func GetApplicationProvisioningSnapshot(applicationID string) (ProvisioningSnaps
 
 	rows := []provisioningMemberRow{}
 	if err := database.DB.Raw(`
-		SELECT gm.group_id, gm.entity_id, COALESCE(ee.email, '') AS email,
+		SELECT gm.group_id, gm.entity_id, COALESCE(ee.email, '') AS email, ee.verified_at IS NOT NULL AS email_verified,
 		       COALESCE(u.username, '') AS username, COALESCE(u.first_name, '') AS first_name,
 		       COALESCE(u.last_name, '') AS last_name
 		FROM group_member gm
@@ -85,11 +87,12 @@ func GetApplicationProvisioningSnapshot(applicationID string) (ProvisioningSnaps
 		}
 		groups[groupIndex].Members = append(groups[groupIndex].Members, row.EntityID)
 		usersByID[row.EntityID] = ProvisioningUser{
-			EntityID:  row.EntityID,
-			Email:     row.Email,
-			Username:  row.Username,
-			FirstName: row.FirstName,
-			LastName:  row.LastName,
+			EntityID:      row.EntityID,
+			Email:         row.Email,
+			EmailVerified: row.EmailVerified,
+			Username:      row.Username,
+			FirstName:     row.FirstName,
+			LastName:      row.LastName,
 		}
 	}
 

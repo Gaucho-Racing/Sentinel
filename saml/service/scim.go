@@ -38,11 +38,12 @@ type SCIMConfigurationView struct {
 }
 
 type ProvisioningUser struct {
-	EntityID  string `json:"entity_id"`
-	Email     string `json:"email"`
-	Username  string `json:"username"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	EntityID      string `json:"entity_id"`
+	Email         string `json:"email"`
+	EmailVerified bool   `json:"email_verified"`
+	Username      string `json:"username"`
+	FirstName     string `json:"first_name"`
+	LastName      string `json:"last_name"`
 }
 
 type ProvisioningGroup struct {
@@ -65,6 +66,7 @@ type SCIMSyncResult struct {
 	UsersCreated       int               `json:"users_created"`
 	UsersUpdated       int               `json:"users_updated"`
 	UsersDeactivated   int               `json:"users_deactivated"`
+	UsersHeld          int               `json:"users_held"`
 	GroupsCreated      int               `json:"groups_created"`
 	GroupsUpdated      int               `json:"groups_updated"`
 	MembershipsAdded   int               `json:"memberships_added"`
@@ -204,9 +206,15 @@ func PreviewSCIMSync(applicationID string) (SCIMSyncResult, error) {
 		return SCIMSyncResult{}, err
 	}
 	snapshot, skippedUsers := prepareProvisioningSnapshot(snapshot)
+	snapshot, heldUsers, unverifiedSkipped, err := holdUnverifiedUsers(applicationID, snapshot)
+	if err != nil {
+		return SCIMSyncResult{}, err
+	}
+	skippedUsers = append(skippedUsers, unverifiedSkipped...)
 	return SCIMSyncResult{
 		DryRun:           true,
 		DesiredUsers:     len(snapshot.Users),
+		UsersHeld:        len(heldUsers),
 		DesiredGroups:    len(snapshot.Groups),
 		SkippedUsers:     skippedUsers,
 		ValidationErrors: validateProvisioningSnapshot(snapshot),
@@ -234,8 +242,14 @@ func executeSCIMSync(ctx context.Context, applicationID string) (SCIMSyncResult,
 		return SCIMSyncResult{}, err
 	}
 	snapshot, skippedUsers := prepareProvisioningSnapshot(snapshot)
+	snapshot, heldUsers, unverifiedSkipped, err := holdUnverifiedUsers(applicationID, snapshot)
+	if err != nil {
+		return SCIMSyncResult{}, err
+	}
+	skippedUsers = append(skippedUsers, unverifiedSkipped...)
 	result := SCIMSyncResult{
 		DesiredUsers:     len(snapshot.Users),
+		UsersHeld:        len(heldUsers),
 		DesiredGroups:    len(snapshot.Groups),
 		SkippedUsers:     skippedUsers,
 		ValidationErrors: validateProvisioningSnapshot(snapshot),
@@ -256,16 +270,20 @@ func executeSCIMSync(ctx context.Context, applicationID string) (SCIMSyncResult,
 			)
 		}
 
-		result, syncErr := reconcileSCIM(ctx, configuration, snapshot, result)
+		result, syncErr := reconcileSCIM(ctx, configuration, snapshot, heldUsers, result)
 		result.CompletedAt = time.Now().UTC()
 		return result, syncErr
 	})
 }
 
-func reconcileSCIM(ctx context.Context, configuration model.SCIMConfiguration, snapshot ProvisioningSnapshot, result SCIMSyncResult) (SCIMSyncResult, error) {
+func reconcileSCIM(ctx context.Context, configuration model.SCIMConfiguration, snapshot ProvisioningSnapshot, heldUsers map[string]string, result SCIMSyncResult) (SCIMSyncResult, error) {
 	client := NewSCIMClient(configuration.Endpoint, configuration.AccessToken)
-	userProviderIDs := make(map[string]string, len(snapshot.Users))
-	desiredUserIDs := make(map[string]bool, len(snapshot.Users))
+	userProviderIDs := make(map[string]string, len(snapshot.Users)+len(heldUsers))
+	desiredUserIDs := make(map[string]bool, len(snapshot.Users)+len(heldUsers))
+	for entityID, providerID := range heldUsers {
+		userProviderIDs[entityID] = providerID
+		desiredUserIDs[entityID] = true
+	}
 
 	for _, user := range snapshot.Users {
 		desired := provisioningSCIMUser(user)
@@ -502,6 +520,51 @@ func prepareProvisioningSnapshot(snapshot ProvisioningSnapshot) (ProvisioningSna
 		return skippedUsers[i].EntityID < skippedUsers[j].EntityID
 	})
 	return ProvisioningSnapshot{Users: validUsers, Groups: groups}, skippedUsers
+}
+
+// holdUnverifiedUsers keeps users with an unverified email out of create and
+// update calls. One already provisioned is left exactly as it is, memberships
+// included, so members who have not verified yet are not deactivated; one not
+// yet provisioned is skipped until they verify.
+func holdUnverifiedUsers(applicationID string, snapshot ProvisioningSnapshot) (ProvisioningSnapshot, map[string]string, []SCIMSkippedUser, error) {
+	var provisioned []model.SCIMResource
+	if err := database.DB.Where("application_id = ? AND resource_type = ?", applicationID, model.SCIMResourceTypeUser).Find(&provisioned).Error; err != nil {
+		return snapshot, nil, nil, err
+	}
+	providerIDs := make(map[string]string, len(provisioned))
+	for _, resource := range provisioned {
+		providerIDs[resource.SentinelID] = resource.ProviderID
+	}
+
+	held := make(map[string]string)
+	skippedIDs := make(map[string]bool)
+	skipped := make([]SCIMSkippedUser, 0)
+	users := make([]ProvisioningUser, 0, len(snapshot.Users))
+	for _, user := range snapshot.Users {
+		if user.EmailVerified {
+			users = append(users, user)
+			continue
+		}
+		if providerID, ok := providerIDs[user.EntityID]; ok {
+			held[user.EntityID] = providerID
+			continue
+		}
+		skippedIDs[user.EntityID] = true
+		skipped = append(skipped, SCIMSkippedUser{EntityID: user.EntityID, Username: user.Username, Reason: "email not verified"})
+	}
+
+	groups := make([]ProvisioningGroup, 0, len(snapshot.Groups))
+	for _, group := range snapshot.Groups {
+		members := make([]string, 0, len(group.Members))
+		for _, memberID := range group.Members {
+			if !skippedIDs[memberID] {
+				members = append(members, memberID)
+			}
+		}
+		group.Members = members
+		groups = append(groups, group)
+	}
+	return ProvisioningSnapshot{Users: users, Groups: groups}, held, skipped, nil
 }
 
 func isValidProvisioningEmail(value string) bool {

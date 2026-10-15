@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/gaucho-racing/sentinel/saml/pkg/logger"
@@ -35,6 +36,7 @@ func AuthChecker() gin.HandlerFunc {
 			if scope, ok := claims["scope"].(string); ok {
 				c.Set("Auth-Scope", scope)
 			}
+			c.Set("Auth-Claims", claims)
 		}
 		c.Next()
 	}
@@ -80,4 +82,32 @@ func GetRequestToken(c *gin.Context) string {
 
 func RequestTokenHasEntityID(c *gin.Context, entityID string) bool {
 	return GetRequestTokenEntityID(c) == entityID
+}
+
+// RequestTokenHasInternalAccess mirrors core's check for Sentinel's own
+// service accounts: sentinel:internal on the sentinel audience.
+func RequestTokenHasInternalAccess(c *gin.Context) bool {
+	value, _ := c.Get("Auth-Claims")
+	claims, _ := value.(map[string]interface{})
+	if claims == nil {
+		return false
+	}
+	scope, _ := claims["scope"].(string)
+	if !slices.Contains(strings.Fields(scope), "sentinel:internal") {
+		return false
+	}
+	audienceOK := false
+	switch audience := claims["aud"].(type) {
+	case string:
+		audienceOK = audience == "sentinel"
+	case []interface{}:
+		for _, value := range audience {
+			if value == "sentinel" {
+				audienceOK = true
+			}
+		}
+	}
+	accountType, _ := claims["type"].(string)
+	accountID, _ := claims["service_account_id"].(string)
+	return audienceOK && accountType == "service_account" && accountID != ""
 }
