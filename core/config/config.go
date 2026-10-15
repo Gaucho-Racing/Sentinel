@@ -35,11 +35,13 @@ var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")
 // request when the secret hasn't been configured.
 var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
 
-// Notify delivers Sentinel's email verification codes, authenticated as
-// sentinel-core's own service account. NotifyEmailSenderID is optional and
-// falls back to Notify's default sender.
+// Notify delivers Sentinel's messages, authenticated as sentinel-core's own
+// service account. Each sender ID is optional and falls back to Notify's
+// default sender for that channel.
 var NotifyURL = os.Getenv("NOTIFY_URL")
 var NotifyEmailSenderID = os.Getenv("NOTIFY_EMAIL_SENDER_ID")
+var NotifySMSSenderID = os.Getenv("NOTIFY_SMS_SENDER_ID")
+var NotifyDiscordSenderID = os.Getenv("NOTIFY_DISCORD_SENDER_ID")
 
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
