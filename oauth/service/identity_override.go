@@ -50,6 +50,7 @@ func applyIdentityOverride(clientID string, e oidcEntity) oidcEntity {
 		return e
 	}
 	e.EmailAuth.Email = o.Email
+	e.sharedIdentity = true
 	if e.User == nil {
 		e.User = &oidcUser{}
 	}

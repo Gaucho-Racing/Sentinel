@@ -106,6 +106,10 @@ func ValidateAuthorize(c *gin.Context) {
 	}
 
 	if err := service.CheckAccessGate(entityID, clientID); err != nil {
+		if errors.Is(err, service.ErrEmailUnverified) {
+			c.JSON(http.StatusForbidden, gin.H{"error": "email_unverified", "app_name": app.Name, "app_icon_url": app.IconURL})
+			return
+		}
 		if errors.Is(err, service.ErrAccessDenied) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": app.Name, "app_icon_url": app.IconURL})
 			return

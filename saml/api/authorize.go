@@ -58,6 +58,10 @@ func ValidateAuthorize(c *gin.Context) {
 		Require(c, RequestTokenHasEntityID(c, entityID))
 
 		if err := service.CheckAccessGate(entityID, sp.ClientID); err != nil {
+			if errors.Is(err, service.ErrEmailUnverified) {
+				c.JSON(http.StatusForbidden, gin.H{"error": "email_unverified", "app_name": sp.AppName, "app_icon_url": sp.AppIconURL})
+				return
+			}
 			if errors.Is(err, service.ErrAccessDenied) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "access_denied", "app_name": sp.AppName, "app_icon_url": sp.AppIconURL})
 				return

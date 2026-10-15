@@ -21,9 +21,13 @@ type oidcEntity struct {
 	ID        string `json:"id"`
 	Type      string `json:"type"`
 	EmailAuth struct {
-		Email string `json:"email"`
+		Email      string  `json:"email"`
+		VerifiedAt *string `json:"verified_at"`
 	} `json:"email_auth"`
 	User *oidcUser `json:"user"`
+	// sharedIdentity marks an identity override, whose shared mailbox is
+	// verified independently of the signed-in user.
+	sharedIdentity bool
 }
 
 func fetchOIDCEntity(entityID string) (oidcEntity, error) {
@@ -66,9 +70,7 @@ func identityClaims(e oidcEntity, scope string) map[string]interface{} {
 		}
 		if email != "" {
 			claims["email"] = email
-			// The email auth record is the credential the user signs in with,
-			// so we treat it as verified.
-			claims["email_verified"] = true
+			claims["email_verified"] = e.EmailAuth.VerifiedAt != nil || e.sharedIdentity
 		}
 	}
 
