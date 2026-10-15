@@ -2,6 +2,7 @@ import { createBrowserRouter, Navigate } from "react-router-dom"
 
 import { AppShell } from "@/components/AppShell"
 import { RequireAuth } from "@/components/RequireAuth"
+import { RequireVerifiedEmail } from "@/components/RequireVerifiedEmail"
 import AnalyticsPage from "@/pages/analytics/AnalyticsPage"
 import ApplicationDetailsPage from "@/pages/applications/ApplicationDetailsPage"
 import ApplicationEditPage from "@/pages/applications/ApplicationEditPage"
@@ -9,6 +10,7 @@ import ApplicationNewPage from "@/pages/applications/ApplicationNewPage"
 import ApplicationsPage from "@/pages/applications/ApplicationsPage"
 import LoginDiscordPage from "@/pages/auth/LoginDiscordPage"
 import LoginPage from "@/pages/auth/LoginPage"
+import VerifyEmailPage from "@/pages/auth/VerifyEmailPage"
 import MemberProfilePage from "@/pages/members/MemberProfilePage"
 import MembersPage from "@/pages/members/MembersPage"
 import DebugPage from "@/pages/debug/DebugPage"
@@ -36,35 +38,41 @@ export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
     children: [
+      { path: "/verify-email", element: <VerifyEmailPage /> },
       {
-        element: <AppShell />,
+        element: <RequireVerifiedEmail />,
         children: [
-          { path: "/", element: <HomePage /> },
-          { path: "/applications", element: <ApplicationsPage /> },
-          { path: "/applications/new", element: <ApplicationNewPage /> },
-          { path: "/applications/:id", element: <ApplicationDetailsPage /> },
-          { path: "/applications/:id/edit", element: <ApplicationEditPage /> },
-          { path: "/applications/:id/saml", element: <SAMLSettingsPage /> },
-          { path: "/applications/:id/saml/scim", element: <SCIMSettingsPage /> },
-          { path: "/members", element: <MembersPage /> },
-          { path: "/members/:entityID", element: <MemberProfilePage /> },
-          { path: "/groups", element: <GroupsPage /> },
-          { path: "/groups/new", element: <GroupNewPage /> },
-          // The graph is a view on the groups page now; keep the old path
-          // working for anything already pointing at it.
-          { path: "/groups/graph", element: <Navigate to="/groups?view=graph" replace /> },
-          { path: "/groups/:id", element: <GroupDetailsPage /> },
-          { path: "/groups/:id/edit", element: <GroupEditPage /> },
-          { path: "/groups/:id/requests", element: <GroupRequestsPage /> },
-          { path: "/groups/:id/requests/:requestID", element: <GroupRequestDetailsPage /> },
-          { path: "/analytics", element: <AnalyticsPage /> },
-          { path: "/settings", element: <SettingsPage /> },
-          { path: "/settings/connected-accounts", element: <ConnectedAccountsPage /> },
-          { path: "/settings/audit", element: <AuditLogPage /> },
-          { path: "/settings/discord", element: <DiscordDirectoryPage /> },
-          { path: "/settings/org", element: <OrgChartEditorPage /> },
-          { path: "/profile", element: <ProfilePage /> },
-          { path: "/debug", element: <DebugPage /> },
+          {
+            element: <AppShell />,
+            children: [
+              { path: "/", element: <HomePage /> },
+              { path: "/applications", element: <ApplicationsPage /> },
+              { path: "/applications/new", element: <ApplicationNewPage /> },
+              { path: "/applications/:id", element: <ApplicationDetailsPage /> },
+              { path: "/applications/:id/edit", element: <ApplicationEditPage /> },
+              { path: "/applications/:id/saml", element: <SAMLSettingsPage /> },
+              { path: "/applications/:id/saml/scim", element: <SCIMSettingsPage /> },
+              { path: "/members", element: <MembersPage /> },
+              { path: "/members/:entityID", element: <MemberProfilePage /> },
+              { path: "/groups", element: <GroupsPage /> },
+              { path: "/groups/new", element: <GroupNewPage /> },
+              // The graph is a view on the groups page now; keep the old path
+              // working for anything already pointing at it.
+              { path: "/groups/graph", element: <Navigate to="/groups?view=graph" replace /> },
+              { path: "/groups/:id", element: <GroupDetailsPage /> },
+              { path: "/groups/:id/edit", element: <GroupEditPage /> },
+              { path: "/groups/:id/requests", element: <GroupRequestsPage /> },
+              { path: "/groups/:id/requests/:requestID", element: <GroupRequestDetailsPage /> },
+              { path: "/analytics", element: <AnalyticsPage /> },
+              { path: "/settings", element: <SettingsPage /> },
+              { path: "/settings/connected-accounts", element: <ConnectedAccountsPage /> },
+              { path: "/settings/audit", element: <AuditLogPage /> },
+              { path: "/settings/discord", element: <DiscordDirectoryPage /> },
+              { path: "/settings/org", element: <OrgChartEditorPage /> },
+              { path: "/profile", element: <ProfilePage /> },
+              { path: "/debug", element: <DebugPage /> },
+            ],
+          },
         ],
       },
     ],
