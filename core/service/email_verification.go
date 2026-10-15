@@ -78,5 +78,6 @@ func ConfirmEmailVerificationCode(entityID string, code string) (model.EntityEma
 	}
 	auth.VerifiedAt = &now
 	logger.SugarLogger.Infof("Verified email for entity %s", entityID)
+	TriggerProvisioningSync("email verified")
 	return auth, nil
 }

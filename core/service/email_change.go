@@ -61,7 +61,8 @@ func ChangeEmail(entityID string, newEmail string) (model.EntityEmail, error) {
 	if err != nil {
 		return model.EntityEmail{}, err
 	}
-	logger.SugarLogger.Infof("Changed email for entity %s from %s to %s", entityID, auth.Email, newEmail)
+	logger.SugarLogger.Infof("Changed email for entity %s", entityID)
+	TriggerProvisioningSync("email changed")
 	auth.Email = newEmail
 	auth.VerifiedAt = nil
 	return auth, nil

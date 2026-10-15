@@ -36,6 +36,8 @@ var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")
 var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
 
 var NotifyURL = os.Getenv("NOTIFY_URL")
+
+var KerbecsEndpoint = os.Getenv("KERBECS_ENDPOINT")
 var NotifyEmailSenderID = os.Getenv("NOTIFY_EMAIL_SENDER_ID")
 var NotifySMSSenderID = os.Getenv("NOTIFY_SMS_SENDER_ID")
 var NotifyDiscordSenderID = os.Getenv("NOTIFY_DISCORD_SENDER_ID")
