@@ -168,6 +168,11 @@ func ConsumeOnboardingToken(id string, p OnboardingConsumePayload) (string, erro
 	}, &ignored); err != nil {
 		return "", fmt.Errorf("create external auth: %w", err)
 	}
+	if err := sentinel.Patch(fmt.Sprintf("/api/core/entity/%s/external-auth/DISCORD", entityResp.ID), map[string]any{
+		"metadata": map[string]any{"username": token.DiscordUsername, "global_name": token.DiscordGlobalName},
+	}, nil); err != nil {
+		logger.SugarLogger.Warnf("Failed to store Discord username for entity %s: %v", entityResp.ID, err)
+	}
 
 	now := time.Now()
 	if err := database.DB.Model(&model.OnboardingToken{}).

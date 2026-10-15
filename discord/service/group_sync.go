@@ -212,8 +212,9 @@ func toSet(ss []string) map[string]struct{} {
 // externalAuthRow mirrors the EntityExternalAuth fields needed to enumerate
 // onboarded users for a provider.
 type externalAuthRow struct {
-	EntityID   string `json:"entity_id"`
-	ExternalID string `json:"external_id"`
+	EntityID   string         `json:"entity_id"`
+	ExternalID string         `json:"external_id"`
+	Metadata   map[string]any `json:"metadata"`
 }
 
 // StartReconcileCron spawns a background goroutine that periodically calls
@@ -314,9 +315,15 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	memberRoles, err := fetchAllGuildMemberRoles(ctx)
+	members, err := fetchAllGuildMembers(ctx)
 	if err != nil {
 		return fmt.Errorf("fetch guild members: %w", err)
+	}
+	memberRoles := make(map[string][]string, len(members))
+	memberUsers := make(map[string]*discordgo.User, len(members))
+	for _, member := range members {
+		memberRoles[member.User.ID] = member.Roles
+		memberUsers[member.User.ID] = member.User
 	}
 
 	logger.SugarLogger.Infof("group sync: starting full sweep over %d onboarded discord users", len(auths))
@@ -326,7 +333,9 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 			return err
 		}
 		roles, present := memberRoles[a.ExternalID]
-		if !present {
+		if present {
+			SyncDiscordIdentityMetadata(a.EntityID, a.Metadata, memberUsers[a.ExternalID])
+		} else {
 			member, err := Discord.GuildMember(config.DiscordGuild, a.ExternalID)
 			switch {
 			case err == nil:
@@ -350,24 +359,11 @@ func reconcileAllOnboardedDiscordUsers(ctx context.Context) error {
 	return nil
 }
 
-// fetchAllGuildMemberRoles returns an authoritative discordUserID -> role IDs
-// map for the whole guild, paginated over the GuildMembers REST endpoint
-// (1000 per page). The full sweep uses this instead of per-user State cache
-// lookups: the State cache can hold partial members with stale or empty
-// Roles, which silently yields the wrong desired set. ctx is checked between
-// pages so a cancellation lands at the next page boundary.
-func fetchAllGuildMemberRoles(ctx context.Context) (map[string][]string, error) {
-	members, err := fetchAllGuildMembers(ctx)
-	if err != nil {
-		return nil, err
-	}
-	roles := make(map[string][]string, len(members))
-	for _, member := range members {
-		roles[member.User.ID] = member.Roles
-	}
-	return roles, nil
-}
-
+// fetchAllGuildMembers returns every guild member, paginated over the
+// GuildMembers REST endpoint (1000 per page). The full sweep uses this instead
+// of per-user State cache lookups: the State cache can hold partial members
+// with stale or empty Roles, which silently yields the wrong desired set. ctx
+// is checked between pages so a cancellation lands at the next page boundary.
 func fetchAllGuildMembers(ctx context.Context) ([]*discordgo.Member, error) {
 	var all []*discordgo.Member
 	after := ""
