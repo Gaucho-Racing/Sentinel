@@ -9,7 +9,6 @@ import (
 	"github.com/gaucho-racing/sentinel/core/database"
 	"github.com/gaucho-racing/sentinel/core/model"
 	"github.com/gaucho-racing/sentinel/core/pkg/logger"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -20,10 +19,7 @@ var (
 	ErrIncorrectPassword = errors.New("incorrect password")
 )
 
-// ChangeEmail replaces the entity's email with an unverified one. The
-// verification flow then sends a code to the new address, since Notify
-// delivers to whatever email the entity has on file.
-func ChangeEmail(entityID string, newEmail string, password string) (model.EntityEmail, error) {
+func ChangeEmail(entityID string, newEmail string) (model.EntityEmail, error) {
 	newEmail = strings.TrimSpace(newEmail)
 	parsed, err := mail.ParseAddress(newEmail)
 	if err != nil || parsed.Address != newEmail {
@@ -36,9 +32,6 @@ func ChangeEmail(entityID string, newEmail string, password string) (model.Entit
 			return model.EntityEmail{}, ErrNoEmailOnAccount
 		}
 		return model.EntityEmail{}, err
-	}
-	if bcrypt.CompareHashAndPassword([]byte(auth.Password), []byte(password)) != nil {
-		return model.EntityEmail{}, ErrIncorrectPassword
 	}
 	if strings.EqualFold(auth.Email, newEmail) {
 		return model.EntityEmail{}, ErrEmailUnchanged
