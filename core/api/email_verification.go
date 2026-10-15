@@ -176,3 +176,13 @@ func writePasswordChangeError(c *gin.Context, err error) {
 		writeEmailVerificationError(c, err)
 	}
 }
+
+func ListRetiredEmails(c *gin.Context) {
+	Require(c, RequestTokenHasInternalAccess(c))
+	emails, err := service.ListRetiredEmails()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, emails)
+}
