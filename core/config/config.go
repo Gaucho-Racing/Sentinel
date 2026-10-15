@@ -35,6 +35,11 @@ var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")
 // request when the secret hasn't been configured.
 var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
 
+var NotifyURL = os.Getenv("NOTIFY_URL")
+var NotifyEmailSenderID = os.Getenv("NOTIFY_EMAIL_SENDER_ID")
+var NotifySMSSenderID = os.Getenv("NOTIFY_SMS_SENDER_ID")
+var NotifyDiscordSenderID = os.Getenv("NOTIFY_DISCORD_SENDER_ID")
+
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")

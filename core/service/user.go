@@ -124,6 +124,7 @@ func PopulateUser(user *model.User) {
 	emailAuth, err := GetEmailAuthForEntity(user.EntityID)
 	if err == nil {
 		user.Email = emailAuth.Email
+		user.EmailVerified = emailAuth.VerifiedAt != nil
 	}
 
 	phoneAuth, err := GetPhoneAuthForEntity(user.EntityID)

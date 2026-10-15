@@ -25,7 +25,8 @@ type entity struct {
 	ID        string `json:"id"`
 	Type      string `json:"type"`
 	EmailAuth struct {
-		Email string `json:"email"`
+		Email      string  `json:"email"`
+		VerifiedAt *string `json:"verified_at"`
 	} `json:"email_auth"`
 	User *struct {
 		Username  string `json:"username"`
@@ -257,11 +258,33 @@ func allValuesEmpty(values []string) bool {
 	return true
 }
 
-// CheckAccessGate returns ErrAccessDenied when the entity is in none of the
+type emailUnverifiedError struct{}
+
+func (emailUnverifiedError) Error() string {
+	return "access denied: verify your email address in Sentinel before signing in to other apps"
+}
+
+// Is lets every caller that already denies on ErrAccessDenied deny an
+// unverified user the same way.
+func (emailUnverifiedError) Is(target error) bool {
+	return target == ErrAccessDenied
+}
+
+var ErrEmailUnverified error = emailUnverifiedError{}
+
+// CheckAccessGate returns ErrEmailUnverified for a user who has not verified
+// their email, and ErrAccessDenied when the entity is in none of the
 // application's required-flagged groups. Apps with no required links are open.
 // Fails closed: a non-ErrAccessDenied error means the gate couldn't be
 // evaluated and callers must treat it as a denial.
 func CheckAccessGate(entityID, clientID string) error {
+	e, err := fetchEntity(entityID)
+	if err != nil {
+		return err
+	}
+	if e.Type == "USER" && e.EmailAuth.VerifiedAt == nil {
+		return ErrEmailUnverified
+	}
 	links, err := getAppGroupLinks(clientID)
 	if err != nil {
 		return err

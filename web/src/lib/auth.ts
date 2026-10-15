@@ -93,7 +93,7 @@ export type Entity = {
   id: string
   type: "USER" | "SERVICE_ACCOUNT"
   created_at: string
-  email_auth?: { entity_id: string; email: string; created_at: string }
+  email_auth?: { entity_id: string; email: string; verified_at: string | null; created_at: string }
   phone_auth?: { entity_id: string; phone_number: string; created_at: string }
   external_auths: Array<{
     entity_id: string
@@ -109,6 +109,7 @@ export type Entity = {
     first_name: string
     last_name: string
     email: string
+    email_verified: boolean
     phone_number: string
     gender: string
     birthday: string
@@ -134,6 +135,15 @@ export type Entity = {
     created_by: string
     created_at: string
   }
+}
+
+export function needsEmailVerification(entity: Entity | undefined): boolean {
+  return entity?.type === "USER" && !entity.email_auth?.verified_at
+}
+
+export function isEmailUnverifiedError(err: unknown): boolean {
+  const res = (err as { response?: { status?: number; data?: { error?: string } } })?.response
+  return res?.status === 403 && res.data?.error === "email_unverified"
 }
 
 export function useAuth() {

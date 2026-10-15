@@ -145,7 +145,9 @@ func FilteredGroups(entityID string, clientID string) ([]GroupRef, error) {
 	return filtered, nil
 }
 
-// CheckAccessGate returns ErrAccessDenied when the entity is not in at
+// CheckAccessGate returns ErrEmailUnverified for a user who has not verified
+// their email (except on the Sentinel client, where they go to verify it),
+// and ErrAccessDenied when the entity is not in at
 // least one Required-flagged group on the application. Apps with no
 // required-flagged links are open to anyone. The Sentinel client follows
 // the same rule — if it has required links of its own, they apply.
@@ -154,6 +156,11 @@ func FilteredGroups(entityID string, clientID string) ([]GroupRef, error) {
 // evaluated (core fetch failed). Callers must treat that as a denial, never
 // as "open" — otherwise a transient core outage would bypass gating.
 func CheckAccessGate(entityID, clientID string) error {
+	if !isSentinelClient(clientID) {
+		if err := checkEmailVerified(entityID); err != nil {
+			return err
+		}
+	}
 	links, err := getAppGroupLinks(clientID)
 	if err != nil {
 		return err
