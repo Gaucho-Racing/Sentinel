@@ -35,6 +35,13 @@ var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")
 // request when the secret hasn't been configured.
 var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
 
+// Notify delivers Sentinel's email verification codes. NotifyToken is a
+// service account token for an application with an EMAIL policy in Notify;
+// NotifyEmailSenderID is optional and falls back to Notify's default sender.
+var NotifyURL = os.Getenv("NOTIFY_URL")
+var NotifyToken = os.Getenv("NOTIFY_TOKEN")
+var NotifyEmailSenderID = os.Getenv("NOTIFY_EMAIL_SENDER_ID")
+
 var DatabaseHost = os.Getenv("DATABASE_HOST")
 var DatabasePort = os.Getenv("DATABASE_PORT")
 var DatabaseUser = os.Getenv("DATABASE_USER")

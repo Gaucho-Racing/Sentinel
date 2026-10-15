@@ -31,6 +31,13 @@ func Verify() {
 		DatabaseName = "sentinel"
 		logger.SugarLogger.Infof("DATABASE_NAME is not set, defaulting to %s", DatabaseName)
 	}
+	if NotifyURL == "" {
+		NotifyURL = "https://notify.gauchoracing.com/api"
+		logger.SugarLogger.Infof("NOTIFY_URL is not set, defaulting to %s", NotifyURL)
+	}
+	if NotifyToken == "" {
+		logger.SugarLogger.Warnf("NOTIFY_TOKEN is not set, email verification codes cannot be sent")
+	}
 	if Issuer == "" {
 		Issuer = "https://sso.gauchoracing.com"
 		logger.SugarLogger.Infof("ISSUER is not set, defaulting to %s", Issuer)

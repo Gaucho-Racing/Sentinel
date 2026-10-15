@@ -67,10 +67,13 @@ func (Entity) TableName() string {
 }
 
 type EntityEmail struct {
-	EntityID  string    `json:"entity_id" gorm:"primaryKey"`
-	Email     string    `json:"email" gorm:"index"`
-	Password  string    `json:"-"`
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	EntityID string `json:"entity_id" gorm:"primaryKey"`
+	Email    string `json:"email" gorm:"index"`
+	Password string `json:"-"`
+	// VerifiedAt is when the entity proved it receives mail at Email; nil
+	// until then, and reset whenever Email changes.
+	VerifiedAt *time.Time `json:"verified_at"`
+	CreatedAt  time.Time  `json:"created_at" gorm:"autoCreateTime"`
 }
 
 func (EntityEmail) TableName() string {

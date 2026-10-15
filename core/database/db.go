@@ -36,6 +36,7 @@ func Init() {
 			&model.EntityExternalAuth{},
 			&model.PhoneLoginCode{},
 			&model.EmailLoginCode{},
+			&model.EmailVerification{},
 			&model.Token{},
 			&model.User{},
 			&model.Application{},
