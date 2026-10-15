@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { useState, type FormEvent } from "react"
 import { toast } from "sonner"
 
+import { ChangeEmailDialog } from "@/components/ChangeEmailDialog"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -73,6 +74,7 @@ function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
   const queryClient = useQueryClient()
   const [values, setValues] = useState(() => initialValues(profile))
   const [saving, setSaving] = useState(false)
+  const [changingEmail, setChangingEmail] = useState(false)
   const changed = JSON.stringify(values) !== JSON.stringify(initialValues(profile))
   const name = `${profile.first_name} ${profile.last_name}`.trim() || profile.username
 
@@ -115,6 +117,15 @@ function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
 
   return (
     <form onSubmit={handleSave} className="space-y-4">
+      <ChangeEmailDialog
+        open={changingEmail}
+        currentEmail={email}
+        onOpenChange={setChangingEmail}
+        onChanged={async (newEmail) => {
+          toast.success(`Check ${newEmail} for a verification code`)
+          await queryClient.invalidateQueries({ queryKey: ["currentEntity"] })
+        }}
+      />
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
@@ -135,7 +146,12 @@ function ProfileForm({ profile, email }: { profile: Profile; email: string }) {
             </div>
             <div className="space-y-2">
               <Label htmlFor="profile-email">Email</Label>
-              <Input id="profile-email" value={email} readOnly />
+              <div className="flex gap-2">
+                <Input id="profile-email" value={email} readOnly />
+                <Button type="button" variant="outline" onClick={() => setChangingEmail(true)}>
+                  Change
+                </Button>
+              </div>
             </div>
           </div>
         </CardContent>

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type FormEvent, type RefObject } from "rea
 import { Navigate, useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 
+import { ChangeEmailDialog } from "@/components/ChangeEmailDialog"
 import { OutlineButton } from "@/components/OutlineButton"
 import { SuccessCheck } from "@/components/SuccessCheck"
 import { Label } from "@/components/ui/label"
@@ -32,6 +33,7 @@ export default function VerifyEmailPage() {
   const [resendAt, setResendAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [transitioning, setTransitioning] = useState(false)
+  const [changingEmail, setChangingEmail] = useState(false)
   const autoSent = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -193,8 +195,32 @@ export default function VerifyEmailPage() {
           </form>
         )}
 
+        {email && (
+          <ChangeEmailDialog
+            open={changingEmail}
+            currentEmail={email}
+            onOpenChange={setChangingEmail}
+            onChanged={async () => {
+              setCode("")
+              setError(null)
+              setResendAt(null)
+              await refresh()
+              await sendCode()
+            }}
+          />
+        )}
+
         <p className="text-center text-xs text-muted-foreground">
-          Not you?{" "}
+          Wrong email?{" "}
+          <button
+            type="button"
+            onClick={() => setChangingEmail(true)}
+            disabled={busy}
+            className="text-foreground transition-colors hover:text-gr-pink"
+          >
+            Change it
+          </button>
+          {" · "}Not you?{" "}
           <button type="button" onClick={logout} className="text-foreground transition-colors hover:text-gr-pink">
             Sign out
           </button>
