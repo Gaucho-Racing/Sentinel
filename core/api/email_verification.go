@@ -126,3 +126,53 @@ func ChangeMyEmail(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 }
+
+type passwordChangeRequest struct {
+	NewPassword string `json:"new_password" binding:"required"`
+	Code        string `json:"code"`
+}
+
+func SendMyPasswordChangeCode(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, RequestTokenHasFirstPartyAccess(c) && entityID != "")
+
+	var req passwordChangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_password is required"})
+		return
+	}
+	sent, err := service.SendPasswordChangeCode(c.Request.Context(), entityID, req.NewPassword)
+	if err != nil {
+		writePasswordChangeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, sent)
+}
+
+func ChangeMyPassword(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, RequestTokenHasFirstPartyAccess(c) && entityID != "")
+
+	var req passwordChangeRequest
+	if err := c.ShouldBindJSON(&req); err != nil || req.Code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "new_password and code are required"})
+		return
+	}
+	if err := service.ChangePassword(c.Request.Context(), entityID, req.Code, req.NewPassword); err != nil {
+		writePasswordChangeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func writePasswordChangeError(c *gin.Context, err error) {
+	var invalid service.InvalidPasswordError
+	switch {
+	case errors.As(err, &invalid), errors.Is(err, service.ErrPasswordUnchanged):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "code": "invalid_password"})
+	case errors.Is(err, service.ErrEmailNotVerified):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	default:
+		writeEmailVerificationError(c, err)
+	}
+}

@@ -78,6 +78,8 @@ func InitializeRoutes(router *gin.Engine) {
 	router.PATCH("/users/@me/profile", UpdateMyProfile)
 	router.POST("/users/@me/reauthenticate", ReauthenticateMe)
 	router.PUT("/users/@me/email", ChangeMyEmail)
+	router.POST("/users/@me/password/code", SendMyPasswordChangeCode)
+	router.PUT("/users/@me/password", ChangeMyPassword)
 	router.POST("/users/@me/email/verification", SendMyEmailVerification)
 	router.POST("/users/@me/email/verification/confirm", ConfirmMyEmailVerification)
 	router.GET("/users/:id", GetUserByID)
