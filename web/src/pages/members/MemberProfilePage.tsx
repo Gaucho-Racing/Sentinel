@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react"
 import type { ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 
+import { EmailAddress } from "@/components/EmailAddress"
 import { ApplicationIcon } from "@/components/ApplicationIcon"
 import { DiscordIcon, GithubIcon } from "@/components/icons/socials"
 import { MemberAvatar } from "@/components/MemberCard"
@@ -182,7 +183,7 @@ export default function MemberProfilePage() {
             )}
             {discord && (
               <Badge variant="outline" className="h-5 gap-1 text-[10px]">
-                <DiscordIcon className="size-3" />
+                <DiscordIcon className="size-3 text-discord-blurple" />
                 {discord.metadata?.username ?? "linked"}
               </Badge>
             )}
@@ -200,7 +201,10 @@ export default function MemberProfilePage() {
         <DetailCard
           title="Contact"
           fields={[
-            { label: "Email", value: member.email },
+            {
+              label: "Email",
+              value: member.email && <EmailAddress email={member.email} verified={member.email_verified} />,
+            },
             { label: "Phone", value: member.phone_number },
             {
               label: "Entity ID",
