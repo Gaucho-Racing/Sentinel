@@ -27,8 +27,6 @@ type emailGateEntity struct {
 	} `json:"email_auth"`
 }
 
-// checkEmailVerified returns ErrEmailUnverified for a user who has not
-// verified their email. Service accounts have no email to verify.
 func checkEmailVerified(entityID string) error {
 	var e emailGateEntity
 	if err := sentinel.Get("/api/core/entity/"+entityID, &e); err != nil {

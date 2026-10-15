@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// CoreServiceAccountID is sentinel-core's own service account, seeded at boot.
 const CoreServiceAccountID = "sa_01kpy5f8263c4rqnhn9zejxyhk"
 
 const (
@@ -19,10 +18,6 @@ var coreToken struct {
 	expiresAt time.Time
 }
 
-// CoreServiceToken returns a short-lived bearer for sentinel-core's own
-// service account, for calling other Gaucho Racing services such as Notify.
-// Core signs it itself, so there is no secret to distribute, and it carries no
-// Sentinel scopes, so the receiving service cannot use it against Sentinel.
 func CoreServiceToken() (string, error) {
 	coreToken.Lock()
 	defer coreToken.Unlock()

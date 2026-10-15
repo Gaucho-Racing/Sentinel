@@ -2,9 +2,6 @@ package model
 
 import "time"
 
-// EmailVerification is one code sent to prove an entity receives mail at
-// Email. Only a hash of the code is stored. A row stops counting once it is
-// consumed, superseded by a newer code, or expired.
 type EmailVerification struct {
 	ID         string     `json:"id" gorm:"primaryKey"`
 	EntityID   string     `json:"entity_id" gorm:"index"`

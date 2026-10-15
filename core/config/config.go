@@ -35,9 +35,6 @@ var AdminEntityIDs = os.Getenv("ADMIN_ENTITY_IDS")
 // request when the secret hasn't been configured.
 var InternalBootstrapSecret = os.Getenv("INTERNAL_BOOTSTRAP_SECRET")
 
-// Notify delivers Sentinel's messages, authenticated as sentinel-core's own
-// service account. Each sender ID is optional and falls back to Notify's
-// default sender for that channel.
 var NotifyURL = os.Getenv("NOTIFY_URL")
 var NotifyEmailSenderID = os.Getenv("NOTIFY_EMAIL_SENDER_ID")
 var NotifySMSSenderID = os.Getenv("NOTIFY_SMS_SENDER_ID")

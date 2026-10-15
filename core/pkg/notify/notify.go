@@ -49,9 +49,6 @@ type emailContent struct {
 	HTML     string `json:"html,omitempty"`
 }
 
-// SendEmail queues an email to one entity at the address Sentinel has on
-// file for it. Notify accepts the message before delivering it, so a nil
-// error means queued, not delivered.
 func (c Client) SendEmail(ctx context.Context, email Email) error {
 	if c.BaseURL == "" || c.Token == "" {
 		return ErrNotConfigured

@@ -42,8 +42,6 @@ var (
 	ErrEmailVerificationTooManyTry = errors.New("too many incorrect attempts; request a new code")
 )
 
-// EmailVerificationThrottled means a code was requested too soon after the
-// last one, or too many times in the past hour.
 type EmailVerificationThrottled struct {
 	RetryAfter time.Duration
 }
@@ -63,8 +61,6 @@ var emailTemplates embed.FS
 
 var emailVerificationTemplate = template.Must(template.ParseFS(emailTemplates, "templates/email_verification.html"))
 
-// SendEmailVerificationCode emails a fresh code to the entity's current
-// address and invalidates any earlier one.
 func SendEmailVerificationCode(ctx context.Context, entityID string) (EmailVerificationSent, error) {
 	auth, err := GetEmailAuthForEntity(entityID)
 	if err != nil {
@@ -107,8 +103,6 @@ func SendEmailVerificationCode(ctx context.Context, entityID string) (EmailVerif
 
 	if err := sendVerificationEmail(ctx, entityID, code); err != nil {
 		logger.SugarLogger.Errorf("Failed to send email verification code to entity %s: %v", entityID, err)
-		// A code that never arrived must not hold the user to the resend
-		// cooldown or count against the hourly limit.
 		database.DB.Delete(&model.EmailVerification{}, "id = ?", verification.ID)
 		return EmailVerificationSent{}, ErrEmailVerificationNotSent
 	}
@@ -120,8 +114,6 @@ func SendEmailVerificationCode(ctx context.Context, entityID string) (EmailVerif
 	}, nil
 }
 
-// ConfirmEmailVerificationCode marks the entity's email verified when code
-// matches the latest unexpired code sent to its current address.
 func ConfirmEmailVerificationCode(entityID string, code string) (model.EntityEmail, error) {
 	code = strings.TrimSpace(code)
 	auth, err := GetEmailAuthForEntity(entityID)
@@ -257,8 +249,6 @@ func generateVerificationCode() (string, error) {
 	return fmt.Sprintf("%0*d", emailVerificationCodeDigits, n), nil
 }
 
-// The verification ID salts the hash so equal codes never share a stored
-// value.
 func hashVerificationCode(verificationID string, code string) string {
 	sum := sha256.Sum256([]byte(verificationID + ":" + code))
 	return hex.EncodeToString(sum[:])

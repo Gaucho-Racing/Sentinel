@@ -24,9 +24,7 @@ type oidcEntity struct {
 		Email      string  `json:"email"`
 		VerifiedAt *string `json:"verified_at"`
 	} `json:"email_auth"`
-	User *oidcUser `json:"user"`
-	// sharedIdentity marks an identity override, whose shared mailbox is
-	// verified independently of the signed-in user.
+	User           *oidcUser `json:"user"`
 	sharedIdentity bool
 }
 

@@ -137,8 +137,6 @@ export type Entity = {
   }
 }
 
-// Users must prove they receive mail at their address before using Sentinel or
-// signing in to other apps; service accounts have no email to verify.
 export function needsEmailVerification(entity: Entity | undefined): boolean {
   return entity?.type === "USER" && !entity.email_auth?.verified_at
 }
