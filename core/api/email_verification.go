@@ -66,3 +66,34 @@ func writeEmailVerificationError(c *gin.Context, err error) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
 }
+
+type changeEmailRequest struct {
+	Email    string `json:"email" binding:"required"`
+	Password string `json:"password" binding:"required"`
+}
+
+func ChangeMyEmail(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, RequestTokenHasFirstPartyAccess(c) && entityID != "")
+
+	var req changeEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "email and password are required"})
+		return
+	}
+	auth, err := service.ChangeEmail(entityID, req.Email, req.Password)
+	switch {
+	case err == nil:
+		c.JSON(http.StatusOK, auth)
+	case errors.Is(err, service.ErrInvalidEmail), errors.Is(err, service.ErrEmailUnchanged):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, service.ErrIncorrectPassword):
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error(), "code": "incorrect_password"})
+	case errors.Is(err, service.ErrEmailInUse):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, service.ErrNoEmailOnAccount):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+}

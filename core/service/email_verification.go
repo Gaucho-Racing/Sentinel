@@ -72,7 +72,7 @@ func SendEmailVerificationCode(ctx context.Context, entityID string) (EmailVerif
 	if auth.VerifiedAt != nil {
 		return EmailVerificationSent{}, ErrEmailAlreadyVerified
 	}
-	if err := checkEmailVerificationThrottle(entityID); err != nil {
+	if err := checkEmailVerificationThrottle(entityID, auth.Email); err != nil {
 		return EmailVerificationSent{}, err
 	}
 
@@ -191,7 +191,7 @@ func ConfirmEmailVerificationCode(entityID string, code string) (model.EntityEma
 	return auth, nil
 }
 
-func checkEmailVerificationThrottle(entityID string) error {
+func checkEmailVerificationThrottle(entityID string, email string) error {
 	var recent []model.EmailVerification
 	if err := database.DB.
 		Where("entity_id = ? AND created_at > ?", entityID, time.Now().Add(-time.Hour)).
@@ -202,8 +202,14 @@ func checkEmailVerificationThrottle(entityID string) error {
 	if len(recent) == 0 {
 		return nil
 	}
-	if wait := EmailVerificationResendAfter - time.Since(recent[0].CreatedAt); wait > 0 {
-		return EmailVerificationThrottled{RetryAfter: wait}
+	for _, verification := range recent {
+		if verification.Email != email {
+			continue
+		}
+		if wait := EmailVerificationResendAfter - time.Since(verification.CreatedAt); wait > 0 {
+			return EmailVerificationThrottled{RetryAfter: wait}
+		}
+		break
 	}
 	if len(recent) >= emailVerificationMaxPerHour {
 		oldest := recent[len(recent)-1]
