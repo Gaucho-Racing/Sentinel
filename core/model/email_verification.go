@@ -5,6 +5,7 @@ import "time"
 type EmailVerification struct {
 	ID         string     `json:"id" gorm:"primaryKey"`
 	EntityID   string     `json:"entity_id" gorm:"index"`
+	Purpose    string     `json:"purpose" gorm:"index;default:verify_email"`
 	Email      string     `json:"email"`
 	CodeHash   string     `json:"-"`
 	Attempts   int        `json:"attempts"`
