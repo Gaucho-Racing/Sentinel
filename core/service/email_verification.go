@@ -235,7 +235,7 @@ func sendVerificationEmail(ctx context.Context, entityID string, code string) er
 		EntityID: entityID,
 		SenderID: config.NotifyEmailSenderID,
 		Category: "email-verification",
-		Subject:  code + " is your Gaucho Racing verification code",
+		Subject:  "[Gaucho Racing] Verify your email address",
 		Body: fmt.Sprintf("Your Gaucho Racing verification code is %s.\n\n"+
 			"Enter it in Sentinel to verify the email on your account. It expires in %d minutes.\n\n"+
 			"Never share this code with anyone. If you didn't request it, you can ignore this email.", code, minutes),

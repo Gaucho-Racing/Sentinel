@@ -2,7 +2,9 @@ package service
 
 import (
 	"fmt"
+	"maps"
 
+	"github.com/bwmarrin/discordgo"
 	"github.com/gaucho-racing/sentinel/discord/pkg/logger"
 	"github.com/gaucho-racing/sentinel/discord/pkg/sentinel"
 )
@@ -14,6 +16,10 @@ type entityResponse struct {
 	EmailAuth struct {
 		Email string `json:"email"`
 	} `json:"email_auth"`
+	ExternalAuths []struct {
+		Provider string         `json:"provider"`
+		Metadata map[string]any `json:"metadata"`
+	} `json:"external_auths"`
 }
 
 // GetEntityIDForDiscordUser resolves a Discord user ID to a Sentinel entity ID.
@@ -67,14 +73,19 @@ func GetGroupNamesForDiscordUser(discordUserID string) ([]string, error) {
 	return names, nil
 }
 
-// SyncDiscordUserAvatar mirrors a Discord user's avatar onto the linked
-// Sentinel user, when one exists. No-ops silently when the Discord user
-// has no Sentinel record or the avatar is already current.
-func SyncDiscordUserAvatar(discordUserID, avatarURL string) {
+// SyncDiscordUserProfile mirrors a Discord user's avatar onto the linked
+// Sentinel user and their username onto the linked Discord identity. No-ops
+// when the Discord user has no Sentinel record or nothing changed.
+func SyncDiscordUserProfile(user *discordgo.User, avatarURL string) {
 	var entity entityResponse
-	if err := sentinel.Get("/api/core/entity/external/DISCORD/"+discordUserID, &entity); err != nil {
-		logger.SugarLogger.Debugf("avatar sync: no entity for Discord user %s: %v", discordUserID, err)
+	if err := sentinel.Get("/api/core/entity/external/DISCORD/"+user.ID, &entity); err != nil {
+		logger.SugarLogger.Debugf("profile sync: no entity for Discord user %s: %v", user.ID, err)
 		return
+	}
+	for _, auth := range entity.ExternalAuths {
+		if auth.Provider == "DISCORD" {
+			SyncDiscordIdentityMetadata(entity.ID, auth.Metadata, user)
+		}
 	}
 	if entity.User == nil {
 		return
@@ -88,4 +99,28 @@ func SyncDiscordUserAvatar(discordUserID, avatarURL string) {
 		return
 	}
 	logger.SugarLogger.Infof("avatar sync: updated user %v avatar to %s", entity.User["id"], avatarURL)
+}
+
+// SyncDiscordIdentityMetadata stores the Discord username and display name on
+// the entity's Discord identity, keeping whatever else the metadata holds.
+func SyncDiscordIdentityMetadata(entityID string, metadata map[string]any, user *discordgo.User) {
+	if user == nil || user.Username == "" {
+		return
+	}
+	currentUsername, _ := metadata["username"].(string)
+	currentGlobalName, _ := metadata["global_name"].(string)
+	if currentUsername == user.Username && currentGlobalName == user.GlobalName {
+		return
+	}
+	updated := maps.Clone(metadata)
+	if updated == nil {
+		updated = map[string]any{}
+	}
+	updated["username"] = user.Username
+	updated["global_name"] = user.GlobalName
+	if err := sentinel.Patch("/api/core/entity/"+entityID+"/external-auth/DISCORD", map[string]any{"metadata": updated}, nil); err != nil {
+		logger.SugarLogger.Errorf("identity sync: failed to update Discord username for entity %s: %v", entityID, err)
+		return
+	}
+	logger.SugarLogger.Infof("identity sync: entity %s Discord username is now %s", entityID, user.Username)
 }

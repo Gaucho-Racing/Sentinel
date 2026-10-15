@@ -2,6 +2,7 @@ import { LayoutGrid, Network, Rows3, Search, X } from "lucide-react"
 import { lazy, Suspense, useMemo, useState } from "react"
 import { Link, useSearchParams } from "react-router-dom"
 
+import { EmailAddress } from "@/components/EmailAddress"
 import { MemberAvatar, MemberCard, MemberLinkedAccounts } from "@/components/MemberCard"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { Button } from "@/components/ui/button"
@@ -370,7 +371,13 @@ export default function MembersPage() {
                     </div>
                     <div className="min-w-0">
                       <p className="mb-1 text-xs text-muted-foreground lg:sr-only">Email</p>
-                      <p className="break-all text-sm">{member.email || "No email"}</p>
+                      <p className="text-sm">
+                        {member.email ? (
+                          <EmailAddress email={member.email} verified={member.email_verified} />
+                        ) : (
+                          "No email"
+                        )}
+                      </p>
                     </div>
                     <div className="min-w-0">
                       <p className="mb-1 text-xs text-muted-foreground lg:sr-only">Linked accounts</p>
