@@ -17,7 +17,7 @@ const SentinelClientID = "sentinel"
 const SentinelApplicationID = "app_01kpy5f8263c4rqnhn9v2akdvf"
 
 const SentinelCoreEntityID = "ent_01kpy5f8263c4rqnhn9y920fkn"
-const SentinelCoreServiceAccountID = "sa_01kpy5f8263c4rqnhn9zejxyhk"
+const SentinelCoreServiceAccountID = service.CoreServiceAccountID
 
 // InternalServiceAccountNames is the closed set of pre-seeded SAs that
 // non-core services exchange the bootstrap secret for. Each name maps

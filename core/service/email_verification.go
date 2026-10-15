@@ -63,10 +63,6 @@ var emailTemplates embed.FS
 
 var emailVerificationTemplate = template.Must(template.ParseFS(emailTemplates, "templates/email_verification.html"))
 
-var notifyClient = func() notify.Client {
-	return notify.Client{BaseURL: config.NotifyURL, Token: config.NotifyToken}
-}
-
 // SendEmailVerificationCode emails a fresh code to the entity's current
 // address and invalidates any earlier one.
 func SendEmailVerificationCode(ctx context.Context, entityID string) (EmailVerificationSent, error) {
@@ -230,9 +226,14 @@ func sendVerificationEmail(ctx context.Context, entityID string, code string) er
 	if err := emailVerificationTemplate.Execute(&html, map[string]any{"Code": code, "Minutes": minutes}); err != nil {
 		return err
 	}
+	token, err := CoreServiceToken()
+	if err != nil {
+		return fmt.Errorf("mint core service token: %w", err)
+	}
 	ctx, cancel := context.WithTimeout(ctx, emailVerificationNotifyTimeout)
 	defer cancel()
-	return notifyClient().SendEmail(ctx, notify.Email{
+	client := notify.Client{BaseURL: config.NotifyURL, Token: token}
+	return client.SendEmail(ctx, notify.Email{
 		EntityID: entityID,
 		SenderID: config.NotifyEmailSenderID,
 		Category: "email-verification",
