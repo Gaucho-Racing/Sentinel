@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowUpRight } from "lucide-react"
 import type { ReactNode } from "react"
 import { Link, useParams } from "react-router-dom"
 
-import { EmailAddress } from "@/components/EmailAddress"
+import { EmailAddress, VerifiedValue } from "@/components/EmailAddress"
 import { ApplicationIcon } from "@/components/ApplicationIcon"
 import { DiscordIcon, GithubIcon } from "@/components/icons/socials"
 import { MemberAvatar } from "@/components/MemberCard"
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { formatPhoneNumber } from "@/lib/phone"
 import { api } from "@/lib/api"
 import type { Application } from "@/lib/applications"
 import type { Entity } from "@/lib/auth"
@@ -205,7 +206,12 @@ export default function MemberProfilePage() {
               label: "Email",
               value: member.email && <EmailAddress email={member.email} verified={member.email_verified} />,
             },
-            { label: "Phone", value: member.phone_number },
+            {
+              label: "Phone",
+              value: member.phone_number && (
+                <VerifiedValue value={formatPhoneNumber(member.phone_number)} verified={member.phone_verified} label="phone number" />
+              ),
+            },
             {
               label: "Entity ID",
               value: <code className="font-mono text-xs">{entityID}</code>,

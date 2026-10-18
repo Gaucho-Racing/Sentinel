@@ -94,7 +94,7 @@ export type Entity = {
   type: "USER" | "SERVICE_ACCOUNT"
   created_at: string
   email_auth?: { entity_id: string; email: string; verified_at: string | null; created_at: string }
-  phone_auth?: { entity_id: string; phone_number: string; created_at: string }
+  phone_auth?: { entity_id: string; phone_number: string; verified_at: string | null; created_at: string }
   external_auths: Array<{
     entity_id: string
     provider: "DISCORD" | "GOOGLE" | "GITHUB"
@@ -111,6 +111,7 @@ export type Entity = {
     email: string
     email_verified: boolean
     phone_number: string
+    phone_verified: boolean
     gender: string
     birthday: string
     graduate_level: string

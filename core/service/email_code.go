@@ -76,20 +76,37 @@ var emailTemplates embed.FS
 var emailTemplate = template.Must(template.ParseFS(emailTemplates, "templates/email.html"))
 
 func sendEmailCode(ctx context.Context, entityID string, purpose string, email string, content func(code string) emailContent) (EmailVerificationSent, error) {
-	if err := checkEmailCodeThrottle(entityID, purpose, email); err != nil {
-		return EmailVerificationSent{}, err
-	}
-	code, err := generateVerificationCode()
+	verification, err := issueCode(ctx, entityID, purpose, email, func(ctx context.Context, code string) error {
+		return sendEmail(ctx, entityID, code, content(code))
+	})
 	if err != nil {
 		return EmailVerificationSent{}, err
 	}
+	return EmailVerificationSent{
+		Email:       email,
+		ExpiresAt:   verification.ExpiresAt,
+		ResendAfter: verification.CreatedAt.Add(EmailVerificationResendAfter),
+	}, nil
+}
+
+// issueCode stores a new code for destination, replacing any open code with
+// the same purpose, and delivers it. A code that fails to deliver is deleted
+// so it doesn't count against the resend limits.
+func issueCode(ctx context.Context, entityID string, purpose string, destination string, deliver func(ctx context.Context, code string) error) (model.EmailVerification, error) {
+	if err := checkCodeThrottle(entityID, purpose, destination); err != nil {
+		return model.EmailVerification{}, err
+	}
+	code, err := generateVerificationCode()
+	if err != nil {
+		return model.EmailVerification{}, err
+	}
 	now := time.Now()
 	verification := model.EmailVerification{
-		ID:        ulid.Make().Prefixed("emv"),
-		EntityID:  entityID,
-		Purpose:   purpose,
-		Email:     email,
-		ExpiresAt: now.Add(EmailVerificationCodeTTL),
+		ID:          ulid.Make().Prefixed("emv"),
+		EntityID:    entityID,
+		Purpose:     purpose,
+		Destination: destination,
+		ExpiresAt:   now.Add(EmailVerificationCodeTTL),
 	}
 	verification.CodeHash = hashVerificationCode(verification.ID, code)
 
@@ -102,22 +119,18 @@ func sendEmailCode(ctx context.Context, entityID string, purpose string, email s
 		return tx.Create(&verification).Error
 	})
 	if err != nil {
-		return EmailVerificationSent{}, err
+		return model.EmailVerification{}, err
 	}
 
-	if err := sendEmail(ctx, entityID, code, content(code)); err != nil {
+	if err := deliver(ctx, code); err != nil {
 		logger.SugarLogger.Errorf("Failed to send %s code to entity %s: %v", purpose, entityID, err)
 		database.DB.Delete(&model.EmailVerification{}, "id = ?", verification.ID)
-		return EmailVerificationSent{}, ErrEmailVerificationNotSent
+		return model.EmailVerification{}, ErrEmailVerificationNotSent
 	}
-	return EmailVerificationSent{
-		Email:       email,
-		ExpiresAt:   verification.ExpiresAt,
-		ResendAfter: verification.CreatedAt.Add(EmailVerificationResendAfter),
-	}, nil
+	return verification, nil
 }
 
-func checkEmailCode(entityID string, purpose string, email string, code string) (string, error) {
+func checkCode(entityID string, purpose string, destination string, code string) (string, error) {
 	code = strings.TrimSpace(code)
 	var verification model.EmailVerification
 	err := database.DB.
@@ -130,7 +143,7 @@ func checkEmailCode(entityID string, purpose string, email string, code string) 
 		}
 		return "", err
 	}
-	if verification.Email != email {
+	if verification.Destination != destination {
 		return "", ErrEmailVerificationNoCode
 	}
 
@@ -155,7 +168,7 @@ func checkEmailCode(entityID string, purpose string, email string, code string) 
 	return verification.ID, nil
 }
 
-func consumeEmailCode(tx *gorm.DB, verificationID string) error {
+func consumeCode(tx *gorm.DB, verificationID string) error {
 	consumed := tx.Model(&model.EmailVerification{}).
 		Where("id = ? AND consumed_at IS NULL", verificationID).
 		Update("consumed_at", time.Now())
@@ -168,7 +181,7 @@ func consumeEmailCode(tx *gorm.DB, verificationID string) error {
 	return nil
 }
 
-func checkEmailCodeThrottle(entityID string, purpose string, email string) error {
+func checkCodeThrottle(entityID string, purpose string, destination string) error {
 	var recent []model.EmailVerification
 	if err := database.DB.
 		Where("entity_id = ? AND purpose = ? AND created_at > ?", entityID, purpose, time.Now().Add(-time.Hour)).
@@ -177,7 +190,7 @@ func checkEmailCodeThrottle(entityID string, purpose string, email string) error
 		return err
 	}
 	for _, verification := range recent {
-		if verification.Email != email {
+		if verification.Destination != destination {
 			continue
 		}
 		if wait := EmailVerificationResendAfter - time.Since(verification.CreatedAt); wait > 0 {

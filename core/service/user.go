@@ -130,6 +130,7 @@ func PopulateUser(user *model.User) {
 	phoneAuth, err := GetPhoneAuthForEntity(user.EntityID)
 	if err == nil {
 		user.PhoneNumber = phoneAuth.PhoneNumber
+		user.PhoneVerified = phoneAuth.VerifiedAt != nil
 	}
 }
 

@@ -30,11 +30,24 @@ type Email struct {
 	HTML     string
 }
 
+type SMS struct {
+	EntityID string
+	SenderID string
+	Category string
+	Body     string
+}
+
 type sendRequest struct {
-	Channel    string       `json:"channel"`
-	Category   string       `json:"category,omitempty"`
-	Recipients recipients   `json:"recipients"`
-	Email      emailContent `json:"email"`
+	Channel    string        `json:"channel"`
+	Category   string        `json:"category,omitempty"`
+	Recipients recipients    `json:"recipients"`
+	Email      *emailContent `json:"email,omitempty"`
+	SMS        *smsContent   `json:"sms,omitempty"`
+}
+
+type smsContent struct {
+	SenderID string `json:"sender_id,omitempty"`
+	Body     string `json:"body"`
 }
 
 type recipients struct {
@@ -53,17 +66,35 @@ func (c Client) SendEmail(ctx context.Context, email Email) error {
 	if c.BaseURL == "" || c.Token == "" {
 		return ErrNotConfigured
 	}
-	payload, err := json.Marshal(sendRequest{
+	return c.send(ctx, sendRequest{
 		Channel:    "EMAIL",
 		Category:   email.Category,
 		Recipients: recipients{EntityIDs: []string{email.EntityID}, GroupIDs: []string{}},
-		Email: emailContent{
+		Email: &emailContent{
 			SenderID: email.SenderID,
 			Subject:  email.Subject,
 			Body:     email.Body,
 			HTML:     email.HTML,
 		},
 	})
+}
+
+// SendSMS queues a text to one entity at the phone number Sentinel has on
+// file for it.
+func (c Client) SendSMS(ctx context.Context, sms SMS) error {
+	if c.BaseURL == "" || c.Token == "" {
+		return ErrNotConfigured
+	}
+	return c.send(ctx, sendRequest{
+		Channel:    "SMS",
+		Category:   sms.Category,
+		Recipients: recipients{EntityIDs: []string{sms.EntityID}, GroupIDs: []string{}},
+		SMS:        &smsContent{SenderID: sms.SenderID, Body: sms.Body},
+	})
+}
+
+func (c Client) send(ctx context.Context, request sendRequest) error {
+	payload, err := json.Marshal(request)
 	if err != nil {
 		return err
 	}

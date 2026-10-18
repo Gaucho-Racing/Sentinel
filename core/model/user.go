@@ -16,6 +16,7 @@ type User struct {
 	Email                 string    `json:"email" gorm:"-"`
 	EmailVerified         bool      `json:"email_verified" gorm:"-"`
 	PhoneNumber           string    `json:"phone_number" gorm:"-"`
+	PhoneVerified         bool      `json:"phone_verified" gorm:"-"`
 	Gender                string    `json:"gender"`
 	Birthday              time.Time `json:"birthday"`
 	GraduateLevel         string    `json:"graduate_level"`

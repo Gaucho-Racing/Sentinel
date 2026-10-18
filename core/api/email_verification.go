@@ -186,3 +186,72 @@ func ListRetiredEmails(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, emails)
 }
+
+type changePhoneRequest struct {
+	PhoneNumber string `json:"phone_number" binding:"required"`
+}
+
+func SendMyPhoneVerification(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, RequestTokenHasFirstPartyAccess(c) && entityID != "")
+
+	sent, err := service.SendPhoneVerificationCode(c.Request.Context(), entityID)
+	if err != nil {
+		writePhoneError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, sent)
+}
+
+func ConfirmMyPhoneVerification(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, RequestTokenHasFirstPartyAccess(c) && entityID != "")
+
+	var req confirmEmailVerificationRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "code is required"})
+		return
+	}
+	auth, err := service.ConfirmPhoneVerificationCode(entityID, req.Code)
+	if err != nil {
+		writePhoneError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, auth)
+}
+
+func ChangeMyPhone(c *gin.Context) {
+	entityID := GetRequestTokenEntityID(c)
+	Require(c, RequestTokenHasFirstPartyAccess(c) && entityID != "")
+
+	var req changePhoneRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "phone_number is required"})
+		return
+	}
+	reauthTokenID, err := service.CheckReauthToken(entityID, c.GetHeader("X-Reauth-Token"))
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": err.Error(), "code": "reauth_required"})
+		return
+	}
+	auth, err := service.ChangePhone(entityID, req.PhoneNumber)
+	if err != nil {
+		writePhoneError(c, err)
+		return
+	}
+	service.RevokeReauthToken(reauthTokenID)
+	c.JSON(http.StatusOK, auth)
+}
+
+func writePhoneError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, service.ErrInvalidPhone), errors.Is(err, service.ErrPhoneUnchanged):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, service.ErrPhoneInUse), errors.Is(err, service.ErrPhoneAlreadyVerified):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, service.ErrNoPhoneOnAccount):
+		c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+	default:
+		writeEmailVerificationError(c, err)
+	}
+}

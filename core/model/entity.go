@@ -79,9 +79,10 @@ func (EntityEmail) TableName() string {
 }
 
 type EntityPhone struct {
-	EntityID    string    `json:"entity_id" gorm:"primaryKey"`
-	PhoneNumber string    `json:"phone_number" gorm:"index"`
-	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
+	EntityID    string     `json:"entity_id" gorm:"primaryKey"`
+	PhoneNumber string     `json:"phone_number" gorm:"index"`
+	VerifiedAt  *time.Time `json:"verified_at"`
+	CreatedAt   time.Time  `json:"created_at" gorm:"autoCreateTime"`
 }
 
 func (EntityPhone) TableName() string {
