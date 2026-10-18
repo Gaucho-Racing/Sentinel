@@ -160,6 +160,7 @@ func InitializeRoutes(router *gin.Engine) {
 	router.GET("/analytics/users/growth", AnalyticsUserGrowth)
 	router.GET("/analytics/members/demographics", AnalyticsMemberDemographics)
 	router.GET("/analytics/auth-methods", AnalyticsAuthMethods)
+	router.GET("/analytics/members/contacts", AnalyticsContacts)
 	router.GET("/analytics/groups/membership", AnalyticsGroupMembership)
 	router.GET("/analytics/groups/join-requests", AnalyticsJoinRequests)
 	router.GET("/analytics/audit", AnalyticsAuditEvents)

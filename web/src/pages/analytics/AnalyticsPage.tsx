@@ -1,10 +1,11 @@
-import { Activity, Boxes, LogIn, Users, UsersRound } from "lucide-react"
+import { Activity, Boxes, LogIn, MapPin, Users, UsersRound } from "lucide-react"
 import { useState } from "react"
 
 import { PageContainer, PageHeader } from "@/components/PageContainer"
 import { cn } from "@/lib/utils"
 
 import { ApplicationsTab } from "./tabs/ApplicationsTab"
+import { ContactTab } from "./tabs/ContactTab"
 import { GroupsTab } from "./tabs/GroupsTab"
 import { MembersTab } from "./tabs/MembersTab"
 import { OverviewTab } from "./tabs/OverviewTab"
@@ -15,6 +16,7 @@ const TABS = [
   { key: "signins", label: "Sign-ins", icon: LogIn, Component: SigninsTab },
   { key: "applications", label: "Applications", icon: Boxes, Component: ApplicationsTab },
   { key: "members", label: "Members", icon: Users, Component: MembersTab },
+  { key: "contact", label: "Contact", icon: MapPin, Component: ContactTab },
   { key: "groups", label: "Groups", icon: UsersRound, Component: GroupsTab },
 ] as const
 
