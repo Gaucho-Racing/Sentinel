@@ -210,3 +210,13 @@ func AnalyticsAuditSummary(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, summary)
 }
+
+func AnalyticsContacts(c *gin.Context) {
+	requireAnalyticsAccess(c)
+	analytics, err := service.GetContactAnalytics()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, analytics)
+}
