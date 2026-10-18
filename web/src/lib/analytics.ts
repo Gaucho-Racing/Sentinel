@@ -143,6 +143,35 @@ export function useUserGrowth(months: number, enabled = true) {
   })
 }
 
+export type RegionCount = { code: string; name?: string; count: number; verified: number }
+export type AreaCodeCount = { area_code: string; country: string; region: string; count: number }
+export type DomainCount = { domain: string; kind: "school" | "team" | "personal" | "other"; count: number; verified: number }
+
+export type ContactAnalytics = {
+  phones: {
+    total: number
+    verified: number
+    unparseable: number
+    countries: RegionCount[]
+    us_states: RegionCount[]
+    area_codes: AreaCodeCount[]
+  }
+  emails: {
+    total: number
+    verified: number
+    domains: DomainCount[]
+    kinds: CategoryCount[]
+  }
+}
+
+export function useContactAnalytics() {
+  return useQuery({
+    queryKey: ["analytics", "members", "contacts"],
+    queryFn: async () => (await api.get<ContactAnalytics>("/analytics/members/contacts")).data,
+    staleTime: STALE,
+  })
+}
+
 export function useMemberDemographics(enabled = true) {
   return useQuery({
     queryKey: ["analytics", "members", "demographics"],

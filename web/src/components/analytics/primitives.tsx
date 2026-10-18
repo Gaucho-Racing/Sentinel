@@ -134,7 +134,7 @@ export function ChartTooltip({
 // RangeToggle is a compact segmented control for picking a time window. Values
 // are opaque to the control — the parent decides what the numbers mean (days,
 // months) and how to query.
-export function RangeToggle<T extends number>({
+export function RangeToggle<T extends string | number>({
   value,
   onChange,
   options,
@@ -147,7 +147,7 @@ export function RangeToggle<T extends number>({
     <div className="inline-flex rounded-md border border-border p-0.5">
       {options.map((opt) => (
         <button
-          key={opt.value}
+          key={String(opt.value)}
           type="button"
           onClick={() => onChange(opt.value)}
           className={cn(
