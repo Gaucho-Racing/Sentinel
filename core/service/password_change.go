@@ -78,7 +78,7 @@ func ChangePassword(ctx context.Context, entityID string, code string, newPasswo
 	if err := validateNewPassword(auth, newPassword); err != nil {
 		return err
 	}
-	verificationID, err := checkEmailCode(entityID, codePurposeChangePassword, auth.Email, code)
+	verificationID, err := checkCode(entityID, codePurposeChangePassword, auth.Email, code)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func ChangePassword(ctx context.Context, entityID string, code string, newPasswo
 		return err
 	}
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := consumeEmailCode(tx, verificationID); err != nil {
+		if err := consumeCode(tx, verificationID); err != nil {
 			return err
 		}
 		return tx.Model(&model.EntityEmail{}).Where("entity_id = ?", entityID).Update("password", hashed).Error

@@ -52,14 +52,14 @@ func ConfirmEmailVerificationCode(entityID string, code string) (model.EntityEma
 	if auth.VerifiedAt != nil {
 		return auth, nil
 	}
-	verificationID, err := checkEmailCode(entityID, codePurposeVerifyEmail, auth.Email, code)
+	verificationID, err := checkCode(entityID, codePurposeVerifyEmail, auth.Email, code)
 	if err != nil {
 		return model.EntityEmail{}, err
 	}
 
 	now := time.Now()
 	err = database.DB.Transaction(func(tx *gorm.DB) error {
-		if err := consumeEmailCode(tx, verificationID); err != nil {
+		if err := consumeCode(tx, verificationID); err != nil {
 			return err
 		}
 		verified := tx.Model(&model.EntityEmail{}).
