@@ -5,8 +5,9 @@ import { toast } from "sonner"
 
 import { ChangeEmailDialog } from "@/components/ChangeEmailDialog"
 import { ChangePasswordDialog } from "@/components/ChangePasswordDialog"
-import { EmailAddress } from "@/components/EmailAddress"
+import { EmailAddress, VerifiedValue } from "@/components/EmailAddress"
 import { PageContainer, PageHeader } from "@/components/PageContainer"
+import { PhoneDialog, type PhoneDialogMode } from "@/components/PhoneDialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { api } from "@/lib/api"
 import { useAuth, type Entity } from "@/lib/auth"
+import { formatPhoneNumber } from "@/lib/phone"
 
 type Profile = NonNullable<Entity["user"]>
 
@@ -132,9 +134,12 @@ function ProfileForm({ entity, profile }: { entity: Entity; profile: Profile }) 
   const [saving, setSaving] = useState(false)
   const [changingEmail, setChangingEmail] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
+  const [phoneMode, setPhoneMode] = useState<PhoneDialogMode | null>(null)
   const changed = JSON.stringify(values) !== JSON.stringify(initialValues(profile))
   const name = `${profile.first_name} ${profile.last_name}`.trim() || profile.username
   const email = entity.email_auth?.email ?? profile.email ?? ""
+  const phone = entity.phone_auth?.phone_number ?? ""
+  const phoneVerified = !!entity.phone_auth?.verified_at
   const joined = new Date(profile.created_at).toLocaleDateString(undefined, { month: "long", year: "numeric" })
 
   function update(patch: Partial<ProfileValues>) {
@@ -208,6 +213,30 @@ function ProfileForm({ entity, profile }: { entity: Entity; profile: Profile }) 
               }
             >
               <EmailAddress email={email} verified={!!entity.email_auth?.verified_at} />
+            </SettingRow>
+            <SettingRow
+              label="Phone"
+              action={
+                <div className="flex gap-2">
+                  {phone && !phoneVerified && (
+                    <Button type="button" size="sm" onClick={() => setPhoneMode("verify")}>
+                      Verify
+                    </Button>
+                  )}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setPhoneMode("change")}>
+                    {phone ? "Change" : "Add"}
+                  </Button>
+                </div>
+              }
+            >
+              {phone ? (
+                <span className="inline-flex items-center gap-2">
+                  <VerifiedValue value={formatPhoneNumber(phone)} verified={phoneVerified} label="phone number" />
+                  {!phoneVerified && <span className="text-xs text-muted-foreground">Not verified</span>}
+                </span>
+              ) : (
+                <span className="text-muted-foreground">No phone number</span>
+              )}
             </SettingRow>
             <SettingRow
               label="Password"
@@ -334,6 +363,13 @@ function ProfileForm({ entity, profile }: { entity: Entity; profile: Profile }) 
         }}
       />
       <ChangePasswordDialog open={changingPassword} onOpenChange={setChangingPassword} />
+      <PhoneDialog
+        key={phoneMode ?? "closed"}
+        mode={phoneMode}
+        currentPhone={phone}
+        onOpenChange={(open) => !open && setPhoneMode(null)}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["currentEntity"] })}
+      />
     </div>
   )
 }

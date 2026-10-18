@@ -20,6 +20,7 @@ export type UserOption = {
 export type Member = UserOption & {
   email_verified: boolean
   phone_number: string
+  phone_verified: boolean
   gender: string
   birthday: string
   graduate_level: string
